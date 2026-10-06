@@ -1,63 +1,34 @@
 export type LandingLang = "ar" | "en";
 
-/** نصوص الصفحة الرئيسية — العربية من تصميم المصممة (مع تصحيح الإملاء) والإنجليزية ترجمتها. */
+/** نصوص الصفحة الرئيسية — العربية من تصميم المصممة (النسخة المحدّثة، مع تصحيح الإملاء) والإنجليزية ترجمتها. */
 export const HOME_COPY = {
   ar: {
     nav: { home: "الرئيسية", games: "الألعاب", tools: "الأدوات", how: "كيف تعمل", contact: "تواصل معنا", login: "تسجيل الدخول", start: "ابدأ مجاناً" },
     hero: {
-      l1: "حوّل دروسك إلى",
-      l2: "تجربة تعليمية",
-      accent: "تفاعلية",
-      sub: "أدوات ذكية تساعدك على إنشاء دروس وأنشطة تفاعلية، وإشراك طلابك في التعلّم من خلال الأسئلة والألعاب والمسابقات.",
+      l0: "حصاد",
+      l1: "كل ما يحتاجه المعلم لحصة",
+      accent: "أكثر تفاعلاً",
+      sub: "أنشئ الأنشطة والواجبات والاختبارات والمسابقات، وتابع تفاعل طلابك ونتائجهم من مكان واحد.",
       start: "ابدأ الآن مجاناً",
       tools: "اكتشف أدوات حصاد",
-      trust: "معلّمون يثقون بحصاد",
+      trust: "يثق بحصاد ويعمل عليها",
     },
     what: {
-      t1: "ما هي منصة",
-      t2: "حصاد؟",
-      body: "منصة تعليمية تفاعلية تساعد المعلمين على تقديم تجربة تعليمية ممتعة وفعّالة بالاستعانة بأدوات الذكاء الاصطناعي.",
+      t1: "ماذا يمكنك أن تفعل",
+      t2: "مع حصاد؟",
+      body: "حصاد منصة متكاملة تساعدك على إنشاء الأسئلة، الواجبات، أوراق العمل، خطط الدروس والعروض التفاعلية، ثم تقديمها لطلابك بطريقة أكثر تفاعلاً – مع أدوات للتحفيز، المسابقات ومتابعة النتائج.",
       cards: [
-        { title: "سهولة الاستخدام", desc: "واجهة بسيطة وإدارة أسهل" },
-        { title: "نتائج فورية", desc: "متابعة الأداء والتقدّم لحظياً" },
-        { title: "تفاعل أكبر", desc: "مشاركة فورية وتفاعل حيّ من الطلاب" },
+        { title: "أنشئ أنشطة تعليمية بسهولة", desc: "أنشئ أسئلة، واجبات، خطط دروس، أوراق عمل وعروضاً تفاعلية." },
+        { title: "حوّل الدرس إلى تجربة", desc: "حوّل محتواك إلى درس تفاعلي يشارك فيه الطلاب أثناء الحصة." },
+        { title: "حفّز طلابك على المشاركة", desc: "أنشئ مسابقات مباشرة وتابع المشاركة والنتائج لحظة بلحظة." },
       ],
     },
-    audience: {
-      t1: "من يمكنه استخدام",
-      t2: "حصاد؟",
-      body: "حصاد تجمع أطراف العملية التعليمية في مساحة رقمية واحدة، لتجعل الانتقال من تقديم المعرفة إلى التفاعل معها أكثر سلاسة، وتمنح كل مستخدم تجربة تناسب دوره في رحلة التعلّم.",
-      cards: [
-        { title: "للمعلمين", desc: "تقديم محتوى تفاعلي وإبداعي" },
-        { title: "منظّمو الفعاليات", desc: "مناسبة للأنشطة والمسابقات والفعاليات التعليمية" },
-        { title: "للطلاب", desc: "تعلّم بأسلوب تفاعلي مسلٍّ ومتطوّر" },
-      ],
-    },
-    create: {
-      t1: "ماذا يستطيع المعلم أن ينشئ على",
-      t2: "حصاد؟",
-      sub1: "حوّل فكرتك إلى تجربة تعليمية متكاملة",
-      sub2: "أنشئ محتوى تفاعلياً، حضّر درسك، شاركه مع طلابك، وتابع نتائجهم – في مكان واحد",
-      cards: [
-        {
-          title: "أنشئ نشاطك في دقائق",
-          desc: "من موضوع بسيط أو ملف لديك، أنشئ أسئلة وأنشطة تفاعلية جاهزة للطلاب.",
-          chips: ["أسئلة بالذكاء الاصطناعي", "ألعاب مدمجة", "تصدير PowerPoint"],
-          cta: "أنشئ نشاطاً الآن",
-        },
-        {
-          title: "حوّل درسك إلى محتوى تفاعلي",
-          desc: "أنشئ عرضاً تفاعلياً أو درس فيديو، وأضف الأسئلة والتفاعل أثناء الشرح.",
-          chips: ["سؤال مدمج في الفيديو", "تقييم تلقائي", "متابعة الطلاب"],
-          cta: "إنشاء درس تفاعلي الآن",
-        },
-        {
-          title: "شجّع طلابك على المشاركة والمنافسة",
-          desc: "تابع المشاركة، الإجابات، التسليمات والنتائج من لوحة واحدة.",
-          chips: ["فرق متنافسة", "أجواء حماسية", "نتائج لحظية"],
-          cta: "ابدأ مسابقة الآن",
-        },
-      ],
+    show: {
+      title1: "اعرض",
+      title2: "وتفاعل",
+      head: "حوّل أفكارك إلى أنشطة تفاعلية",
+      body: "اعرض المحتوى، اطرح الأسئلة، واجعل الطلاب يشاركون معك أثناء الحصة.",
+      btn: "جرّب العرض التفاعلي",
     },
     tools: {
       title: "أدوات تساعدك في كل خطوة",
@@ -80,6 +51,21 @@ export const HOME_COPY = {
         { title: "ابدأ التفاعل", desc: "تابع مشاركة الطلاب ونتائجهم" },
       ],
     },
+    results: {
+      title: "اعرف أثر كل نشاط",
+      body: "تابع نسبة النجاح، متوسط النتائج، توزيع الدرجات، وحلّل إجابات الطلاب لتعرف ما يحتاج إلى تحسين.",
+      btn: "اكتشف لوحة التحكم",
+    },
+    motivation: {
+      t1: "حفّز المشاركة…",
+      t2: "واجعل كل نقطة تصنع فرقاً",
+      body: "لا تقتصر حصاد على إنشاء الدروس والأنشطة والألعاب، بل تمنحك أدوات تساعدك على تحفيز كل طالب، ومتابعة نقاط الصف، وبناء روح التنافس داخل الحصة.",
+      items: [
+        { title: "حفّز طلابك", desc: "تابع تقدّم الطلاب وحفّزهم على المشاركة والإنجاز." },
+        { title: "حوّل التعلّم إلى منافسة", desc: "أنشئ منافسات بين الأفراد أو المجموعات أو الصف كاملاً." },
+        { title: "تابع النقاط والإنجاز", desc: "شاهد التقدّم والنقاط بشكل واضح، واجعل الإنجاز والمنافسة جزءاً من تجربة التعلّم." },
+      ],
+    },
     join: {
       t1: "جاهز أيها الطالب؟",
       t2: "ابدأ مباشرة!",
@@ -93,12 +79,12 @@ export const HOME_COPY = {
       t1: "اكتشف الألعاب",
       t2: "والمسابقات",
       play: "العب الآن",
-      more: "استكشف بقية الألعاب",
-      quizzes: "استكشف مسابقات حصاد",
+      more: "اكتشف بقية الألعاب",
+      quizzes: "اكتشف مسابقات حصاد",
       items: [
-        { title: "لعبة أعلام الدول", desc: "اختبر معلوماتك في أعلام الدول" },
-        { title: "لعبة الألوان", desc: "اكتشف المربع المختلف" },
-        { title: "لعبة الذاكرة", desc: "ابحث عن الأزواج المتطابقة" },
+        { title: "لعبة شدّ الحبل", desc: "أجب صح واسحب الحبل نحو الفوز!" },
+        { title: "لعبة XO", desc: "أجب بذكاء وضع علامتك في المكان الصحيح" },
+        { title: "لعبة سباق الصواريخ", desc: "أجب بسرعة واجعل صاروخك في المقدمة" },
       ],
     },
     testimonials: { title: "تعرّف على آراء المشتركين" },
@@ -124,59 +110,30 @@ export const HOME_COPY = {
   en: {
     nav: { home: "Home", games: "Games", tools: "Tools", how: "How it works", contact: "Contact us", login: "Log in", start: "Start free" },
     hero: {
-      l1: "Turn your lessons into an",
-      l2: "interactive learning",
-      accent: "experience",
-      sub: "Smart tools that help you build interactive lessons and activities, and engage your students with questions, games and quizzes.",
+      l0: "Hasad",
+      l1: "Everything a teacher needs for a",
+      accent: "more interactive class",
+      sub: "Create activities, assignments, quizzes and contests, and follow your students' engagement and results from one place.",
       start: "Start free now",
       tools: "Discover Hasad tools",
-      trust: "teachers trust Hasad",
+      trust: "trust and use Hasad",
     },
     what: {
-      t1: "What is",
-      t2: "Hasad?",
-      body: "An interactive learning platform that helps teachers deliver an engaging, effective learning experience with the help of AI tools.",
+      t1: "What can you do",
+      t2: "with Hasad?",
+      body: "Hasad is a complete platform that helps you create questions, assignments, worksheets, lesson plans and interactive presentations, then deliver them to your students in a more engaging way — with tools for motivation, contests and tracking results.",
       cards: [
-        { title: "Easy to use", desc: "A simple interface and easier management" },
-        { title: "Instant results", desc: "Follow performance and progress live" },
-        { title: "More engagement", desc: "Live participation and interaction from students" },
+        { title: "Create learning activities easily", desc: "Build questions, assignments, lesson plans, worksheets and interactive presentations." },
+        { title: "Turn the lesson into an experience", desc: "Turn your content into an interactive lesson students take part in during class." },
+        { title: "Motivate students to take part", desc: "Run live contests and follow participation and results moment by moment." },
       ],
     },
-    audience: {
-      t1: "Who can use",
-      t2: "Hasad?",
-      body: "Hasad brings everyone in the learning process into one digital space — making the move from delivering knowledge to interacting with it smoother, with an experience that fits each user's role.",
-      cards: [
-        { title: "For teachers", desc: "Deliver interactive, creative content" },
-        { title: "Event organizers", desc: "Ideal for activities, contests and educational events" },
-        { title: "For students", desc: "Learn in a fun, modern, interactive way" },
-      ],
-    },
-    create: {
-      t1: "What can a teacher create on",
-      t2: "Hasad?",
-      sub1: "Turn your idea into a complete learning experience",
-      sub2: "Create interactive content, prepare your lesson, share it with students, and track their results — all in one place",
-      cards: [
-        {
-          title: "Create your activity in minutes",
-          desc: "From a simple topic or a file you already have, create interactive questions and activities ready for students.",
-          chips: ["AI-made questions", "Built-in games", "PowerPoint export"],
-          cta: "Create an activity now",
-        },
-        {
-          title: "Turn your lesson into interactive content",
-          desc: "Build an interactive presentation or video lesson, and add questions and interaction while you explain.",
-          chips: ["Questions inside the video", "Automatic grading", "Track students"],
-          cta: "Create an interactive lesson",
-        },
-        {
-          title: "Motivate students to take part and compete",
-          desc: "Follow participation, answers, submissions and results from a single board.",
-          chips: ["Competing teams", "Exciting atmosphere", "Instant results"],
-          cta: "Start a contest now",
-        },
-      ],
+    show: {
+      title1: "Present",
+      title2: "and interact",
+      head: "Turn your ideas into interactive activities",
+      body: "Present your content, ask questions, and let students take part with you during the lesson.",
+      btn: "Try the interactive presentation",
     },
     tools: {
       title: "Tools that help you at every step",
@@ -199,6 +156,21 @@ export const HOME_COPY = {
         { title: "Start interacting", desc: "Follow student participation and results" },
       ],
     },
+    results: {
+      title: "See the impact of every activity",
+      body: "Follow the pass rate, average score and grade distribution, and analyze student answers to see what needs improving.",
+      btn: "Explore the dashboard",
+    },
+    motivation: {
+      t1: "Motivate participation…",
+      t2: "and make every point count",
+      body: "Hasad is not only about creating lessons, activities and games — it gives you tools to motivate every student, track class points, and build a spirit of friendly competition during the lesson.",
+      items: [
+        { title: "Motivate your students", desc: "Follow student progress and encourage participation and achievement." },
+        { title: "Turn learning into a contest", desc: "Run contests between individuals, groups or the whole class." },
+        { title: "Track points and achievement", desc: "See progress and points clearly, and make achievement and competition part of learning." },
+      ],
+    },
     join: {
       t1: "Ready, student?",
       t2: "Start right now!",
@@ -215,9 +187,9 @@ export const HOME_COPY = {
       more: "Explore more games",
       quizzes: "Explore Hasad quizzes",
       items: [
-        { title: "World Flags Game", desc: "Test what you know about flags" },
-        { title: "Color Game", desc: "Spot the different square" },
-        { title: "Memory Game", desc: "Find the matching pairs" },
+        { title: "Tug of War", desc: "Answer right and pull the rope toward victory!" },
+        { title: "XO game", desc: "Answer smartly and place your mark in the right spot" },
+        { title: "Rocket Race", desc: "Answer fast and keep your rocket in the lead" },
       ],
     },
     testimonials: { title: "What our users say" },

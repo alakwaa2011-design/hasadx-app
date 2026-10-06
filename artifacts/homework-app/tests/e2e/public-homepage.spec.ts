@@ -5,7 +5,7 @@ test.describe("Public homepage", () => {
     await page.goto("/");
 
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("تجربة تعليمية");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("أكثر تفاعلاً");
     await expect(page.getByRole("link", { name: "ابدأ الآن مجاناً", exact: true }).first()).toHaveAttribute(
       "href",
       "/register?role=teacher",
@@ -26,7 +26,7 @@ test.describe("Public homepage", () => {
     await page.goto("/");
 
     await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("interactive learning");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("more interactive class");
     await expect(page.getByRole("link", { name: "Start free now", exact: true }).first()).toHaveAttribute(
       "href",
       "/register?role=teacher",

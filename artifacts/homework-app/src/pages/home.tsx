@@ -1834,7 +1834,7 @@ export default function Home() {
         lang={lang}
         setLang={setLang}
         teacherCount={hasVisibleStats ? (stats?.teacherCount ?? null) : null}
-        games={{ flags: showFlagsGame, color: showColorGame, memory: showMemoryGame }}
+        games={{ tug: showTugGame, xo: true, rocket: true }}
         onPlayGame={handlePublicClick}
         join={{
           slots,

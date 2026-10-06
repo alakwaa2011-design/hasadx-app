@@ -8,8 +8,8 @@ const copySource = readFileSync(path.resolve(process.cwd(), "src/components/land
 
 describe("الصفحة العامة (تصميم المصممة)", () => {
   it("تعرض رسالة الغلاف ورابط البدء كمعلم وأقسام التصميم الأحد عشر", () => {
-    expect(copySource).toContain("حوّل دروسك إلى");
-    expect(copySource).toContain("تجربة تعليمية");
+    expect(copySource).toContain("كل ما يحتاجه المعلم لحصة");
+    expect(copySource).toContain("أكثر تفاعلاً");
     expect(copySource).toContain("ابدأ الآن مجاناً");
     expect(landingSource).toContain("/register?role=teacher");
     for (const id of ['id="top"', 'id="tools"', 'id="how-it-works"', 'id="join"', 'id="games"', 'id="contact"']) {
@@ -19,7 +19,7 @@ describe("الصفحة العامة (تصميم المصممة)", () => {
 
   it("يبقي الصفحة ثنائية اللغة واتجاهها مرتبطاً باللغة", () => {
     expect(landingSource).toContain('dir={dir}');
-    expect(copySource).toContain("Turn your lessons into an");
+    expect(copySource).toContain("Everything a teacher needs for a");
     expect(copySource).toContain("Start free now");
     expect(copySource).toContain("Ready, student?");
   });

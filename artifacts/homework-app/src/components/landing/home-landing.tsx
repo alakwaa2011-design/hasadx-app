@@ -14,17 +14,13 @@ import {
   BookOpen,
   Brain,
   Camera,
-  ChevronLeft,
-  ChevronRight,
+  Check,
   Menu,
   MessageSquarePlus,
-  MousePointerClick,
   Pencil,
   Presentation,
   Quote,
-  Rocket,
   Star,
-  TrendingUp,
   Video,
   X,
 } from "lucide-react";
@@ -394,12 +390,15 @@ export interface HomeLandingProps {
   setLang: (l: LandingLang) => void;
   /** عدد المعلمين الحقيقي من إحصاءات المنصة؛ null يُخفي شارة الثقة */
   teacherCount: number | null;
-  games: { flags: boolean; color: boolean; memory: boolean };
+  /** ظهور ألعاب الفرق في قسم الألعاب (حسب إعدادات الإدارة) */
+  games: { tug: boolean; xo: boolean; rocket: boolean };
   onPlayGame: (href: string) => void;
   join: JoinProps;
   /** آراء المشتركين: تظهر فقط حين تُمرَّر آراء حقيقية */
   testimonial?: { text: string; name: string; role: string; org: string; date: string; stars: number } | null;
 }
+
+const TOOL_ICONS = [BookOpen, Brain, Presentation, Video, Pencil];
 
 export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, join, testimonial }: HomeLandingProps) {
   const c = HOME_COPY[lang];
@@ -409,7 +408,6 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
   const theme = useTheme();
   const [scanOpen, setScanOpen] = useState(false);
   const Forward = isRtl ? ArrowLeft : ArrowRight;
-  const Next = isRtl ? ChevronLeft : ChevronRight;
 
   const trust =
     teacherCount && teacherCount > 0
@@ -421,6 +419,14 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
   const btnOutline =
     "inline-flex items-center justify-center rounded-full border-[1.5px] px-6 text-[15px] font-bold transition hover:bg-emerald-50";
 
+  const gameCards = [
+    { href: "/game/tug/create", src: "game-tug.jpg", on: games.tug },
+    { href: "/game/xo/create", src: "game-xo.jpg", on: games.xo },
+    { href: "/game/rocket/create", src: "game-rocket.jpg", on: games.rocket },
+  ]
+    .map((g, i) => ({ ...g, ...c.games.items[i] }))
+    .filter((g) => g.on);
+
   return (
     <main dir={dir} className="overflow-hidden bg-white font-display" style={{ color: INK }}>
       {scanOpen && <ScannerModal join={join} copy={c} onClose={() => setScanOpen(false)} />}
@@ -428,249 +434,204 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
       {/* ---------------------------------------------------------- 1 · HERO */}
       <section
         id="top"
-        className="relative isolate overflow-hidden"
-        style={{ background: "linear-gradient(100deg,#e6f1e9 0%,#eef5ec 38%,#f7f6e4 72%,#fbf0cf 100%)" }}
+        className="relative isolate overflow-hidden pb-10 lg:h-[770px] lg:pb-0"
+        style={{
+          background:
+            "radial-gradient(900px 560px at 0% 28%, #e2f1de 0%, rgba(226,241,222,0) 72%), radial-gradient(760px 420px at 100% 0%, #fbf3dc 0%, rgba(251,243,220,0) 70%), #fcfdfb",
+        }}
       >
         <Header c={c} lang={lang} setLang={setLang} />
-        <div className="relative mx-auto flex w-full max-w-[1340px] flex-col px-5 pb-24 pt-8 lg:min-h-[590px] lg:justify-start lg:px-8 lg:pb-28 lg:pt-12">
-          <div className="relative z-10 w-full lg:max-w-[600px]">
-            <h1 className="text-[34px] font-extrabold leading-[1.22] sm:text-[44px] lg:text-[58px] lg:leading-[1.2]" style={{ color: INK }}>
-              {c.hero.l1}
-              <br />
-              {c.hero.l2} <span style={{ color: GREEN }}>{c.hero.accent}</span>
+        <div className="relative mx-auto w-full max-w-[1440px]">
+          <div className="relative z-10 px-5 pb-6 pt-8 lg:w-[700px] lg:px-0 lg:ps-[75px] lg:pt-[48px]">
+            <h1 className="font-extrabold leading-[1.18]">
+              <span className="block text-[44px] sm:text-[52px] lg:text-[58px]" style={{ color: GREEN }}>
+                {c.hero.l0}
+              </span>
+              <span className="block text-[27px] sm:text-[38px] lg:text-[45px]" style={{ color: INK }}>
+                {c.hero.l1}
+              </span>
+              <span className="block text-[27px] sm:text-[38px] lg:text-[45px]" style={{ color: GREEN }}>
+                {c.hero.accent}
+              </span>
             </h1>
-            <p className="mt-5 max-w-[470px] text-[16px] leading-[1.75] text-neutral-800 lg:mt-7 lg:text-[18px]">{c.hero.sub}</p>
-            <div className="mt-7 flex flex-wrap items-center gap-4 lg:mt-9">
+            <p className="mt-6 max-w-[520px] text-[16px] leading-[1.9] text-neutral-800 lg:mt-8 lg:text-[18px]">{c.hero.sub}</p>
+            <div className="mt-7 flex flex-wrap items-center gap-4 lg:mt-12">
               <Link
                 href="/register?role=teacher"
-                className="inline-flex h-[58px] items-center justify-center rounded-2xl bg-white px-9 text-[18px] font-extrabold shadow-[0_10px_30px_rgba(31,122,69,0.15)] transition hover:shadow-lg"
-                style={{ color: GREEN }}
+                className="inline-flex h-[58px] items-center justify-center rounded-2xl px-9 text-[18px] font-extrabold shadow-[0_10px_26px_rgba(214,160,20,0.28)] transition hover:brightness-95"
+                style={{ background: GOLD, color: "#4a3500" }}
               >
                 {c.hero.start}
               </Link>
               <a
                 href="#tools"
-                className="inline-flex h-[58px] items-center justify-center rounded-2xl border px-8 text-[18px] font-extrabold transition hover:bg-white/60"
+                className="inline-flex h-[58px] items-center justify-center rounded-2xl border bg-white/70 px-8 text-[18px] font-extrabold transition hover:bg-white"
                 style={{ color: INK, borderColor: GREEN }}
               >
                 {c.hero.tools}
               </a>
             </div>
             {trust && (
-              <div className="mt-10 flex items-center gap-4 lg:mt-14">
-                <img
-                  src={img("hero-people.jpg")}
-                  alt=""
-                  className="h-[72px] w-auto select-none lg:h-[84px]"
-                  style={{ mixBlendMode: "multiply" }}
-                />
+              <div className="mt-9 flex items-center gap-4 lg:mt-10">
+                <img src={img("hero-people.jpg")} alt="" className="h-[72px] w-auto select-none lg:h-[84px]" style={{ mixBlendMode: "multiply" }} />
                 <div className="leading-tight">
                   <div className="text-[34px] font-extrabold lg:text-[40px]" style={{ color: INK }}>
                     {trust}
                   </div>
-                  <div className="text-[13px] font-semibold text-neutral-700">{c.hero.trust}</div>
+                  <div className="max-w-[120px] text-[13px] font-semibold text-neutral-700">{c.hero.trust}</div>
                 </div>
               </div>
             )}
           </div>
-        </div>
-        {/* صورة الغلاف */}
-        <div className="pointer-events-none relative -mt-14 px-2 lg:absolute lg:bottom-0 lg:end-0 lg:mt-0 lg:w-[55%] lg:max-w-[790px] lg:px-0">
-          <img
-            src={img("hero.jpg")}
-            alt=""
-            className="mx-auto h-auto w-full max-w-[560px] select-none lg:max-w-none"
-            style={{
-              WebkitMaskImage:
-                "linear-gradient(to bottom, transparent 0, #000 10%, #000 88%, transparent 100%), linear-gradient(to left, transparent 0, #000 9%)",
-              WebkitMaskComposite: "source-in",
-              maskImage:
-                "linear-gradient(to bottom, transparent 0, #000 10%, #000 88%, transparent 100%), linear-gradient(to left, transparent 0, #000 9%)",
-              maskComposite: "intersect",
-            }}
-          />
+          <div className="pointer-events-none relative px-2 lg:absolute lg:end-0 lg:top-[-10px] lg:w-[830px] lg:px-0">
+            <img
+              src={img("hero.jpg")}
+              alt=""
+              className="mx-auto h-auto w-full max-w-[520px] select-none lg:max-w-none"
+              style={{
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, transparent 0, #000 6%, #000 90%, transparent 100%), linear-gradient(to left, transparent 0, #000 8%)",
+                WebkitMaskComposite: "source-in",
+                maskImage:
+                  "linear-gradient(to bottom, transparent 0, #000 6%, #000 90%, transparent 100%), linear-gradient(to left, transparent 0, #000 8%)",
+                maskComposite: "intersect",
+              }}
+            />
+          </div>
         </div>
         <svg viewBox="0 0 1440 52" preserveAspectRatio="none" className="absolute -bottom-px start-0 z-[5] h-9 w-full lg:h-[52px]" aria-hidden>
           <path d="M0 52 C 520 52 900 22 1440 0 L1440 52 Z" fill="#fff" />
         </svg>
       </section>
 
-      {/* ------------------------------------------------ 2 · WHAT IS HASAAD */}
-      <section className="relative bg-white py-14 lg:py-20">
-        <Watermark className="-top-6 right-0 w-[260px] lg:right-[4%] lg:w-[330px]" />
-        <div className="relative mx-auto flex w-full max-w-[1340px] flex-col gap-10 px-5 lg:flex-row lg:items-center lg:justify-between lg:px-8">
-          <div className="lg:w-[330px] lg:shrink-0">
-            <Title line1={c.what.t1} accent={c.what.t2} size="text-[32px] lg:text-[36px]" />
-            <p className="mt-6 text-[17px] leading-[1.9] text-neutral-800 lg:text-[18px]">{c.what.body}</p>
+      {/* ------------------------------------------------ 2 · WHAT CAN YOU DO */}
+      <section className="relative bg-white pb-8 pt-12 lg:pb-14 lg:pt-16">
+        <Watermark className="-top-6 start-0 w-[260px] lg:start-[2%] lg:w-[330px]" />
+        <div className="relative mx-auto w-full max-w-[1260px] px-5 lg:px-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <Title line1={c.what.t1} accent={c.what.t2} size="text-[32px] lg:text-[38px]" />
+            <p className="max-w-[660px] text-[17px] leading-[1.9] text-neutral-800 lg:text-[18px]">{c.what.body}</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3 lg:w-[850px] lg:gap-[38px]">
+          <div className="mt-10 grid gap-5 sm:grid-cols-3 lg:mt-16 lg:gap-8">
             {[
-              { Icon: MousePointerClick, ...c.what.cards[0] },
-              { Icon: TrendingUp, ...c.what.cards[1] },
-              { Icon: Rocket, ...c.what.cards[2] },
-            ].map((card) => (
-              <div key={card.title} className="rounded-2xl border border-[#cfe0e6] bg-white px-5 pb-6 pt-7 text-center lg:h-[205px]">
-                <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#e2f3e8]" style={{ color: GREEN }}>
-                  <card.Icon className="h-6 w-6" />
-                </span>
-                <h3 className="text-[19px] font-extrabold">{card.title}</h3>
-                <p className="mt-2 text-[16px] leading-[1.7] text-neutral-700">{card.desc}</p>
+              { icon: "icon-puzzle.png", bg: "linear-gradient(180deg,#dcf2e5 0%,rgba(232,246,238,0.5) 100%)", color: "#1b7a47" },
+              { icon: "icon-map.png", bg: "linear-gradient(180deg,#fcefc6 0%,rgba(253,246,224,0.5) 100%)", color: "#d99a12" },
+              { icon: "icon-trophy.png", bg: "linear-gradient(180deg,#e3eef0 0%,rgba(238,245,246,0.5) 100%)", color: "#1f4d3a" },
+            ].map((card, i) => (
+              <div key={card.icon} className="rounded-[26px] px-6 pb-8 pt-6 lg:min-h-[190px]" style={{ background: card.bg }}>
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-[20px] font-extrabold leading-snug lg:text-[22px]" style={{ color: card.color }}>
+                    {c.what.cards[i].title}
+                  </h3>
+                  <img src={img(card.icon)} alt="" className="h-[64px] w-auto shrink-0 select-none" style={{ mixBlendMode: "multiply" }} />
+                </div>
+                <p className="mt-3 text-[16px] leading-[1.8] text-neutral-800 lg:text-[17px]">{c.what.cards[i].desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ------------------------------------------------------- 3 · AUDIENCE */}
-      <section className="relative bg-white pb-16 pt-4 lg:pb-24">
-        <div className="mx-auto w-full max-w-[1340px] px-5 lg:px-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <Title line1={c.audience.t1} accent={c.audience.t2} size="text-[32px] lg:text-[36px]" />
-            <p className="max-w-[830px] text-[17px] leading-[1.9] text-neutral-800 lg:text-[18px]">{c.audience.body}</p>
-          </div>
-          <div className="mt-8 flex flex-col items-center gap-8 lg:mt-12 lg:flex-row lg:items-end lg:justify-between lg:gap-0">
-            {[
-              { src: "aud-teachers.png", w: 355, h: 290, right: 38, titleY: 164, descY: 204, box: 220, color: GREEN },
-              { src: "aud-organizers.png", w: 445, h: 318, right: 30, titleY: 192, descY: 231, box: 275, color: "#e1a21b" },
-              { src: "aud-students.png", w: 404, h: 292, right: 36, titleY: 166, descY: 190, box: 205, color: "#2d6f78" },
-            ].map((it, i) => {
-              const card = c.audience.cards[i];
-              const u = (n: number) => `calc(${n} / ${it.w} * 100cqw)`;
-              return (
-                <div
-                  key={it.src}
-                  className="relative w-full"
-                  style={{ aspectRatio: `${it.w} / ${it.h}`, maxWidth: it.w, containerType: "inline-size" }}
-                >
-                  <img src={img(it.src)} alt="" className="absolute inset-0 h-full w-full select-none" />
-                  <h3
-                    className="absolute font-extrabold leading-none"
-                    style={{ right: u(it.right), top: u(it.titleY), transform: "translateY(-50%)", fontSize: u(24), color: it.color }}
-                  >
-                    {card.title}
-                  </h3>
-                  <p
-                    className="absolute text-start"
-                    style={{ right: u(it.right), top: u(it.descY), width: u(it.box), fontSize: u(19), lineHeight: 1.4, color: "#16241c" }}
-                  >
-                    {card.desc}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------ 4 · CREATE */}
-      <section className="relative pb-16 pt-20 lg:pb-24 lg:pt-28" style={{ background: "linear-gradient(180deg,#d9e9e3 0%,#e9f3ee 38%,#f6faf7 100%)" }}>
-        <svg viewBox="0 0 1440 90" preserveAspectRatio="none" className="absolute inset-x-0 -top-px h-[60px] w-full lg:h-[90px]" aria-hidden>
-          <path d="M0 0 H1440 V18 Q720 150 0 18 Z" fill="#fff" />
-        </svg>
-        <Watermark className="start-[3%] top-24 hidden w-[300px] lg:block" />
-        <Watermark className="end-[2%] top-24 hidden w-[240px] lg:block" />
-        <div className="relative mx-auto w-full max-w-[1440px] px-3 lg:px-1">
-          <div className="text-center">
-            <Title line1={c.create.t1} accent={c.create.t2} size="text-[30px] sm:text-[40px]" className="mx-auto" />
-            <p className="mt-6 text-[17px] font-bold" style={{ color: GREEN }}>
-              {c.create.sub1}
-            </p>
-            <p className="mt-1 text-[18px] text-neutral-800">{c.create.sub2}</p>
-          </div>
-          <div className="mt-12 grid gap-8 lg:mt-14 lg:grid-cols-3 lg:gap-[33px]">
-            {[
-              { key: "activity", src: "shot-activity.jpg", color: GREEN, href: "/register?role=teacher", gold: false },
-              { key: "video", src: "shot-video.jpg", color: "#e2a216", href: "/register?role=teacher", gold: true },
-              { key: "contest", src: "shot-contest.jpg", color: GREEN, href: "/game/arena", gold: false },
-            ].map((it, i) => {
-              const card = c.create.cards[i];
-              return (
-                <article key={it.key} className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-[0_10px_34px_rgba(20,60,40,0.10)]">
-                  <img src={img(it.src)} alt="" className="block w-full select-none" />
-                  <div className="flex flex-1 flex-col px-8 pb-7 pt-5">
-                    <h3 className="text-[21px] font-extrabold leading-snug" style={{ color: it.color }}>
-                      {card.title}
-                    </h3>
-                    <p className="mt-3 text-[16px] leading-[1.8] text-neutral-800">{card.desc}</p>
-                    <div className="mt-5 flex flex-wrap gap-2.5">
-                      {card.chips.map((chip) => (
-                        <span
-                          key={chip}
-                          className="rounded-full px-4 py-1.5 text-[14px] font-medium"
-                          style={it.gold ? { background: "#fdf0cf", color: "#7a5a0a" } : { background: "#e7f4ec", color: "#2f7a52" }}
-                        >
-                          {chip}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="relative mt-auto pt-6">
-                      <Link
-                        href={it.href}
-                        className={`${btnOutline} h-[46px] w-full ${it.gold ? "border-transparent text-white shadow-md hover:!bg-[#e0a010]" : ""}`}
-                        style={it.gold ? { background: "#eaa90e" } : { borderColor: INK, color: INK }}
-                      >
-                        {card.cta}
-                      </Link>
-                      {it.gold && (
-                        <MousePointerClick className="pointer-events-none absolute -start-3 bottom-4 h-9 w-9" style={{ color: GREEN }} />
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------- 5 · TOOLS */}
-      <section id="tools" className="relative bg-white pb-6 pt-16 lg:pt-24">
+      {/* ------------------------------------------------ 3 · PRESENT & INTERACT */}
+      <section className="relative bg-white pt-10 lg:pt-14">
+        <h2 className="text-center text-[34px] font-extrabold lg:text-[44px]" style={{ color: INK }}>
+          {c.show.title1} <span style={{ color: GREEN }}>{c.show.title2}</span>
+        </h2>
         {desktop ? (
-          <FitStage width={1440} height={650} dir={dir}>
+          <FitStage width={1440} height={662} dir={dir}>
+            <img src={img("show-strip.jpg")} alt="" className="absolute left-0 top-0 select-none" style={{ width: 1440, height: 662 }} />
+            <Box x={160} y={160} w={412} className="text-start">
+              <h3 className="text-[38px] font-extrabold leading-[1.25]" style={{ color: INK }}>
+                {c.show.head}
+              </h3>
+            </Box>
+            <Box x={160} y={290} w={412} className="text-start">
+              <p className="text-[19px] leading-[1.7] text-neutral-900">{c.show.body}</p>
+            </Box>
+            <Box x={160} y={372} w={412} className={isRtl ? "flex justify-start" : "flex justify-start"}>
+              <Link
+                href="/teacher/presentations/new"
+                className="inline-flex h-[46px] items-center justify-center rounded-full px-8 text-[16px] font-extrabold text-white shadow-md"
+                style={{ background: GREEN_BTN }}
+              >
+                {c.show.btn}
+              </Link>
+            </Box>
+          </FitStage>
+        ) : (
+          <div className="mt-6">
+            <div className="px-5" style={{ background: "linear-gradient(180deg,#e8f3e6 0%,#f4f1da 100%)", paddingTop: 28, paddingBottom: 20 }}>
+              <h3 className="text-[26px] font-extrabold leading-[1.25]">{c.show.head}</h3>
+              <p className="mt-3 text-[16px] leading-[1.8] text-neutral-800">{c.show.body}</p>
+              <Link href="/teacher/presentations/new" className="mt-5 inline-flex h-[46px] items-center justify-center rounded-full px-7 text-[15px] font-extrabold text-white" style={{ background: GREEN_BTN }}>
+                {c.show.btn}
+              </Link>
+            </div>
+            <div className="relative h-[250px] overflow-hidden" style={{ background: "linear-gradient(180deg,#f4f1da 0%,#fff 90%)" }}>
+              <img src={img("show-strip.jpg")} alt="" className="absolute right-0 top-0 h-full w-auto max-w-none select-none" />
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ------------------------------------------------------- 4 · TOOLS */}
+      <section id="tools" className="relative bg-white pb-6 pt-14 lg:pt-20">
+        {desktop ? (
+          <FitStage width={1440} height={780} dir={dir}>
             <img
               src={img("tools-teacher.jpg")}
               alt=""
-              className="absolute left-0 top-0 select-none"
+              className="absolute left-0 select-none"
               style={{
-                width: 720,
-                height: 640,
-                WebkitMaskImage: "linear-gradient(to right, #000 82%, transparent 100%)",
-                maskImage: "linear-gradient(to right, #000 82%, transparent 100%)",
+                top: 40,
+                width: 660,
+                height: 760,
+                WebkitMaskImage: "linear-gradient(to right, #000 84%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%)",
+                WebkitMaskComposite: "source-in",
+                maskImage: "linear-gradient(to right, #000 84%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 6%, #000 88%, transparent 100%)",
+                maskComposite: "intersect",
               }}
             />
-            <Box x={960} y={14} w={420} className="text-start">
-              <h2 className="text-[40px] font-extrabold leading-[1.18]" style={{ color: "#12402a" }}>
+            <Box x={1000} y={12} w={378} className="text-start">
+              <h2 className="text-[40px] font-extrabold leading-[1.2]" style={{ color: "#12402a" }}>
                 {c.tools.title}
               </h2>
             </Box>
             {c.tools.items.map((tool, i) => {
               const geo = [
-                { x: 1043, y: 172, w: 333, h: 216 },
-                { x: 667, y: 172, w: 332, h: 216 },
-                { x: 285, y: 172, w: 335, h: 216 },
-                { x: 1043, y: 403, w: 333, h: 217 },
-                { x: 667, y: 403, w: 332, h: 217 },
+                { x: 1035, y: 158 },
+                { x: 660, y: 158 },
+                { x: 283, y: 158 },
+                { x: 1035, y: 393 },
+                { x: 660, y: 393 },
               ][i];
-              const Icon = [BookOpen, Brain, Presentation, Video, Pencil][i];
-              const bg = ["rgba(255,255,255,0.92)", "#d6f1e1", "rgba(255,255,255,0.94)", "#bde9cf", "#fbe9c0"][i];
-              const tint = ["#c9e3dc", "#ffffff", "#c6ecd6", "#f2f9f5", "#f8cf5c"][i];
-              const titleColor = ["#1b7a47", "#1b7a47", "#1b7a47", "#1b7a47", "#1b7a47"][i];
+              const Icon = TOOL_ICONS[i];
+              const bg = ["#fbf6e8", "#d6f1e1", "#fbfcf9", "#e6f5ec", "#fbe5ae"][i];
+              const tint = ["#c6e3dc", "#f4fbf7", "#c8ecd8", "#bfe8d0", "#f6c953"][i];
               return (
-                <Box key={tool.title} x={geo.x} y={geo.y} w={geo.w} h={geo.h} className="rounded-[26px] px-[18px] pt-[16px]" style={{ background: bg }}>
-                  <div className="text-[19px] font-extrabold" style={{ color: titleColor }}>
+                <Box
+                  key={tool.title}
+                  x={geo.x}
+                  y={geo.y}
+                  w={338}
+                  h={217}
+                  className="rounded-[26px] px-[20px] pt-[18px] shadow-[0_8px_24px_rgba(20,70,45,0.07)]"
+                  style={{ background: bg }}
+                >
+                  <div className="text-[18px] font-extrabold" style={{ color: "#1b7a47" }}>
                     {tool.title}
                   </div>
                   <div className="mt-[10px] flex items-center gap-4">
-                    <p className="flex-1 text-[17px] leading-[1.55]" style={{ color: "#1d3126" }}>
+                    <p className="flex-1 text-[16px] leading-[1.6]" style={{ color: "#1d3126" }}>
                       {tool.desc}
                     </p>
-                    <span className="flex h-[80px] w-[80px] shrink-0 items-center justify-center rounded-2xl" style={{ background: tint, color: i === 4 ? "#7a5a0a" : "#2a8a58" }}>
+                    <span className="flex h-[78px] w-[78px] shrink-0 items-center justify-center rounded-2xl" style={{ background: tint, color: i === 4 ? "#7a5a0a" : "#2a8a58" }}>
                       <Icon className="h-9 w-9" />
                     </span>
                   </div>
                   <Link
                     href={tool.href}
-                    className="absolute inset-x-[16px] bottom-[16px] flex h-[48px] items-center justify-center rounded-full border-[1.5px] text-[16px] font-bold hover:bg-white/60"
+                    className="absolute inset-x-[18px] bottom-[16px] flex h-[48px] items-center justify-center rounded-full border-[1.5px] bg-white/40 text-[16px] font-bold hover:bg-white/80"
                     style={{ borderColor: i === 4 ? "#d9b052" : "#3a9a6a", color: INK }}
                   >
                     {c.tools.cta}
@@ -678,7 +639,7 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
                 </Box>
               );
             })}
-            <Box x={258} y={547} w={366} h={61} className="flex items-center gap-2">
+            <Box x={253} y={548} w={367} h={61} className="flex items-center gap-2">
               <Link
                 href="/teacher/new"
                 className="flex h-[61px] flex-1 items-center justify-center rounded-[18px] text-[19px] font-extrabold text-white shadow-lg"
@@ -703,9 +664,9 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
             </h2>
             <div className="mt-6 grid gap-4">
               {c.tools.items.map((tool, i) => {
-                const Icon = [BookOpen, Brain, Presentation, Video, Pencil][i];
+                const Icon = TOOL_ICONS[i];
                 return (
-                  <div key={tool.title} className="rounded-3xl p-5" style={{ background: ["#f1f8f4", "#d6f1e1", "#f1f8f4", "#bde9cf", "#fbe9c0"][i] }}>
+                  <div key={tool.title} className="rounded-3xl p-5" style={{ background: ["#fbf6e8", "#d6f1e1", "#f1f8f4", "#e6f5ec", "#fbe5ae"][i] }}>
                     <div className="flex items-center gap-3">
                       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80" style={{ color: GREEN }}>
                         <Icon className="h-6 w-6" />
@@ -730,8 +691,8 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
         )}
       </section>
 
-      {/* ------------------------------------------------------- 6 · STEPS */}
-      <section id="how-it-works" className="relative bg-white pb-10 pt-12 lg:pt-16">
+      {/* ------------------------------------------------------- 5 · STEPS */}
+      <section id="how-it-works" className="relative bg-white pb-6 pt-8 lg:pt-10">
         <div className="mx-auto w-full max-w-[1340px] px-5 lg:px-8">
           <div className="text-center">
             <h2 className="text-[30px] font-extrabold lg:text-[36px]" style={{ color: "#12402a" }}>
@@ -769,132 +730,247 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
         </div>
       </section>
 
-      {/* -------------------------------------------------------- 7 · JOIN */}
-      <section id="join" className="relative bg-white pb-10 pt-4 lg:pb-16">
+      {/* ----------------------------------------------------- 6 · RESULTS */}
+      <section className="relative bg-white pb-6 pt-10 lg:pt-6">
         {desktop ? (
-          <FitStage width={1440} height={680} dir={dir}>
+          <FitStage width={1440} height={730} dir={dir}>
             <img
-              src={img("student-tablet.jpg")}
+              src={img("results.jpg")}
               alt=""
-              className="absolute left-0 top-0 select-none"
+              className="absolute select-none"
               style={{
-                width: 705,
-                height: 670,
-                WebkitMaskImage: "linear-gradient(to right, #000 82%, transparent 100%)",
-                maskImage: "linear-gradient(to right, #000 82%, transparent 100%)",
+                left: 590,
+                top: 0,
+                width: 850,
+                height: 730,
+                WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 6%), linear-gradient(to bottom, #000 82%, transparent 100%)",
+                WebkitMaskComposite: "source-in",
+                maskImage: "linear-gradient(to right, transparent 0, #000 6%), linear-gradient(to bottom, #000 82%, transparent 100%)",
+                maskComposite: "intersect",
               }}
             />
-            <Box x={700} y={88} w={640} className="text-start">
-              <h2 className="text-[38px] font-extrabold leading-[1.15]" style={{ color: "#12402a" }}>
-                {c.join.t1}
-                <br />
-                <span style={{ color: GREEN }}>{c.join.t2}</span>
+            <Box x={130} y={214} w={352} className="text-start">
+              <h2 className="text-[40px] font-extrabold leading-[1.2]" style={{ color: INK }}>
+                {c.results.title}
               </h2>
-              <p className="mt-9 max-w-[625px] text-[19px] leading-[1.45] text-neutral-900">{c.join.body}</p>
+              <p className="mt-6 text-[18px] leading-[1.75] text-neutral-900">{c.results.body}</p>
+              <Link
+                href="/teacher/new"
+                className="mt-7 inline-flex h-[46px] items-center justify-center rounded-full px-8 text-[16px] font-extrabold text-white shadow-md"
+                style={{ background: GREEN_BTN }}
+              >
+                {c.results.btn}
+              </Link>
             </Box>
-            <div className="absolute flex gap-[23px]" style={{ left: 478, top: 297, width: 865, flexDirection: "row-reverse" }}>
+          </FitStage>
+        ) : (
+          <div className="mx-auto max-w-[640px] px-5">
+            <h2 className="text-[30px] font-extrabold leading-[1.2]">{c.results.title}</h2>
+            <p className="mt-4 text-[16px] leading-[1.8] text-neutral-800">{c.results.body}</p>
+            <Link href="/teacher/new" className="mt-5 inline-flex h-[46px] items-center justify-center rounded-full px-7 text-[15px] font-extrabold text-white" style={{ background: GREEN_BTN }}>
+              {c.results.btn}
+            </Link>
+            <img src={img("results.jpg")} alt="" className="mt-6 block w-full select-none rounded-2xl" />
+          </div>
+        )}
+      </section>
+
+      {/* -------------------------------------------------- 7 · MOTIVATION */}
+      <section className="relative bg-white pb-8 pt-8 lg:pt-4">
+        {desktop ? (
+          <FitStage width={1440} height={860} dir={dir}>
+            <Box x={270} y={50} w={900} className="text-center">
+              <h2 className="text-[38px] font-extrabold leading-[1.25]" style={{ color: INK }}>
+                {c.motivation.t1} <span style={{ color: GREEN }}>{c.motivation.t2}</span>
+              </h2>
+            </Box>
+            <Box x={340} y={130} w={760} className="text-center">
+              <p className="text-[18px] leading-[1.75] text-neutral-900">{c.motivation.body}</p>
+            </Box>
+            <img
+              src={img("motivation.jpg")}
+              alt=""
+              className="absolute left-0 select-none"
+              style={{
+                top: 210,
+                width: 870,
+                height: 640,
+                WebkitMaskImage: "linear-gradient(to right, #000 88%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 8%, #000 90%, transparent 100%)",
+                WebkitMaskComposite: "source-in",
+                maskImage: "linear-gradient(to right, #000 88%, transparent 100%), linear-gradient(to bottom, transparent 0, #000 8%, #000 90%, transparent 100%)",
+                maskComposite: "intersect",
+              }}
+            />
+            {c.motivation.items.map((it, i) => {
+              const y = [285, 392, 520][i];
+              return (
+                <div key={it.title}>
+                  <Box x={860} y={y} w={380} className="text-start">
+                    <div className="text-[24px] font-extrabold leading-tight" style={{ color: GREEN }}>
+                      {it.title}
+                    </div>
+                    <p className="mt-2 text-[17px] leading-[1.6] text-neutral-800">{it.desc}</p>
+                  </Box>
+                  <Box x={1262} y={y + 4} className="flex h-[44px] w-[44px] items-center justify-center rounded-full text-white" style={{ background: GREEN }}>
+                    <Check className="h-6 w-6" strokeWidth={3} />
+                  </Box>
+                </div>
+              );
+            })}
+          </FitStage>
+        ) : (
+          <div className="mx-auto max-w-[640px] px-5">
+            <h2 className="text-[28px] font-extrabold leading-[1.3]">
+              {c.motivation.t1} <span style={{ color: GREEN }}>{c.motivation.t2}</span>
+            </h2>
+            <p className="mt-4 text-[16px] leading-[1.8] text-neutral-800">{c.motivation.body}</p>
+            <img src={img("motivation.jpg")} alt="" className="mt-6 block w-full select-none" />
+            <ul className="mt-6 space-y-5">
+              {c.motivation.items.map((it) => (
+                <li key={it.title} className="flex items-start gap-3">
+                  <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white" style={{ background: GREEN }}>
+                    <Check className="h-5 w-5" strokeWidth={3} />
+                  </span>
+                  <div>
+                    <div className="text-[19px] font-extrabold" style={{ color: GREEN }}>
+                      {it.title}
+                    </div>
+                    <p className="mt-1 text-[15px] leading-[1.7] text-neutral-800">{it.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      {/* -------------------------------------------------------- 8 · JOIN */}
+      <section id="join" className="relative bg-white pb-12 pt-6 lg:pb-16">
+        <Watermark className="start-[2%] top-2 hidden w-[360px] lg:block" />
+        <div className="relative mx-auto w-full max-w-[1290px] px-5 lg:px-8">
+          <div className="lg:w-[640px]">
+            <h2 className="text-[32px] font-extrabold leading-[1.2] lg:text-[40px]" style={{ color: INK }}>
+              {c.join.t1}
+              <br />
+              <span style={{ color: GREEN }}>{c.join.t2}</span>
+            </h2>
+            <p className="mt-5 text-[17px] leading-[1.8] text-neutral-800 lg:text-[18px]">{c.join.body}</p>
+          </div>
+          <div
+            className="relative mt-8 overflow-hidden rounded-[32px] px-4 py-8 lg:mt-10 lg:rounded-[40px] lg:px-10 lg:py-[62px]"
+            style={{ background: "linear-gradient(100deg,#e7c25d 0%,#f1d789 45%,#f7e6ad 100%)" }}
+          >
+            <span className="pointer-events-none absolute -start-8 bottom-0 h-40 w-40 rounded-full bg-white/25 blur-xl" aria-hidden />
+            <span className="pointer-events-none absolute -end-6 -top-8 h-36 w-36 rounded-full bg-white/25 blur-xl" aria-hidden />
+            <div className="relative flex justify-center gap-2 sm:gap-3 lg:gap-[23px]" dir="ltr">
               <PinBoxes
                 join={join}
-                boxClass="h-[112px] w-[125px] rounded-[18px] border-0 bg-white text-center text-[46px] font-extrabold text-neutral-900 shadow-[0_10px_26px_rgba(20,70,45,0.10)] outline-none placeholder:text-neutral-900 focus:ring-4 focus:ring-amber-300/60"
+                boxClass="h-[58px] w-full min-w-0 max-w-[125px] flex-1 rounded-xl border-0 bg-[#fbf0cc]/80 text-center text-[24px] font-extrabold text-neutral-900 shadow-[0_8px_20px_rgba(120,80,0,0.12)] outline-none placeholder:text-neutral-900 focus:bg-white focus:ring-4 focus:ring-white/60 sm:h-[80px] sm:text-[34px] lg:h-[112px] lg:rounded-[18px] lg:text-[46px]"
               />
             </div>
-            <Box x={933} y={446} w={410} h={60} className="flex items-center gap-3">
+            <div className="relative mt-7 flex items-center justify-center gap-3 lg:mt-12">
               <button
                 onClick={join.onJoin}
                 disabled={!join.pin.trim()}
-                className="h-[60px] flex-1 rounded-[16px] border-[1.5px] bg-white/90 text-[19px] font-extrabold transition enabled:hover:bg-amber-50 disabled:opacity-80"
-                style={{ borderColor: GOLD, color: INK }}
+                className="h-[56px] rounded-2xl border-[1.5px] border-white/90 bg-white/10 px-6 text-[17px] font-extrabold text-white transition enabled:hover:bg-white/25 disabled:opacity-90 lg:w-[348px] lg:text-[19px]"
               >
                 {c.join.btn}
               </button>
               <button
                 onClick={join.onJoin}
                 aria-label={c.join.btn}
-                className="flex h-[53px] w-[53px] shrink-0 items-center justify-center rounded-full text-white"
-                style={{ background: GOLD }}
+                className="flex h-[53px] w-[53px] shrink-0 items-center justify-center rounded-full bg-white/90 transition hover:bg-white"
+                style={{ color: "#d9a014" }}
               >
                 <Forward className="h-6 w-6" />
               </button>
-            </Box>
-            <Box x={994} y={522} w={349}>
-              <button onClick={() => setScanOpen(true)} className="flex items-center gap-2 text-[15px] font-bold underline-offset-4 hover:underline" style={{ color: GREEN }}>
+            </div>
+            <div className="relative mt-5 flex justify-center">
+              <button onClick={() => setScanOpen(true)} className="flex items-center gap-2 text-[15px] font-bold underline-offset-4 hover:underline" style={{ color: "#5a3f00" }}>
                 <Camera className="h-5 w-5" />
                 {c.join.qr}
               </button>
-            </Box>
-          </FitStage>
-        ) : (
-          <div className="mx-auto max-w-[560px] px-5">
-            <h2 className="text-[32px] font-extrabold leading-[1.15]" style={{ color: "#12402a" }}>
-              {c.join.t1} <span style={{ color: GREEN }}>{c.join.t2}</span>
-            </h2>
-            <p className="mt-4 text-[17px] leading-[1.7] text-neutral-800">{c.join.body}</p>
-            <div className="mt-6 grid grid-cols-6 gap-2" dir="ltr">
-              <PinBoxes
-                join={join}
-                boxClass="aspect-[4/5] w-full min-w-0 rounded-2xl border-0 bg-white text-center text-[26px] font-extrabold text-neutral-900 shadow-[0_8px_20px_rgba(20,70,45,0.12)] outline-none placeholder:text-neutral-900 focus:ring-4 focus:ring-amber-300/60"
-              />
-            </div>
-            <button
-              onClick={join.onJoin}
-              disabled={!join.pin.trim()}
-              className="mt-5 h-[54px] w-full rounded-2xl border-[1.5px] bg-white text-[18px] font-extrabold disabled:opacity-80"
-              style={{ borderColor: GOLD, color: INK }}
-            >
-              {c.join.btn}
-            </button>
-            <button onClick={() => setScanOpen(true)} className="mt-4 flex items-center gap-2 text-[15px] font-bold" style={{ color: GREEN }}>
-              <Camera className="h-5 w-5" />
-              {c.join.qr}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* ------------------------------------------------------- 8 · GAMES */}
-      <section id="games" className="relative bg-white pb-16 pt-6 lg:pb-24">
-        <Watermark className="start-[1%] top-24 hidden w-[340px] lg:block" />
-        <div className="relative mx-auto w-full max-w-[1340px] px-5 lg:px-8">
-          <Title line1={c.games.t1} accent={c.games.t2} size="text-[32px] lg:text-[36px]" />
-          <div className="mt-10 flex flex-col gap-8 lg:mt-12 lg:flex-row lg:items-center lg:justify-between">
-            <div className="grid gap-6 sm:grid-cols-3 lg:w-[900px] lg:gap-[34px]">
-              {[
-                { href: "/game/flags", src: "game-flags.jpg", on: games.flags },
-                { href: "/game/color", src: "game-colors.jpg", on: games.color },
-                { href: "/game/memory", src: "game-memory.jpg", on: games.memory },
-              ]
-                .map((g, i) => ({ ...g, ...c.games.items[i] }))
-                .filter((g) => g.on)
-                .map((g) => (
-                  <article key={g.href} className="rounded-2xl bg-white p-3 pb-6 text-center shadow-[0_10px_30px_rgba(20,70,45,0.10)]">
-                    <div className="overflow-hidden rounded-xl bg-[#eaf4f4] p-1.5">
-                      <img src={img(g.src)} alt="" className="block w-full rounded-lg select-none" />
-                    </div>
-                    <h3 className="mt-6 px-3 text-start text-[20px] font-extrabold">{g.title}</h3>
-                    <p className="mt-3 px-3 text-start text-[15px] text-neutral-700">{g.desc}</p>
-                    <button
-                      onClick={() => onPlayGame(g.href)}
-                      className={`${btnOutline} mx-auto mt-5 h-[46px] w-[200px]`}
-                      style={{ borderColor: GREEN, color: INK }}
-                    >
-                      {c.games.play}
-                    </button>
-                  </article>
-                ))}
-            </div>
-            <div className="flex w-full flex-col gap-5 lg:w-[260px]">
-              <Link href="/games" className="flex h-[61px] items-center justify-center rounded-2xl text-[19px] font-extrabold text-white shadow-lg" style={{ background: "#25804d" }}>
-                {c.games.more}
-              </Link>
-              <Link href="/public/games" className="flex h-[61px] items-center justify-center rounded-2xl text-[19px] font-extrabold shadow-lg" style={{ background: GOLD, color: "#4a3500" }}>
-                {c.games.quizzes}
-              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ---------------------------------------------- 9 · TESTIMONIAL (اختياري) */}
+      {/* ------------------------------------------------------- 9 · GAMES */}
+      <section id="games" className="relative pb-14 pt-16 lg:pb-0 lg:pt-20">
+        {desktop ? (
+          <>
+            <div
+              className="absolute inset-x-0 bottom-0 top-[70px]"
+              style={{ background: "linear-gradient(100deg,#dbeedf 0%,#f7f0db 48%,#eaf4ee 100%)" }}
+              aria-hidden
+            >
+              <svg viewBox="0 0 1440 80" preserveAspectRatio="none" className="absolute inset-x-0 -top-px h-[76px] w-full" aria-hidden>
+                <path d="M0 0 H1440 V0 C 1100 8 800 76 720 76 C 520 70 250 20 0 0 Z" fill="#fff" />
+              </svg>
+            </div>
+            <FitStage width={1440} height={720} dir={dir}>
+              <Watermark className="start-[4%] top-[160px] w-[340px]" />
+              <Box x={420} y={4} w={600} className="text-center">
+                <Title line1={c.games.t1} accent={c.games.t2} size="text-[38px]" />
+              </Box>
+              {gameCards.map((g, i) => {
+                const big = i === 0;
+                const geo = [
+                  { x: 975, y: 190, w: 392, h: 488 },
+                  { x: 675, y: 303, w: 277, h: 375 },
+                  { x: 375, y: 303, w: 277, h: 375 },
+                ][i];
+                return (
+                  <Box key={g.href} x={geo.x} y={geo.y} w={geo.w} h={geo.h} className="flex flex-col rounded-[16px] bg-[#f1f8f4] p-[10px] shadow-[0_10px_28px_rgba(20,70,45,0.10)]">
+                    <img src={img(g.src)} alt="" className="block w-full select-none rounded-[8px] object-cover" style={{ height: big ? 292 : 160 }} />
+                    <h3 className={`px-3 font-extrabold ${big ? "mt-6 text-[22px]" : "mt-5 text-[20px]"}`}>{g.title}</h3>
+                    <p className="mt-2 px-3 text-[15px] leading-[1.6] text-neutral-700">{g.desc}</p>
+                    <button
+                      onClick={() => onPlayGame(g.href)}
+                      className={`${btnOutline} mx-3 mb-3 mt-auto h-[46px] bg-transparent`}
+                      style={{ borderColor: GREEN, color: INK }}
+                    >
+                      {c.games.play}
+                    </button>
+                  </Box>
+                );
+              })}
+              <Box x={67} y={531} w={260} className="flex flex-col gap-5">
+                <Link href="/games" className="flex h-[61px] items-center justify-center rounded-2xl text-[19px] font-extrabold text-white shadow-lg" style={{ background: "#25804d" }}>
+                  {c.games.more}
+                </Link>
+                <Link href="/public/games" className="flex h-[61px] items-center justify-center rounded-2xl text-[19px] font-extrabold shadow-lg" style={{ background: GOLD, color: "#4a3500" }}>
+                  {c.games.quizzes}
+                </Link>
+              </Box>
+            </FitStage>
+          </>
+        ) : (
+          <div className="px-5" style={{ background: "linear-gradient(180deg,#e3f1e6 0%,#f7f0db 100%)", paddingTop: 36, paddingBottom: 36 }}>
+            <Title line1={c.games.t1} accent={c.games.t2} size="text-[30px]" />
+            <div className="mx-auto mt-8 grid max-w-[560px] gap-6">
+              {gameCards.map((g) => (
+                <article key={g.href} className="rounded-2xl bg-[#f1f8f4] p-3 pb-5 shadow-[0_10px_30px_rgba(20,70,45,0.10)]">
+                  <img src={img(g.src)} alt="" className="block aspect-[1.6] w-full select-none rounded-lg object-cover" />
+                  <h3 className="mt-4 px-2 text-[20px] font-extrabold">{g.title}</h3>
+                  <p className="mt-2 px-2 text-[15px] text-neutral-700">{g.desc}</p>
+                  <button onClick={() => onPlayGame(g.href)} className={`${btnOutline} mx-2 mt-4 h-[46px] w-[calc(100%-1rem)]`} style={{ borderColor: GREEN, color: INK }}>
+                    {c.games.play}
+                  </button>
+                </article>
+              ))}
+              <Link href="/games" className="flex h-[56px] items-center justify-center rounded-2xl text-[18px] font-extrabold text-white" style={{ background: "#25804d" }}>
+                {c.games.more}
+              </Link>
+              <Link href="/public/games" className="flex h-[56px] items-center justify-center rounded-2xl text-[18px] font-extrabold" style={{ background: GOLD, color: "#4a3500" }}>
+                {c.games.quizzes}
+              </Link>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ---------------------------------------------- 10 · TESTIMONIAL (اختياري) */}
       {testimonial && (
         <section className="relative bg-[#fbfcfe] pb-16 pt-14 lg:pb-24">
           <div className="mx-auto w-full max-w-[1100px] px-5">
@@ -928,38 +1004,31 @@ export function HomeLanding({ lang, setLang, teacherCount, games, onPlayGame, jo
                 </div>
               </div>
             </div>
-            <div className="mt-6 hidden justify-end gap-2" aria-hidden>
-              <Next className="h-5 w-5" />
-            </div>
           </div>
         </section>
       )}
 
-      {/* -------------------------------------------------------- 10 · CTA */}
-      <section className="relative bg-white px-3 pb-16 pt-6 lg:pb-24">
+      {/* -------------------------------------------------------- 11 · CTA */}
+      <section className="relative bg-white px-3 pb-16 pt-14 lg:pb-24">
         {desktop ? (
-          <FitStage width={1051} height={165} dir={dir}>
-            <img src={img("cta-band.png")} alt="" className="absolute left-0 top-0 select-none" style={{ width: 1051, height: 165 }} />
-            <Box x={618} y={34} w={400} className="text-start">
+          <FitStage width={1051} height={155} dir={dir}>
+            <img src={img("cta-band.png")} alt="" className="absolute left-0 top-0 select-none rounded-[18px]" style={{ width: 1051, height: 155 }} />
+            <Box x={640} y={14} w={380} className="text-start">
               <h2 className="text-[37px] font-extrabold leading-[1.2]" style={{ color: "#0d3320" }}>
                 {c.cta.title}
               </h2>
             </Box>
-            <Box x={366} y={54} w={326} className="text-start">
+            <Box x={360} y={28} w={312} className="text-start">
               <p className="text-[15px] leading-[1.65] text-neutral-800">{c.cta.body}</p>
             </Box>
-            <Box x={100} y={98} w={223} h={44}>
-              <Link
-                href="/register?role=teacher"
-                className="flex h-[44px] w-full items-center justify-center rounded-full text-[15px] font-extrabold text-white"
-                style={{ background: "#257f4b" }}
-              >
-                {c.cta.btn}
-              </Link>
-            </Box>
-            <Box x={405} y={131} w={240} className="text-center">
+            <Box x={140} y={44} w={170} className="text-center">
               <Link href="/guest/create" className="text-[14px] font-semibold text-neutral-800 underline-offset-4 hover:underline">
                 {c.cta.guest}
+              </Link>
+            </Box>
+            <Box x={84} y={85} w={223} h={44}>
+              <Link href="/register?role=teacher" className="flex h-[44px] w-full items-center justify-center rounded-full text-[15px] font-extrabold text-white">
+                {c.cta.btn}
               </Link>
             </Box>
           </FitStage>
