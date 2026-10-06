@@ -2639,6 +2639,7 @@ function CompetitiveTab({
     else if (type === "rocket_race") setLocation("/game/rocket/create");
     else if (type === "wheel_of_fortune") setLocation("/game/wheel/create");
     else if (type === "hotseat") setLocation("/game/hotseat/create");
+    else if (type === "collaboration") setLocation("/teacher/collaboration");
     else if (type === "video_lesson")
       setLocation("/teacher/video-lesson/new");
     else if (type === "flag_quiz") setLocation("/game/flags");
@@ -2673,6 +2674,18 @@ function CompetitiveTab({
 
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
+    {
+      icon: <School className="w-7 h-7" />,
+      title: lang === "ar" ? "لوحة التعاون" : "Collaboration Board",
+      desc:
+        lang === "ar"
+          ? "لوحة مشاركة حية — يضيف الطلاب أفكارهم وصورهم عبر الرمز أو الرابط، مع مراجعة المشاركات والتصويت وعرضها للفصل."
+          : "A live board for student ideas and images via PIN or link, with moderation, voting, and classroom display.",
+      color: "from-emerald-700 to-teal-700",
+      type: "collaboration",
+      available: true,
+      pill: lang === "ar" ? "تعاون صفي" : "Class collaboration",
+    },
     {
       icon: <WameethIcon height={44} />,
       title:

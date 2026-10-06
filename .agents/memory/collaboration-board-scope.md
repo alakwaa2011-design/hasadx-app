@@ -14,3 +14,9 @@ Silent-gallery concealment and teacher moderation must apply to participant resp
 **Why:** The activity is used with children; showing pending ideas or teacher-only authorship on a projector defeats the teacher's chosen privacy settings.
 
 **How to apply:** Review every alternate presentation and media-delivery path against the same visibility rules. A generic object URL must not bypass board-specific authorization.
+
+Teacher discovery must use the “الألعاب التعليمية” surface the teacher actually opens, not merely a separate games route.
+
+**Why:** The user reported that the board was absent from their teacher account despite an earlier confirmation based on the separate games page. That confirmation checked the wrong entry surface.
+
+**How to apply:** Trace the account's real navigation before confirming discoverability; keep the board accessible alongside “مسابقات حية مع الصفّ”.
