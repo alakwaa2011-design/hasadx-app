@@ -10,7 +10,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { CreditService } from "../lib/credit-service";
 import { logger } from "../lib/logger";
-import { getLemonInvoiceReview, retryStoredLemonInvoiceWebhook } from "./webhooks-lemonsqueezy";
+import { getLemonInvoiceReview, retryStoredLemonInvoiceWebhook, recoverStoredLemonInitialPayment } from "./webhooks-lemonsqueezy";
 import { invalidateCreditsSettingsCache } from "../lib/check-credits";
 import {
   notifyTeacherOfAward,
@@ -697,15 +697,16 @@ router.post("/webhook-events/:id/retry", async (req, res) => {
       if (!parsed.success) { res.status(400).json({ message: "دليل مراجعة الفاتورة غير مكتمل" }); return; }
       review = { ...parsed.data, adminId: Number(req.session!.teacherId) };
     }
-    const retried = await retryStoredLemonInvoiceWebhook(id, review);
+    const retried = await retryStoredLemonInvoiceWebhook(id, review)
+      || (!review && await recoverStoredLemonInitialPayment(id, Number(req.session!.teacherId)));
     if (!retried) {
-      res.status(409).json({ message: "يمكن إعادة معالجة فواتير الاشتراك الفاشلة فقط" });
+      res.status(409).json({ message: "يمكن معالجة فاتورة فاشلة أو استعادة الدفع الأول لاشتراك موثّق فقط" });
       return;
     }
     res.json({ status: "processed" });
   } catch (err) {
     logger.error(err, "admin retry of paid invoice webhook failed");
-    res.status(500).json({ message: "تعذّرت معالجة الفاتورة؛ لم يُضف رصيد، واحتُفظ بالخطأ للمراجعة" });
+    res.status(500).json({ message: "تعذّر إكمال التحقق من الدفع؛ لم يُمنح رصيد غير موثّق. راجع السجل وأعد المحاولة." });
   }
 });
 

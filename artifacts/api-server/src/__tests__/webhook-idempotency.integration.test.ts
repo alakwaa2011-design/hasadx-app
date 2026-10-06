@@ -7,7 +7,7 @@
  * W1. subscription_created بـ variant غير معروف → 500 و status=failed (ليس processed)
  * W2. بعد تصحيح ربط الـ variant، إعادة نفس الحدث → يُعاد تشغيله ويخزّن external_subscription_id
  * W3. إعادة حدث ناجح (processed) → duplicate، لا يُنفَّذ مرة ثانية
- * W4. subscription_created الناجح لا يمنح أي نقاط
+ * W4. subscription_created وحده (بلا دليل طلب مدفوع) لا يمنح أي نقاط
  * W5. subscription_payment_success بعد الربط → يمنح 250 نقطة Basic مرة واحدة فقط (التكرار لا يضاعف)
  */
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -29,7 +29,7 @@ const envBackup = {
 };
 if (RUN_INTEGRATION) {
   process.env.LEMON_SQUEEZY_WEBHOOK_SECRET = TEST_WEBHOOK_SECRET;
-  // تعطيل نداء LS API الحقيقي في fetchLSSubscriptionAttrs (يرجع null → fallback على renews_at من الـ payload)
+  // الدليل هنا فاتورة موقعة مكتملة؛ تعطيل نداء المزود الحقيقي في الاختبار.
   process.env.LEMON_SQUEEZY_API_KEY = "";
 }
 
@@ -37,6 +37,7 @@ const RUN_ID = `wh${Date.now()}`;
 const SUB_ID = `9${Date.now()}`.slice(0, 9);          // subscription id وهمي فريد
 const INVOICE_ID = `8${Date.now()}`.slice(0, 9);      // invoice id وهمي فريد
 const VARIANT_ID = `7${Date.now()}`.slice(0, 9);      // variant id وهمي فريد
+const PAID_AT = new Date().toISOString();
 
 function sign(body: string): string {
   return crypto.createHmac("sha256", TEST_WEBHOOK_SECRET).update(Buffer.from(body)).digest("hex");
@@ -74,6 +75,9 @@ function paymentSuccessPayload() {
       id: INVOICE_ID,
       attributes: {
         subscription_id: SUB_ID,
+        variant_id: VARIANT_ID,
+        created_at: PAID_AT,
+        billing_reason: "subscription_created",
         renews_at: "2026-09-14T07:29:45.000000Z",
         status: "paid",
       },
@@ -99,6 +103,7 @@ async function eventRow(idempotencyKey: string) {
 describe.skipIf(!RUN_INTEGRATION)("Lemon Squeezy webhook idempotency — route", () => {
   let teacherId = 0;
   let basicBackup: any = null;
+  let billingOptionId = 0;
   const createdKey = `lemonsqueezy:subscription_created:${SUB_ID}`;
   const paymentKey = `lemonsqueezy:subscription_payment_success:${INVOICE_ID}`;
 
@@ -120,6 +125,7 @@ describe.skipIf(!RUN_INTEGRATION)("Lemon Squeezy webhook idempotency — route",
       await db.execute(sql`
         UPDATE plans SET lemon_variant_id = ${basicBackup.lemon_variant_id} WHERE id = ${basicBackup.id}`);
     }
+    if (billingOptionId) await db.execute(sql`DELETE FROM plan_billing_options WHERE id=${billingOptionId}`);
     await db.execute(sql`DELETE FROM webhook_events WHERE idempotency_key IN (${createdKey}, ${paymentKey})`);
     await db.execute(sql`DELETE FROM subscription_credit_grants WHERE teacher_id = ${teacherId}`);
     await db.execute(sql`DELETE FROM credit_transactions WHERE teacher_id = ${teacherId}`);
@@ -150,7 +156,11 @@ describe.skipIf(!RUN_INTEGRATION)("Lemon Squeezy webhook idempotency — route",
 
   it("W2 — بعد تصحيح الربط، إعادة نفس الحدث → processed ويخزّن external_subscription_id", async () => {
     // «تصحيح المسؤول»: ربط الـ variant الوهمي بخطة basic في قاعدة الاختبار
-    await db.execute(sql`UPDATE plans SET lemon_variant_id = ${VARIANT_ID} WHERE id = ${basicBackup.id}`);
+    const option = await db.execute(sql`
+      INSERT INTO plan_billing_options (plan_id,billing_interval,lemon_variant_id,price_minor)
+      VALUES (${basicBackup.id},'month',${VARIANT_ID},499) RETURNING id
+    `);
+    billingOptionId = Number((option.rows[0] as any).id);
 
     const app = await makeApp();
     const res = await post(app, subscriptionCreatedPayload(teacherId));

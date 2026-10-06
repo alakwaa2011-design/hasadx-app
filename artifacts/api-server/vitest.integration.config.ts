@@ -27,6 +27,7 @@ export default defineConfig({
       "src/__tests__/plan-patch-route.integration.test.ts",
       "src/__tests__/webhook-idempotency.integration.test.ts",
       "src/__tests__/lemon-initial-invoice.integration.test.ts",
+      "src/__tests__/lemon-initial-order.integration.test.ts",
       "src/__tests__/credits-admin-teachers.integration.test.ts",
       "src/__tests__/credit-packages-endpoint.integration.test.ts",
       "src/__tests__/checkout-redirect-url.integration.test.ts",

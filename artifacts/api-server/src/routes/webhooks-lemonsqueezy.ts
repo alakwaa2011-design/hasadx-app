@@ -3,7 +3,7 @@
  *
  * - Verifies X-Signature HMAC before any processing.
  * - Idempotency via webhook_events.idempotency_key (UNIQUE).
- * - Credit grant source: subscription_payment_success ONLY.
+ * - Credit grant source: verified paid invoices, or verified initial orders when no invoice exists.
  * - Primary invoice guard: subscription_credit_grants.subscription_invoice_id UNIQUE.
  */
 import { Router, type IRouter } from "express";
@@ -25,6 +25,7 @@ import { sendEmail, getAppBaseUrl } from "../lib/email";
 import { CONFIGURED_ADMIN_EMAILS } from "../lib/admin-identity";
 import { addOneCalendarMonth, addCalendarMonthsUtc, lockProviderSubscription } from "../lib/annual-credit-release";
 import { verifyLemonInvoiceDocument } from "../lib/lemon-invoice-document";
+import { verifyLemonInitialOrder } from "../lib/lemon-initial-order";
 
 const router: IRouter = Router();
 
@@ -476,7 +477,8 @@ async function handleOrderCreated(payload: any): Promise<void> {
 
     if (!purchase && !pkg) {
       // An initial subscription order uses a plan variant, not a one-time
-      // credit package. Its invoice (not order_created) grants the credits.
+      // credit package. The linked subscription verifies its paid initial order
+      // (or actual invoice); order_created alone is never sufficient evidence.
       if (!purchaseIntentId && variantId && await resolvePlanByVariant(variantId)) return;
       throw new Error(`Variant غير معروف (${variantId}) ولا يوجد Purchase Intent`);
     }
@@ -549,8 +551,20 @@ async function handleOrderRefunded(payload: any): Promise<void> {
         WHERE provider_order_id = ${orderId} LIMIT 1
       `)
     : null;
+  // A refund can race the first entitlement. Resolve the retained, signed
+  // subscription event as well, so it takes the same subscription lock even
+  // before the initial grant exists.
+  const matchedSubscription = !attrs?.subscription_id && !matchedEntitlement?.rows.length && orderId
+    ? await db.execute(sql`
+        SELECT s.external_subscription_id AS subscription_id
+        FROM subscriptions s JOIN webhook_events w ON w.provider_object_id=s.external_subscription_id
+        WHERE w.provider='lemonsqueezy' AND w.event_name='subscription_created'
+          AND w.raw_payload::jsonb #>> '{data,attributes,order_id}' = ${orderId}
+        LIMIT 1
+      `) : null;
   const subscriptionId = String(attrs?.subscription_id
-    ?? (matchedEntitlement?.rows[0] as any)?.subscription_id ?? "");
+    ?? (matchedEntitlement?.rows[0] as any)?.subscription_id
+    ?? (matchedSubscription?.rows[0] as any)?.subscription_id ?? "");
 
   // Subscription order refunds have no credit_purchase row. Stop unreleased
   // annual months immediately; already released credit handling remains the
@@ -663,8 +677,8 @@ async function handleOrderRefunded(payload: any): Promise<void> {
 }
 
 // ─── subscription_created ────────────────────────────────────────────────────
-// Creates/updates the subscription record only. NO credit grant.
-// Credits are granted exclusively from subscription_payment_success.
+// Creation alone is not payment. Only a separate provider-verified paid initial
+// order or paid invoice can grant credits.
 
 async function handleSubscriptionCreated(payload: any): Promise<void> {
   const attrs      = payload?.data?.attributes ?? {};
@@ -713,17 +727,63 @@ async function handleSubscriptionCreated(payload: any): Promise<void> {
   `);
 
   logger.info({ subId, teacherId, plan: plan.code }, "subscription_created: record upserted (no credit grant)");
+  if (attrs.order_id && status === "active" && attrs.trial_ends_at == null && attrs.test_mode === false) {
+    await recoverInitialSubscriptionPayment(payload);
+  }
+}
+
+async function recoverInitialSubscriptionPayment(payload: any): Promise<void> {
+  const subscriptionId = String(payload?.data?.id ?? "");
+  const teacherId = Number(payload?.meta?.custom_data?.user_id);
+  const localTeacherId = await resolveTeacherFromSubscription(subscriptionId);
+  if (!Number.isSafeInteger(teacherId) || teacherId <= 0 || teacherId !== localTeacherId) {
+    throw new Error("Initial payment account differs from the verified subscription owner");
+  }
+  const evidence = await verifyLemonInitialOrder(subscriptionId, payload.data.attributes);
+  if (evidence.invoiceId) {
+    await handleSubscriptionPaymentSuccess({ data: { id: evidence.invoiceId, attributes: evidence.attrs } });
+  } else {
+    await handleSubscriptionPaymentSuccess({
+      data: { id: `initial-order:${evidence.orderId}`, attributes: evidence.attrs },
+    }, undefined, { orderId: evidence.orderId, variantId: evidence.variantId });
+  }
+}
+
+/** Admin recovery uses only a retained signature-verified subscription event. */
+export async function recoverStoredLemonInitialPayment(eventId: number, adminId: number): Promise<boolean> {
+  const [event] = await db.select().from(webhookEventsTable).where(and(
+    eq(webhookEventsTable.id, eventId), eq(webhookEventsTable.provider, "lemonsqueezy"),
+    eq(webhookEventsTable.eventName, "subscription_created"),
+  )).limit(1);
+  if (!event?.rawPayload || !["processed", "failed"].includes(event.status)) return false;
+  const admin = await db.execute(sql`SELECT id FROM teachers WHERE id=${adminId} AND is_admin=TRUE`);
+  if (!admin.rows.length) throw new Error("Recovery requires an administrator");
+  const payload = JSON.parse(event.rawPayload);
+  if (String(payload?.data?.id) !== event.providerObjectId
+    || payload?.meta?.event_name !== "subscription_created") throw new Error("Stored subscription event mismatch");
+  // Repeat clicks, concurrent events and late invoices all use the same
+  // provider-subscription lock and initial-order entitlement identity.
+  await recoverInitialSubscriptionPayment(payload);
+  await db.update(webhookEventsTable).set({
+    status: "processed", errorMessage: null, failedAt: null, processedAt: new Date(),
+    updatedAt: new Date(), attempts: sql`attempts + 1`,
+    reviewEvidence: sql`COALESCE(review_evidence, '{}'::jsonb) || ${JSON.stringify({
+      kind: "initial-payment-recovery", adminId, recoveredAt: new Date().toISOString(),
+    })}::jsonb`,
+  }).where(eq(webhookEventsTable.id, eventId));
+  return true;
 }
 
 // ─── subscription_payment_success ────────────────────────────────────────────
-// The ONLY source of subscription credit grants.
+// Shared entitlement writer for paid invoices and provider-verified initial orders.
 //
-// invoiceId    = payload.data.id          (unique LS invoice object ID)
+// invoiceId = real LS invoice ID, or the explicit initial-order payment identity.
 // subscriptionId = payload.data.attributes.subscription_id
-// Period and economics come only from immutable invoice fields, never the
+// Period and economics come only from immutable payment fields, never the
 // mutable Subscription object's current renews_at/variant.
 
-async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceReview): Promise<void> {
+async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceReview,
+  verifiedInitialOrder?: { orderId: string; variantId: string }): Promise<void> {
   let attrs            = payload?.data?.attributes ?? {};
   const invoiceId      = String(payload?.data?.id ?? "");
 
@@ -731,7 +791,7 @@ async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceRe
     // عيب دائم في الـ payload — retry بنفس الحمولة لن يصلحه
     throw new TerminalWebhookError("subscription_payment_success: invoice id مفقود");
   }
-  const fetched = await fetchLSInvoiceAttrs(invoiceId);
+  const fetched = verifiedInitialOrder ? null : await fetchLSInvoiceAttrs(invoiceId);
   if (fetched) {
     if (attrs.subscription_id && String(attrs.subscription_id) !== String(fetched.subscription_id)) {
       throw new Error(`subscription_payment_success: invoice ${invoiceId} subscription mismatch`);
@@ -754,11 +814,12 @@ async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceRe
   if (!["initial", "renewal", "subscription_created", "subscription_renewed"].includes(billingReason)) {
     throw new Error(`subscription_payment_success: ${billingReason || "missing"} billing reason is not a full-cycle invoice; review required`);
   }
-  if (billingReason === "initial" && !fetched) {
+  if (billingReason === "initial" && !fetched && !verifiedInitialOrder) {
     throw new Error(`subscription_payment_success: initial invoice ${invoiceId} could not be verified with provider; retry required`);
   }
-  const initialOrder = billingReason === "initial"
-    ? await resolveInitialInvoiceOrder(invoiceId, subscriptionId, attrs) : null;
+  const initialOrder = verifiedInitialOrder ?? ((billingReason === "initial"
+    || (billingReason === "subscription_created" && fetched))
+    ? await resolveInitialInvoiceOrder(invoiceId, subscriptionId, attrs) : null);
   const suppliedVariant = String(attrs?.variant_id ?? attrs?.first_order_item?.variant_id ?? "");
   if (initialOrder && suppliedVariant && suppliedVariant !== initialOrder.variantId) {
     throw new Error(`subscription_payment_success: invoice ${invoiceId} variant/order mismatch`);
@@ -800,6 +861,38 @@ async function handleSubscriptionPaymentSuccess(payload: any, review?: InvoiceRe
     `);
     const teacherId = Number((local.rows[0] as any)?.teacher_id ?? 0);
     if (!teacherId) throw new Error(`subscription_payment_success: Subscription غير موجود محليًا (${subscriptionId})`);
+    if (initialOrder) {
+      const refund = await tx.execute(sql`
+        SELECT id FROM webhook_events WHERE provider='lemonsqueezy' AND event_name='order_refunded'
+          AND provider_object_id=${initialOrder.orderId}
+          AND (raw_payload::jsonb #>> '{data,attributes,refunded_amount}')::numeric > 0
+        LIMIT 1
+      `);
+      if (refund.rows.length) throw new Error("Initial order has a verified refund event; no new credit granted");
+      const claimedOrder = await tx.execute(sql`
+        SELECT teacher_id, subscription_id FROM subscription_credit_entitlements
+        WHERE provider_order_id=${initialOrder.orderId} LIMIT 1
+      `);
+      if (claimedOrder.rows.length) {
+        const existing = claimedOrder.rows[0] as any;
+        if (Number(existing.teacher_id) !== teacherId || existing.subscription_id !== subscriptionId) {
+          throw new Error("Initial payment order already belongs to another subscription");
+        }
+        return;
+      }
+    }
+    if (verifiedInitialOrder) {
+      await tx.execute(sql`
+        UPDATE webhook_events SET review_evidence = COALESCE(review_evidence, '{}'::jsonb)
+          || ${JSON.stringify({ initialOrderPayment: {
+            orderId: verifiedInitialOrder.orderId, subscriptionId, teacherId,
+            variantId: verifiedInitialOrder.variantId, total: Number(attrs.total), currency: String(attrs.currency),
+            paidAt: invoiceCreated.toISOString(), verifiedAt: new Date().toISOString(),
+          } })}::jsonb
+        WHERE provider='lemonsqueezy' AND event_name='subscription_created'
+          AND provider_object_id=${subscriptionId}
+      `);
+    }
     if (review) {
       const reviewedBy = await tx.execute(sql`SELECT id FROM teachers WHERE id = ${review.adminId} AND is_admin = TRUE`);
       if (!reviewedBy.rows.length) throw new InvoiceEvidenceError("invoice reviewer is not an administrator");

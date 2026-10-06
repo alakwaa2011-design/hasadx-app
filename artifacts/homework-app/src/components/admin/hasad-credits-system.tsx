@@ -537,10 +537,10 @@ function LogsSection({ onResolved }: { onResolved: () => void }) {
       .finally(() => setLoading(false));
   }, [view]);
 
-  const retryInvoice = async (id: number, reviewed = false) => {
+  const retryInvoice = async (id: number, reviewed = false, initialOrder = false) => {
     if (!reviewed && !window.confirm(lang === "ar"
-      ? "إعادة التحقق من الفاتورة المدفوعة ومعالجة رصيد الاشتراك؟"
-      : "Verify the paid invoice again and process its subscription credits?")) return;
+      ? (initialOrder ? "التحقق من الطلب الأول المدفوع في Lemon Squeezy واستعادة نقاط الاشتراك الناقصة؟ لن يُضاف الرصيد مرتين." : "إعادة التحقق من الفاتورة المدفوعة ومعالجة رصيد الاشتراك؟")
+      : (initialOrder ? "Verify the initial paid Lemon Squeezy order and recover missing subscription credits? Already credited payments will not be credited again." : "Verify the paid invoice again and process its subscription credits?"))) return;
     setRetryingId(id);
     try {
       const response = await fetch(`${API_BASE}/api/admin/credits/webhook-events/${id}/retry`, {
@@ -554,7 +554,9 @@ function LogsSection({ onResolved }: { onResolved: () => void }) {
         } : {}),
       });
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.message ?? "retry failed");
-      toast.success(lang === "ar" ? "تمت معالجة الفاتورة بنجاح" : "Invoice processed successfully");
+      toast.success(lang === "ar"
+        ? (initialOrder ? "تم التحقق من الدفع؛ استُعيد الاستحقاق الناقص دون تكرار الرصيد" : "تمت معالجة الفاتورة بنجاح")
+        : (initialOrder ? "Payment verified; missing entitlement recovered without duplicate credits" : "Invoice processed successfully"));
       setReview(null);
       onResolved();
       const refreshed = await fetch(`${API_BASE}/api/admin/credits/webhook-events?pageSize=50`, {
@@ -707,6 +709,14 @@ function LogsSection({ onResolved }: { onResolved: () => void }) {
                   <td className="py-2 px-3 text-xs text-red-500 max-w-[200px] truncate" dir="ltr">{e.error_message ?? "—"}</td>
                   <td className="py-2 px-3 text-xs text-muted-foreground">{e.created_at ? new Date(e.created_at).toLocaleString(locale) : "—"}</td>
                   <td className="py-2 px-3 text-xs">
+                    {e.provider === "lemonsqueezy" && e.event_name === "subscription_created" && ["processed", "failed"].includes(e.status) && (
+                      <button type="button" onClick={() => retryInvoice(e.id, false, true)} disabled={retryingId !== null}
+                        data-testid={`button-recover-initial-payment-${e.id}`}
+                        className="rounded-md border border-primary/40 px-2 py-1 font-medium text-primary hover:bg-primary/10 disabled:opacity-50">
+                        {retryingId === e.id ? (lang === "ar" ? "جارٍ التحقق…" : "Verifying…")
+                          : (lang === "ar" ? "استعادة نقاط الدفع الأول" : "Recover initial payment credits")}
+                      </button>
+                    )}
                     {e.provider === "lemonsqueezy" && e.event_name === "subscription_payment_success" && e.status === "failed" && (
                       <div className="flex gap-2">
                       <button type="button" onClick={() => retryInvoice(e.id)} disabled={retryingId !== null}
