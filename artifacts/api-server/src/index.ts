@@ -20,6 +20,7 @@ import { setupMillionTeamSocket } from "./game/million-team-handlers";
 import { setupMillionClassSocket } from "./game/million-class-handlers";
 import { setupArenaSocket } from "./game/arena-handlers";
 import { setupHotSeatSocket } from "./game/hotseat-handlers";
+import { migrateCollaborationBoards } from "./lib/collaboration-migration";
 import { setupSecretGameSocket } from "./game/secret-game-handlers";
 import { seedSecretGameIfNeeded } from "./seedSecretGame";
 import { setupPresentationSocket } from "./game/presentation-handlers";
@@ -56,6 +57,7 @@ import { setKidsReady } from "./routes/kids";
 import { startPresentationOutlineWorker } from "./routes/ai-presentations";
 
 async function runSchemaMigrations() {
+  await migrateCollaborationBoards();
   try {
     await db.execute(sql`
       ALTER TABLE platform_settings

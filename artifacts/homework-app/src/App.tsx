@@ -50,6 +50,9 @@ function AdminOnly({
   return <>{children}</>;
 }
 
+const CollabTeacher = lazy(() => import("@/pages/teacher/collaboration"));
+const CollabJoin = lazy(() => import("@/pages/collaboration/join"));
+const CollabBoard = lazy(() => import("@/pages/collaboration/board"));
 const Home = lazy(() => import("@/pages/home"));
 const Auth = lazy(() => import("@/pages/auth"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
@@ -362,6 +365,11 @@ function Router() {
       <Switch>
         {/* Feature landing pages — public, no auth */}
         <Route path="/s/:code" component={GameShareRedirect} />
+        <Route path="/collaboration/join/:pin" component={CollabJoin} />
+        <Route path="/collaboration/join" component={CollabJoin} />
+        <Route path="/collaboration/board/:id" component={CollabBoard} />
+        <Route path="/teacher/collaboration/:id">{(p) => <CollabTeacher params={p} />}</Route>
+        <Route path="/teacher/collaboration"><CollabTeacher /></Route>
         <Route path="/features/wameeth"          component={FeatureWameeth} />
         <Route path="/features/games"            component={FeatureGames} />
         <Route path="/features/worksheet-ai"     component={FeatureWorksheetAI} />

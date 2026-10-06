@@ -1,0 +1,1 @@
+{"version":3,"file":"collaborationInvitation.d.ts","sourceRoot":"","sources":["../../../src/generated/types/collaborationInvitation.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,6BAA6B,EAAE,MAAM,iCAAiC,CAAC;AAErF,MAAM,WAAW,uBAAuB;IACtC,EAAE,EAAE,MAAM,CAAC;IACX,GAAG,EAAE,MAAM,CAAC;IACZ,KAAK,EAAE,MAAM,CAAC;IACd,MAAM,EAAE,MAAM,CAAC;IACf,MAAM,EAAE,6BAA6B,CAAC;CACvC"}

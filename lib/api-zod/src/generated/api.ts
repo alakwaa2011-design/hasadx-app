@@ -15,6 +15,421 @@ const zod = {
 };
 
 
+export const ListCollaborationBoardsResponseItem = zod.object({
+  "id": zod.string(),
+  "pin": zod.string(),
+  "title": zod.string(),
+  "prompt": zod.string(),
+  "status": zod.enum(['draft', 'open', 'closed', 'archived']),
+  "revision": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "memberCount": zod.int(),
+  "postCount": zod.int(),
+  "pendingCount": zod.int()
+})
+export const ListCollaborationBoardsResponse = zod.array(ListCollaborationBoardsResponseItem)
+
+
+export const createCollaborationBoardBodyTitleMax = 120;
+
+export const createCollaborationBoardBodyPromptMax = 1000;
+
+export const createCollaborationBoardBodySettingsMaxPostsMax = 10;
+
+export const createCollaborationBoardBodySettingsVoteBudgetMax = 10;
+
+export const createCollaborationBoardBodyColumnsItemTitleMax = 60;
+
+export const createCollaborationBoardBodyColumnsMax = 8;
+
+
+
+export const CreateCollaborationBoardBody = zod.object({
+  "title": zod.string().min(1).max(createCollaborationBoardBodyTitleMax),
+  "prompt": zod.string().min(1).max(createCollaborationBoardBodyPromptMax),
+  "clientId": zod.uuid(),
+  "settings": zod.object({
+  "moderation": zod.boolean(),
+  "allowComments": zod.boolean(),
+  "allowImages": zod.boolean(),
+  "allowReactions": zod.boolean(),
+  "showNames": zod.boolean(),
+  "silent": zod.boolean(),
+  "revealed": zod.boolean(),
+  "maxPosts": zod.int().min(1).max(createCollaborationBoardBodySettingsMaxPostsMax),
+  "voteBudget": zod.int().min(1).max(createCollaborationBoardBodySettingsVoteBudgetMax)
+}).optional(),
+  "columns": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().max(createCollaborationBoardBodyColumnsItemTitleMax)
+})).max(createCollaborationBoardBodyColumnsMax).optional()
+})
+
+export const createCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
+
+export const createCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
+
+export const createCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+
+
+
+export const CreateCollaborationBoardResponse = zod.object({
+  "id": zod.string(),
+  "pin": zod.string(),
+  "title": zod.string(),
+  "prompt": zod.string(),
+  "status": zod.enum(['draft', 'open', 'closed', 'archived']),
+  "revision": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "memberCount": zod.int(),
+  "postCount": zod.int(),
+  "pendingCount": zod.int()
+}).and(zod.object({
+  "owner": zod.boolean(),
+  "selfId": zod.string(),
+  "settings": zod.object({
+  "moderation": zod.boolean(),
+  "allowComments": zod.boolean(),
+  "allowImages": zod.boolean(),
+  "allowReactions": zod.boolean(),
+  "showNames": zod.boolean(),
+  "silent": zod.boolean(),
+  "revealed": zod.boolean(),
+  "maxPosts": zod.int().min(1).max(createCollaborationBoardResponseTwoSettingsMaxPostsMax),
+  "voteBudget": zod.int().min(1).max(createCollaborationBoardResponseTwoSettingsVoteBudgetMax)
+}),
+  "columns": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().max(createCollaborationBoardResponseTwoColumnsItemTitleMax)
+})),
+  "posts": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "columnId": zod.string(),
+  "color": zod.enum(['mint', 'sand', 'sky', 'rose', 'lavender']),
+  "authorName": zod.string(),
+  "own": zod.boolean(),
+  "teacher": zod.boolean(),
+  "status": zod.enum(['pending', 'approved']),
+  "hidden": zod.boolean(),
+  "pinned": zod.boolean(),
+  "imageId": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "referenceUrl": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "reactions": zod.array(zod.object({
+  "kind": zod.enum(['like', 'idea', 'question', 'vote']),
+  "count": zod.int(),
+  "mine": zod.boolean()
+})),
+  "comments": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "authorName": zod.string(),
+  "own": zod.boolean(),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})),
+  "members": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "postCount": zod.int(),
+  "blocked": zod.boolean()
+})),
+  "voteUsed": zod.int(),
+  "timerEndsAt": zod.string().nullable(),
+  "spotlightId": zod.string().nullable()
+}))
+
+
+export const GetCollaborationJoinInfoParams = zod.object({
+  "pin": zod.coerce.string()
+})
+
+export const GetCollaborationJoinInfoResponse = zod.object({
+  "id": zod.string(),
+  "pin": zod.string(),
+  "title": zod.string(),
+  "prompt": zod.string(),
+  "status": zod.enum(['draft', 'open', 'closed', 'archived'])
+})
+
+
+export const JoinCollaborationBoardParams = zod.object({
+  "pin": zod.coerce.string()
+})
+
+export const JoinCollaborationBoardHeader = zod.object({
+  "X-Collaboration-Token": zod.string().optional()
+})
+
+export const joinCollaborationBoardBodyNameMax = 40;
+
+
+
+export const JoinCollaborationBoardBody = zod.object({
+  "name": zod.string().min(1).max(joinCollaborationBoardBodyNameMax)
+})
+
+export const JoinCollaborationBoardResponse = zod.object({
+  "id": zod.string(),
+  "token": zod.string(),
+  "participantId": zod.string(),
+  "name": zod.string()
+})
+
+
+export const GetCollaborationBoardParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const GetCollaborationBoardHeader = zod.object({
+  "X-Collaboration-Token": zod.string().optional()
+})
+
+export const getCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
+
+export const getCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
+
+export const getCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+
+
+
+export const GetCollaborationBoardResponse = zod.object({
+  "id": zod.string(),
+  "pin": zod.string(),
+  "title": zod.string(),
+  "prompt": zod.string(),
+  "status": zod.enum(['draft', 'open', 'closed', 'archived']),
+  "revision": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "memberCount": zod.int(),
+  "postCount": zod.int(),
+  "pendingCount": zod.int()
+}).and(zod.object({
+  "owner": zod.boolean(),
+  "selfId": zod.string(),
+  "settings": zod.object({
+  "moderation": zod.boolean(),
+  "allowComments": zod.boolean(),
+  "allowImages": zod.boolean(),
+  "allowReactions": zod.boolean(),
+  "showNames": zod.boolean(),
+  "silent": zod.boolean(),
+  "revealed": zod.boolean(),
+  "maxPosts": zod.int().min(1).max(getCollaborationBoardResponseTwoSettingsMaxPostsMax),
+  "voteBudget": zod.int().min(1).max(getCollaborationBoardResponseTwoSettingsVoteBudgetMax)
+}),
+  "columns": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().max(getCollaborationBoardResponseTwoColumnsItemTitleMax)
+})),
+  "posts": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "columnId": zod.string(),
+  "color": zod.enum(['mint', 'sand', 'sky', 'rose', 'lavender']),
+  "authorName": zod.string(),
+  "own": zod.boolean(),
+  "teacher": zod.boolean(),
+  "status": zod.enum(['pending', 'approved']),
+  "hidden": zod.boolean(),
+  "pinned": zod.boolean(),
+  "imageId": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "referenceUrl": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "reactions": zod.array(zod.object({
+  "kind": zod.enum(['like', 'idea', 'question', 'vote']),
+  "count": zod.int(),
+  "mine": zod.boolean()
+})),
+  "comments": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "authorName": zod.string(),
+  "own": zod.boolean(),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})),
+  "members": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "postCount": zod.int(),
+  "blocked": zod.boolean()
+})),
+  "voteUsed": zod.int(),
+  "timerEndsAt": zod.string().nullable(),
+  "spotlightId": zod.string().nullable()
+}))
+
+
+export const UpdateCollaborationBoardParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const UpdateCollaborationBoardHeader = zod.object({
+  "X-Collaboration-Token": zod.string().optional()
+})
+
+export const updateCollaborationBoardBodyTextMax = 2000;
+
+export const updateCollaborationBoardBodyTagsItemMax = 30;
+
+export const updateCollaborationBoardBodyTagsMax = 5;
+
+export const updateCollaborationBoardBodyTitleMax = 120;
+
+export const updateCollaborationBoardBodyPromptMax = 1000;
+
+export const updateCollaborationBoardBodySettingsMaxPostsMax = 10;
+
+export const updateCollaborationBoardBodySettingsVoteBudgetMax = 10;
+
+export const updateCollaborationBoardBodyColumnsItemTitleMax = 60;
+
+export const updateCollaborationBoardBodyColumnsMax = 8;
+
+export const updateCollaborationBoardBodyTimerSecondsMin = 0;
+export const updateCollaborationBoardBodyTimerSecondsMax = 3600;
+
+
+
+export const UpdateCollaborationBoardBody = zod.object({
+  "type": zod.enum(['post.create', 'post.edit', 'post.delete', 'post.approve', 'post.hide', 'post.pin', 'post.move', 'reaction.toggle', 'comment.create', 'comment.delete', 'board.update', 'board.status', 'board.reveal', 'board.spotlight', 'board.timer', 'member.block']),
+  "clientId": zod.uuid().optional(),
+  "postId": zod.string().optional(),
+  "commentId": zod.string().optional(),
+  "memberId": zod.string().optional(),
+  "text": zod.string().max(updateCollaborationBoardBodyTextMax).optional(),
+  "imageId": zod.string().nullish(),
+  "referenceUrl": zod.string().nullish(),
+  "columnId": zod.string().optional(),
+  "color": zod.enum(['mint', 'sand', 'sky', 'rose', 'lavender']).optional(),
+  "tags": zod.array(zod.string().max(updateCollaborationBoardBodyTagsItemMax)).max(updateCollaborationBoardBodyTagsMax).optional(),
+  "kind": zod.enum(['like', 'idea', 'question', 'vote']).optional(),
+  "title": zod.string().max(updateCollaborationBoardBodyTitleMax).optional(),
+  "prompt": zod.string().max(updateCollaborationBoardBodyPromptMax).optional(),
+  "status": zod.enum(['draft', 'open', 'closed', 'archived']).optional(),
+  "settings": zod.object({
+  "moderation": zod.boolean(),
+  "allowComments": zod.boolean(),
+  "allowImages": zod.boolean(),
+  "allowReactions": zod.boolean(),
+  "showNames": zod.boolean(),
+  "silent": zod.boolean(),
+  "revealed": zod.boolean(),
+  "maxPosts": zod.int().min(1).max(updateCollaborationBoardBodySettingsMaxPostsMax),
+  "voteBudget": zod.int().min(1).max(updateCollaborationBoardBodySettingsVoteBudgetMax)
+}).optional(),
+  "columns": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().max(updateCollaborationBoardBodyColumnsItemTitleMax)
+})).max(updateCollaborationBoardBodyColumnsMax).optional(),
+  "timerSeconds": zod.int().min(updateCollaborationBoardBodyTimerSecondsMin).max(updateCollaborationBoardBodyTimerSecondsMax).optional()
+})
+
+export const updateCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
+
+export const updateCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
+
+export const updateCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+
+
+
+export const UpdateCollaborationBoardResponse = zod.object({
+  "id": zod.string(),
+  "pin": zod.string(),
+  "title": zod.string(),
+  "prompt": zod.string(),
+  "status": zod.enum(['draft', 'open', 'closed', 'archived']),
+  "revision": zod.int(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "memberCount": zod.int(),
+  "postCount": zod.int(),
+  "pendingCount": zod.int()
+}).and(zod.object({
+  "owner": zod.boolean(),
+  "selfId": zod.string(),
+  "settings": zod.object({
+  "moderation": zod.boolean(),
+  "allowComments": zod.boolean(),
+  "allowImages": zod.boolean(),
+  "allowReactions": zod.boolean(),
+  "showNames": zod.boolean(),
+  "silent": zod.boolean(),
+  "revealed": zod.boolean(),
+  "maxPosts": zod.int().min(1).max(updateCollaborationBoardResponseTwoSettingsMaxPostsMax),
+  "voteBudget": zod.int().min(1).max(updateCollaborationBoardResponseTwoSettingsVoteBudgetMax)
+}),
+  "columns": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string().max(updateCollaborationBoardResponseTwoColumnsItemTitleMax)
+})),
+  "posts": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "columnId": zod.string(),
+  "color": zod.enum(['mint', 'sand', 'sky', 'rose', 'lavender']),
+  "authorName": zod.string(),
+  "own": zod.boolean(),
+  "teacher": zod.boolean(),
+  "status": zod.enum(['pending', 'approved']),
+  "hidden": zod.boolean(),
+  "pinned": zod.boolean(),
+  "imageId": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "referenceUrl": zod.string().nullish(),
+  "tags": zod.array(zod.string()),
+  "reactions": zod.array(zod.object({
+  "kind": zod.enum(['like', 'idea', 'question', 'vote']),
+  "count": zod.int(),
+  "mine": zod.boolean()
+})),
+  "comments": zod.array(zod.object({
+  "id": zod.string(),
+  "text": zod.string(),
+  "authorName": zod.string(),
+  "own": zod.boolean(),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})),
+  "members": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "postCount": zod.int(),
+  "blocked": zod.boolean()
+})),
+  "voteUsed": zod.int(),
+  "timerEndsAt": zod.string().nullable(),
+  "spotlightId": zod.string().nullable()
+}))
+
+
+export const UploadCollaborationImageParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const UploadCollaborationImageHeader = zod.object({
+  "X-Collaboration-Token": zod.string().optional()
+})
+
+export const UploadCollaborationImageBody = zod.object({
+  "file": zod.any()
+})
+
+export const UploadCollaborationImageResponse = zod.object({
+  "imageId": zod.string()
+})
+
+
 export const GetAssistantExecutionMetricsResponse = zod.object({
   "days": zod.int(),
   "trialUsers": zod.int(),

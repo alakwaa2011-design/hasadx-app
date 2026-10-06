@@ -20,6 +20,109 @@ tags:
   - name: teacher-schedule
     description: Teacher weekly classes and one-time appointments
 paths:
+  /collaboration:
+    get:
+      operationId: listCollaborationBoards
+      tags: [Collaboration]
+      responses:
+        "200":
+          description: Teacher's private boards
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CollaborationSummary" }
+    post:
+      operationId: createCollaborationBoard
+      tags: [Collaboration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CollaborationInput" }
+      responses:
+        "201":
+          description: Private draft board
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollaborationView" }
+  /collaboration/join/{pin}:
+    parameters:
+      - { name: pin, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getCollaborationJoinInfo
+      tags: [Collaboration]
+      responses:
+        "200":
+          description: Minimal public invitation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollaborationInvitation" }
+    post:
+      operationId: joinCollaborationBoard
+      tags: [Collaboration]
+      parameters:
+        - { name: X-Collaboration-Token, in: header, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CollaborationParticipantInput" }
+      responses:
+        "200":
+          description: Durable anonymous participant identity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollaborationJoinResult" }
+  /collaboration/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: X-Collaboration-Token, in: header, schema: { type: string } }
+    get:
+      operationId: getCollaborationBoard
+      tags: [Collaboration]
+      responses:
+        "200":
+          description: Authorized, visibility-filtered board
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollaborationView" }
+  /collaboration/{id}/actions:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: X-Collaboration-Token, in: header, schema: { type: string } }
+    post:
+      operationId: updateCollaborationBoard
+      tags: [Collaboration]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CollaborationAction" }
+      responses:
+        "200":
+          description: Updated visibility-filtered board
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollaborationView" }
+  /collaboration/{id}/images:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - { name: X-Collaboration-Token, in: header, schema: { type: string } }
+    post:
+      operationId: uploadCollaborationImage
+      tags: [Collaboration]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/CollaborationImageInput" }
+      responses:
+        "201":
+          description: Private verified image identifier
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollaborationImageResult" }
   /assistant/admin/execution-metrics:
     get:
       operationId: getAssistantExecutionMetrics
@@ -3062,6 +3165,168 @@ components:
       required: true
       schema: { type: integer }
   schemas:
+    CollaborationSettings:
+      type: object
+      required: [moderation, allowComments, allowImages, allowReactions, showNames, silent, revealed, maxPosts, voteBudget]
+      properties:
+        moderation: { type: boolean }
+        allowComments: { type: boolean }
+        allowImages: { type: boolean }
+        allowReactions: { type: boolean }
+        showNames: { type: boolean }
+        silent: { type: boolean }
+        revealed: { type: boolean }
+        maxPosts: { type: integer, minimum: 1, maximum: 10 }
+        voteBudget: { type: integer, minimum: 1, maximum: 10 }
+    CollaborationColumn:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string }
+        title: { type: string, maxLength: 60 }
+    CollaborationInput:
+      type: object
+      required: [title, prompt, clientId]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        prompt: { type: string, minLength: 1, maxLength: 1000 }
+        clientId: { type: string, format: uuid }
+        settings: { $ref: "#/components/schemas/CollaborationSettings" }
+        columns:
+          type: array
+          maxItems: 8
+          items: { $ref: "#/components/schemas/CollaborationColumn" }
+    CollaborationSummary:
+      type: object
+      required: [id, pin, title, prompt, status, revision, createdAt, updatedAt, memberCount, postCount, pendingCount]
+      properties:
+        id: { type: string }
+        pin: { type: string }
+        title: { type: string }
+        prompt: { type: string }
+        status: { type: string, enum: [draft, open, closed, archived] }
+        revision: { type: integer }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        memberCount: { type: integer }
+        postCount: { type: integer }
+        pendingCount: { type: integer }
+    CollaborationInvitation:
+      type: object
+      required: [id, pin, title, prompt, status]
+      properties:
+        id: { type: string }
+        pin: { type: string }
+        title: { type: string }
+        prompt: { type: string }
+        status: { type: string, enum: [draft, open, closed, archived] }
+    CollaborationParticipantInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 40 }
+    CollaborationJoinResult:
+      type: object
+      required: [id, token, participantId, name]
+      properties:
+        id: { type: string }
+        token: { type: string }
+        participantId: { type: string }
+        name: { type: string }
+    CollaborationReaction:
+      type: object
+      required: [kind, count, mine]
+      properties:
+        kind: { type: string, enum: [like, idea, question, vote] }
+        count: { type: integer }
+        mine: { type: boolean }
+    CollaborationComment:
+      type: object
+      required: [id, text, authorName, own, createdAt]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        authorName: { type: string }
+        own: { type: boolean }
+        createdAt: { type: string }
+    CollaborationPost:
+      type: object
+      required: [id, text, columnId, color, authorName, own, teacher, status, hidden, pinned, tags, reactions, comments, createdAt]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        columnId: { type: string }
+        color: { type: string, enum: [mint, sand, sky, rose, lavender] }
+        authorName: { type: string }
+        own: { type: boolean }
+        teacher: { type: boolean }
+        status: { type: string, enum: [pending, approved] }
+        hidden: { type: boolean }
+        pinned: { type: boolean }
+        imageId: { type: [string, "null"] }
+        imageUrl: { type: [string, "null"] }
+        referenceUrl: { type: [string, "null"] }
+        tags: { type: array, items: { type: string } }
+        reactions: { type: array, items: { $ref: "#/components/schemas/CollaborationReaction" } }
+        comments: { type: array, items: { $ref: "#/components/schemas/CollaborationComment" } }
+        createdAt: { type: string }
+    CollaborationMember:
+      type: object
+      required: [id, name, postCount, blocked]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        postCount: { type: integer }
+        blocked: { type: boolean }
+    CollaborationView:
+      allOf:
+        - { $ref: "#/components/schemas/CollaborationSummary" }
+        - type: object
+          required: [owner, selfId, settings, columns, posts, members, voteUsed, timerEndsAt, spotlightId]
+          properties:
+            owner: { type: boolean }
+            selfId: { type: string }
+            settings: { $ref: "#/components/schemas/CollaborationSettings" }
+            columns: { type: array, items: { $ref: "#/components/schemas/CollaborationColumn" } }
+            posts: { type: array, items: { $ref: "#/components/schemas/CollaborationPost" } }
+            members: { type: array, items: { $ref: "#/components/schemas/CollaborationMember" } }
+            voteUsed: { type: integer }
+            timerEndsAt: { type: [string, "null"] }
+            spotlightId: { type: [string, "null"] }
+    CollaborationAction:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [post.create, post.edit, post.delete, post.approve, post.hide, post.pin, post.move, reaction.toggle, comment.create, comment.delete, board.update, board.status, board.reveal, board.spotlight, board.timer, member.block]
+        clientId: { type: string, format: uuid }
+        postId: { type: string }
+        commentId: { type: string }
+        memberId: { type: string }
+        text: { type: string, maxLength: 2000 }
+        imageId: { type: [string, "null"] }
+        referenceUrl: { type: [string, "null"] }
+        columnId: { type: string }
+        color: { type: string, enum: [mint, sand, sky, rose, lavender] }
+        tags: { type: array, maxItems: 5, items: { type: string, maxLength: 30 } }
+        kind: { type: string, enum: [like, idea, question, vote] }
+        title: { type: string, maxLength: 120 }
+        prompt: { type: string, maxLength: 1000 }
+        status: { type: string, enum: [draft, open, closed, archived] }
+        settings: { $ref: "#/components/schemas/CollaborationSettings" }
+        columns: { type: array, maxItems: 8, items: { $ref: "#/components/schemas/CollaborationColumn" } }
+        timerSeconds: { type: integer, minimum: 0, maximum: 3600 }
+    CollaborationImageInput:
+      type: object
+      required: [file]
+      properties:
+        file: { type: string, format: binary }
+    CollaborationImageResult:
+      type: object
+      required: [imageId]
+      properties:
+        imageId: { type: string }
     AssistantAvailability:
       type: object
       required: [enabled]

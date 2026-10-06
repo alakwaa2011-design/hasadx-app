@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import collaborationRouter from "./collaboration";
 import shortenRouter from "./shorten";
 import gameShareLinksRouter from "./game-share-links";
 import healthRouter from "./health";
@@ -91,6 +92,7 @@ router.use(publicContentRouter);
 router.use(quickChallengeRouter);
 router.use(healthRouter);
 router.use(authRouter);
+router.use(collaborationRouter);
 router.use(assignmentsRouter);
 router.use(directPlayRouter);
 router.use(submissionsRouter);

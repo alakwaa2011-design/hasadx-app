@@ -279,6 +279,13 @@ async function serveObject(req: Request, res: Response) {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+    // Collaboration attachments are served only through the board-scoped,
+    // short-lived authorized media route. Generic object URLs must not bypass
+    // moderation, silent-gallery visibility or participant revocation.
+    if (/^uploads\/collaboration\//.test(wildcardPath)) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
     const economyVideoOwner = wildcardPath.match(/^uploads\/ai-video-economy\/(\d+)\//)?.[1];
     const advancedVideoOwner = wildcardPath.match(/^uploads\/ai-video\/(\d+)\//)?.[1];
     const directUploadOwner = wildcardPath.match(/^uploads\/(\d+)\//)?.[1];

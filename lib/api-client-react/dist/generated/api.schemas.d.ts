@@ -5,6 +5,247 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+export interface CollaborationSettings {
+    moderation: boolean;
+    allowComments: boolean;
+    allowImages: boolean;
+    allowReactions: boolean;
+    showNames: boolean;
+    silent: boolean;
+    revealed: boolean;
+    /**
+       * @minimum 1
+       * @maximum 10
+       */
+    maxPosts: number;
+    /**
+       * @minimum 1
+       * @maximum 10
+       */
+    voteBudget: number;
+}
+export interface CollaborationColumn {
+    id: string;
+    /** @maxLength 60 */
+    title: string;
+}
+export interface CollaborationInput {
+    /**
+       * @minLength 1
+       * @maxLength 120
+       */
+    title: string;
+    /**
+       * @minLength 1
+       * @maxLength 1000
+       */
+    prompt: string;
+    clientId: string;
+    settings?: CollaborationSettings;
+    /** @maxItems 8 */
+    columns?: CollaborationColumn[];
+}
+export type CollaborationSummaryStatus = typeof CollaborationSummaryStatus[keyof typeof CollaborationSummaryStatus];
+export declare const CollaborationSummaryStatus: {
+    readonly draft: "draft";
+    readonly open: "open";
+    readonly closed: "closed";
+    readonly archived: "archived";
+};
+export interface CollaborationSummary {
+    id: string;
+    pin: string;
+    title: string;
+    prompt: string;
+    status: CollaborationSummaryStatus;
+    revision: number;
+    createdAt: string;
+    updatedAt: string;
+    memberCount: number;
+    postCount: number;
+    pendingCount: number;
+}
+export type CollaborationInvitationStatus = typeof CollaborationInvitationStatus[keyof typeof CollaborationInvitationStatus];
+export declare const CollaborationInvitationStatus: {
+    readonly draft: "draft";
+    readonly open: "open";
+    readonly closed: "closed";
+    readonly archived: "archived";
+};
+export interface CollaborationInvitation {
+    id: string;
+    pin: string;
+    title: string;
+    prompt: string;
+    status: CollaborationInvitationStatus;
+}
+export interface CollaborationParticipantInput {
+    /**
+       * @minLength 1
+       * @maxLength 40
+       */
+    name: string;
+}
+export interface CollaborationJoinResult {
+    id: string;
+    token: string;
+    participantId: string;
+    name: string;
+}
+export type CollaborationReactionKind = typeof CollaborationReactionKind[keyof typeof CollaborationReactionKind];
+export declare const CollaborationReactionKind: {
+    readonly like: "like";
+    readonly idea: "idea";
+    readonly question: "question";
+    readonly vote: "vote";
+};
+export interface CollaborationReaction {
+    kind: CollaborationReactionKind;
+    count: number;
+    mine: boolean;
+}
+export interface CollaborationComment {
+    id: string;
+    text: string;
+    authorName: string;
+    own: boolean;
+    createdAt: string;
+}
+export type CollaborationPostColor = typeof CollaborationPostColor[keyof typeof CollaborationPostColor];
+export declare const CollaborationPostColor: {
+    readonly mint: "mint";
+    readonly sand: "sand";
+    readonly sky: "sky";
+    readonly rose: "rose";
+    readonly lavender: "lavender";
+};
+export type CollaborationPostStatus = typeof CollaborationPostStatus[keyof typeof CollaborationPostStatus];
+export declare const CollaborationPostStatus: {
+    readonly pending: "pending";
+    readonly approved: "approved";
+};
+export interface CollaborationPost {
+    id: string;
+    text: string;
+    columnId: string;
+    color: CollaborationPostColor;
+    authorName: string;
+    own: boolean;
+    teacher: boolean;
+    status: CollaborationPostStatus;
+    hidden: boolean;
+    pinned: boolean;
+    /** @nullable */
+    imageId?: string | null;
+    /** @nullable */
+    imageUrl?: string | null;
+    /** @nullable */
+    referenceUrl?: string | null;
+    tags: string[];
+    reactions: CollaborationReaction[];
+    comments: CollaborationComment[];
+    createdAt: string;
+}
+export interface CollaborationMember {
+    id: string;
+    name: string;
+    postCount: number;
+    blocked: boolean;
+}
+export type CollaborationView = CollaborationSummary & ({
+    owner: boolean;
+    selfId: string;
+    settings: CollaborationSettings;
+    columns: CollaborationColumn[];
+    posts: CollaborationPost[];
+    members: CollaborationMember[];
+    voteUsed: number;
+    /** @nullable */
+    timerEndsAt: string | null;
+    /** @nullable */
+    spotlightId: string | null;
+});
+export type CollaborationActionType = typeof CollaborationActionType[keyof typeof CollaborationActionType];
+export declare const CollaborationActionType: {
+    readonly postcreate: "post.create";
+    readonly postedit: "post.edit";
+    readonly postdelete: "post.delete";
+    readonly postapprove: "post.approve";
+    readonly posthide: "post.hide";
+    readonly postpin: "post.pin";
+    readonly postmove: "post.move";
+    readonly reactiontoggle: "reaction.toggle";
+    readonly commentcreate: "comment.create";
+    readonly commentdelete: "comment.delete";
+    readonly boardupdate: "board.update";
+    readonly boardstatus: "board.status";
+    readonly boardreveal: "board.reveal";
+    readonly boardspotlight: "board.spotlight";
+    readonly boardtimer: "board.timer";
+    readonly memberblock: "member.block";
+};
+export type CollaborationActionColor = typeof CollaborationActionColor[keyof typeof CollaborationActionColor];
+export declare const CollaborationActionColor: {
+    readonly mint: "mint";
+    readonly sand: "sand";
+    readonly sky: "sky";
+    readonly rose: "rose";
+    readonly lavender: "lavender";
+};
+export type CollaborationActionKind = typeof CollaborationActionKind[keyof typeof CollaborationActionKind];
+export declare const CollaborationActionKind: {
+    readonly like: "like";
+    readonly idea: "idea";
+    readonly question: "question";
+    readonly vote: "vote";
+};
+export type CollaborationActionStatus = typeof CollaborationActionStatus[keyof typeof CollaborationActionStatus];
+export declare const CollaborationActionStatus: {
+    readonly draft: "draft";
+    readonly open: "open";
+    readonly closed: "closed";
+    readonly archived: "archived";
+};
+export interface CollaborationAction {
+    type: CollaborationActionType;
+    clientId?: string;
+    postId?: string;
+    commentId?: string;
+    memberId?: string;
+    /** @maxLength 2000 */
+    text?: string;
+    /** @nullable */
+    imageId?: string | null;
+    /** @nullable */
+    referenceUrl?: string | null;
+    columnId?: string;
+    color?: CollaborationActionColor;
+    /**
+       * @maxItems 5
+       * @items.maxLength 30
+       */
+    tags?: string[];
+    kind?: CollaborationActionKind;
+    /** @maxLength 120 */
+    title?: string;
+    /** @maxLength 1000 */
+    prompt?: string;
+    status?: CollaborationActionStatus;
+    settings?: CollaborationSettings;
+    /** @maxItems 8 */
+    columns?: CollaborationColumn[];
+    /**
+       * @minimum 0
+       * @maximum 3600
+       */
+    timerSeconds?: number;
+}
+export interface CollaborationImageInput {
+    file: Blob;
+}
+export interface CollaborationImageResult {
+    imageId: string;
+}
 export interface AssistantAvailability {
     enabled: boolean;
     pilotOnly?: boolean;

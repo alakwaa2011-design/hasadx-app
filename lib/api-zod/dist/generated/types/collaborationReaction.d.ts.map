@@ -1,0 +1,1 @@
+{"version":3,"file":"collaborationReaction.d.ts","sourceRoot":"","sources":["../../../src/generated/types/collaborationReaction.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,yBAAyB,EAAE,MAAM,6BAA6B,CAAC;AAE7E,MAAM,WAAW,qBAAqB;IACpC,IAAI,EAAE,yBAAyB,CAAC;IAChC,KAAK,EAAE,MAAM,CAAC;IACd,IAAI,EAAE,OAAO,CAAC;CACf"}

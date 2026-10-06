@@ -1,10 +1,132 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminDirectoryPage, AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AssistantAvailability, AssistantConfirmation, AssistantExecutionEventInput, AssistantExecutionEventReceipt, AssistantExecutionMetrics, AssistantHistory, AssistantOperation, AssistantPreparation, AssistantWorksheetRequest, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GameShareLink, GameShareLinkInput, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GetQuranOfflineContent200, GetQuranOfflineContentParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAdminDirectoryParams, ListAiVideoProjects200, ListAssignmentsParams, ListTeacherQuranMemorizationItemsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranRecitationPartialResponse, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, QuranWordTajweed, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherQuranMemorizationHistoryEvent, TeacherQuranMemorizationItems, TeacherQuranMemorizationStudent, TeacherQuranMemorizationSummary, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, TranscribeQuranRecitationPartialBody, TutorialLinks, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody, WorksheetActivityInput, WorksheetActivityResult, WorksheetActivitySourceInput, WorksheetPageRenderInput } from './api.schemas';
+import type { AdminDirectoryPage, AdminHideAssignmentBody, AdminHideQuestionBankItemBody, AdminHideVideoLessonBody, AdminTeacherSummary, AiVideoBrief, AiVideoProject, AiVideoRenderBody, AiVideoRenderQuote, Assignment, AssignmentWithQuestions, AssistantAvailability, AssistantConfirmation, AssistantExecutionEventInput, AssistantExecutionEventReceipt, AssistantExecutionMetrics, AssistantHistory, AssistantOperation, AssistantPreparation, AssistantWorksheetRequest, AuthResponse, BriefPreferences, BuildPresentationRequest, BuildPresentationResponse, CancelBuildResponse, CollaborationAction, CollaborationImageInput, CollaborationImageResult, CollaborationInput, CollaborationInvitation, CollaborationJoinResult, CollaborationParticipantInput, CollaborationSummary, CollaborationView, CreateAssignmentBody, CreatePresentationBody, DeletedSubmissionsResult, ErrorResponse, ExamSessionResponse, GameShareLink, GameShareLinkInput, GetPresentationLinkedActivity200, GetQuranAyahEducationParams, GetQuranOfflineContent200, GetQuranOfflineContentParams, GoogleLoginBody, HealthStatus, LinkPresentationActivity200, LinkPresentationActivityBody, ListAdminDirectoryParams, ListAiVideoProjects200, ListAssignmentsParams, ListTeacherQuranMemorizationItemsParams, LoginTeacherBody, Presentation, PresentationAiLimits, PresentationAsset, PresentationBrief, PresentationDraft, PresentationDraftWithGuardrails, PresentationOutlineJob, PresentationSummary, PresentationTier, PresentationTierWithUsage, QuranAudioPreference, QuranAudioPreferenceInput, QuranAyahEducation, QuranAyahTimings, QuranBookmark, QuranBookmarkInput, QuranCircle, QuranCircleInput, QuranCircleTaskInput, QuranCircleUpdate, QuranIndependentPosition, QuranIndependentPositionInput, QuranIndependentSession, QuranIndependentSessionInput, QuranJourney, QuranMadaniPage, QuranMemorizationAssessment, QuranMemorizationItem, QuranMemorizationSummary, QuranProfileUpdate, QuranReaderPosition, QuranReaderPositionConflict, QuranReaderState, QuranRecitation, QuranRecitationInput, QuranRecitationPartialResponse, QuranReciterCatalog, QuranReviewWard, QuranStudent, QuranStudentProfile, QuranStudentSummary, QuranSubmission, QuranSubmissionAudioUrl, QuranSubmissionFinalizeInput, QuranSubmissionReviewInput, QuranSubmissionReviewItem, QuranSubmissionUploadInput, QuranSubmissionUploadResponse, QuranSurah, QuranSurahContent, QuranTodayDashboard, QuranWard, QuranWardInput, QuranWardUpdate, QuranWordTajweed, RegisterAssetBody, RegisterTeacherBody, RevokeSessionResponse, RevokeSessionsResponse, StartExamBody, Submission, SubmissionDetail, SubmissionResult, SubmitAssignmentBody, SubmitFeedbackBody, SubmitImageBody, SuccessResponse, TeacherProfile, TeacherQuranMemorizationHistoryEvent, TeacherQuranMemorizationItems, TeacherQuranMemorizationStudent, TeacherQuranMemorizationSummary, TeacherScheduleBulkInput, TeacherScheduleDeleteResult, TeacherScheduleEntry, TeacherScheduleEntryInput, TeacherScheduleEntryUpdate, TeacherSession, TranscribeQuranRecitationPartialBody, TutorialLinks, UpdateAiVideoProjectBody, UpdateAnswerBody, UpdateAssignmentLifecycleBody, UpdateAssignmentLifecycleResponse, UpdatePresentationBody, UpdatePresentationDraftBody, UpdateProfileBody, UpdateQuranReaderPosition, UpdateRoleBody, UpdateSubmissionBody, UploadAiVideoSourceImage201, UploadAiVideoSourceImageBody, WorksheetActivityInput, WorksheetActivityResult, WorksheetActivitySourceInput, WorksheetPageRenderInput } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+export declare const getListCollaborationBoardsUrl: () => string;
+export declare const listCollaborationBoards: (options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationSummary[]>;
+export declare const getListCollaborationBoardsQueryKey: () => readonly ["/api/collaboration"];
+export declare const getListCollaborationBoardsQueryOptions: <TData = Awaited<ReturnType<typeof listCollaborationBoards>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listCollaborationBoards>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listCollaborationBoards>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListCollaborationBoardsQueryResult = NonNullable<Awaited<ReturnType<typeof listCollaborationBoards>>>;
+export type ListCollaborationBoardsQueryError = ErrorType<unknown>;
+export declare function useListCollaborationBoards<TData = Awaited<ReturnType<typeof listCollaborationBoards>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listCollaborationBoards>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getCreateCollaborationBoardUrl: () => string;
+export declare const createCollaborationBoard: (collaborationInput: CollaborationInput, options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationView>;
+export declare const getCreateCollaborationBoardMutationKey: () => readonly ["createCollaborationBoard"];
+export declare const getCreateCollaborationBoardMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createCollaborationBoard>>, TError, CreateCollaborationBoardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof createCollaborationBoard>>, TError, CreateCollaborationBoardMutationVariables, TContext>;
+export type CreateCollaborationBoardMutationResult = NonNullable<Awaited<ReturnType<typeof createCollaborationBoard>>>;
+export type CreateCollaborationBoardMutationBody = BodyType<CollaborationInput>;
+export type CreateCollaborationBoardMutationError = ErrorType<unknown>;
+export type CreateCollaborationBoardMutationVariables = {
+    data: BodyType<CollaborationInput>;
+};
+export declare const useCreateCollaborationBoard: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createCollaborationBoard>>, TError, CreateCollaborationBoardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof createCollaborationBoard>>, TError, CreateCollaborationBoardMutationVariables, TContext>;
+export declare const getGetCollaborationJoinInfoUrl: (pin: string) => string;
+export declare const getCollaborationJoinInfo: (pin: string, options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationInvitation>;
+export declare const getGetCollaborationJoinInfoQueryKey: (pin: string) => readonly [`/api/collaboration/join/${string}`];
+export declare const getGetCollaborationJoinInfoQueryOptions: <TData = Awaited<ReturnType<typeof getCollaborationJoinInfo>>, TError = ErrorType<unknown>>(pin: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCollaborationJoinInfo>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getCollaborationJoinInfo>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetCollaborationJoinInfoQueryResult = NonNullable<Awaited<ReturnType<typeof getCollaborationJoinInfo>>>;
+export type GetCollaborationJoinInfoQueryError = ErrorType<unknown>;
+export declare function useGetCollaborationJoinInfo<TData = Awaited<ReturnType<typeof getCollaborationJoinInfo>>, TError = ErrorType<unknown>>(pin: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCollaborationJoinInfo>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getJoinCollaborationBoardUrl: (pin: string) => string;
+export declare const joinCollaborationBoard: (pin: string, collaborationParticipantInput: CollaborationParticipantInput, options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationJoinResult>;
+export declare const getJoinCollaborationBoardMutationKey: () => readonly ["joinCollaborationBoard"];
+export declare const getJoinCollaborationBoardMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof joinCollaborationBoard>>, TError, JoinCollaborationBoardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof joinCollaborationBoard>>, TError, JoinCollaborationBoardMutationVariables, TContext>;
+export type JoinCollaborationBoardMutationResult = NonNullable<Awaited<ReturnType<typeof joinCollaborationBoard>>>;
+export type JoinCollaborationBoardMutationBody = BodyType<CollaborationParticipantInput>;
+export type JoinCollaborationBoardMutationError = ErrorType<unknown>;
+export type JoinCollaborationBoardMutationVariables = {
+    pin: string;
+    data: BodyType<CollaborationParticipantInput>;
+};
+export declare const useJoinCollaborationBoard: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof joinCollaborationBoard>>, TError, JoinCollaborationBoardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof joinCollaborationBoard>>, TError, JoinCollaborationBoardMutationVariables, TContext>;
+export declare const getGetCollaborationBoardUrl: (id: string) => string;
+export declare const getCollaborationBoard: (id: string, options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationView>;
+export declare const getGetCollaborationBoardQueryKey: (id: string) => readonly [`/api/collaboration/${string}`];
+export declare const getGetCollaborationBoardQueryOptions: <TData = Awaited<ReturnType<typeof getCollaborationBoard>>, TError = ErrorType<unknown>>(id: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCollaborationBoard>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof getCollaborationBoard>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type GetCollaborationBoardQueryResult = NonNullable<Awaited<ReturnType<typeof getCollaborationBoard>>>;
+export type GetCollaborationBoardQueryError = ErrorType<unknown>;
+export declare function useGetCollaborationBoard<TData = Awaited<ReturnType<typeof getCollaborationBoard>>, TError = ErrorType<unknown>>(id: string, options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getCollaborationBoard>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getUpdateCollaborationBoardUrl: (id: string) => string;
+export declare const updateCollaborationBoard: (id: string, collaborationAction: CollaborationAction, options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationView>;
+export declare const getUpdateCollaborationBoardMutationKey: () => readonly ["updateCollaborationBoard"];
+export declare const getUpdateCollaborationBoardMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCollaborationBoard>>, TError, UpdateCollaborationBoardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateCollaborationBoard>>, TError, UpdateCollaborationBoardMutationVariables, TContext>;
+export type UpdateCollaborationBoardMutationResult = NonNullable<Awaited<ReturnType<typeof updateCollaborationBoard>>>;
+export type UpdateCollaborationBoardMutationBody = BodyType<CollaborationAction>;
+export type UpdateCollaborationBoardMutationError = ErrorType<unknown>;
+export type UpdateCollaborationBoardMutationVariables = {
+    id: string;
+    data: BodyType<CollaborationAction>;
+};
+export declare const useUpdateCollaborationBoard: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCollaborationBoard>>, TError, UpdateCollaborationBoardMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateCollaborationBoard>>, TError, UpdateCollaborationBoardMutationVariables, TContext>;
+export declare const getUploadCollaborationImageUrl: (id: string) => string;
+export declare const uploadCollaborationImage: (id: string, collaborationImageInput: CollaborationImageInput, options?: Parameters<typeof customFetch>[1]) => Promise<CollaborationImageResult>;
+export declare const getUploadCollaborationImageMutationKey: () => readonly ["uploadCollaborationImage"];
+export declare const getUploadCollaborationImageMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof uploadCollaborationImage>>, TError, UploadCollaborationImageMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof uploadCollaborationImage>>, TError, UploadCollaborationImageMutationVariables, TContext>;
+export type UploadCollaborationImageMutationResult = NonNullable<Awaited<ReturnType<typeof uploadCollaborationImage>>>;
+export type UploadCollaborationImageMutationBody = BodyType<CollaborationImageInput>;
+export type UploadCollaborationImageMutationError = ErrorType<unknown>;
+export type UploadCollaborationImageMutationVariables = {
+    id: string;
+    data: BodyType<CollaborationImageInput>;
+};
+export declare const useUploadCollaborationImage: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof uploadCollaborationImage>>, TError, UploadCollaborationImageMutationVariables, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof uploadCollaborationImage>>, TError, UploadCollaborationImageMutationVariables, TContext>;
 export declare const getGetAssistantExecutionMetricsUrl: () => string;
 export declare const getAssistantExecutionMetrics: (options?: Parameters<typeof customFetch>[1]) => Promise<AssistantExecutionMetrics>;
 export declare const getGetAssistantExecutionMetricsQueryKey: () => readonly ["/api/assistant/admin/execution-metrics"];

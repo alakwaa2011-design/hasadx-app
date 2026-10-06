@@ -122,6 +122,24 @@ export default function TeacherGamesPage() {
       ],
     },
     {
+      key: "collaboration",
+      titleAr: "التعاون الصفي",
+      titleEn: "Class Collaboration",
+      descAr: "لوحة مشاركة حية يضيف فيها كل طالب فكرته بإشراف المعلم",
+      descEn: "A live board where every student adds an idea, led by the teacher",
+      accent: "from-emerald-600 to-amber-500",
+      items: [
+        {
+          icon: <School />,
+          titleAr: "لوحة التعاون",
+          titleEn: "Collaboration Board",
+          to: "/teacher/collaboration",
+          iconBg: "bg-emerald-500/10",
+          iconColor: "text-emerald-700",
+        },
+      ],
+    },
+    {
       key: "classroom",
       titleAr: "وميض الصف",
       titleEn: "Classroom Wameeth",

@@ -1,3 +1,4 @@
+- [Collaboration board scope](collaboration-board-scope.md) — an independent activity, not a Hot Seat replacement; moderation and silent-gallery privacy apply to projection and images too.
 - [Proxy path prefix collision](proxy-path-collision.md) — adding a short prefix to artifact.toml breaks all React routes sharing that letter (e.g. /s breaks /solo, /student, /solve).
 - [Wameeth motion identity](wameeth-motion-identity.md) — use Arabic wordmark and horizontal light trails, not stars, eye-like portals, agriculture, or childish mascots.
 - [Live-game no-class targeting](live-game-no-class-targeting.md) — “بدون صف” explicitly clears an assignment’s class; it is not the same as “كل الصفوف” or an omitted choice.
@@ -87,7 +88,7 @@
 - [Production replica statistics](production-replica-statistics.md) — zero pg_stat_user_tables counters do not prove empty tables; verify row counts before concluding a database mismatch.
 - [Integration schema synchronization](integration-schema-synchronization.md) — sync Drizzle onto the existing test schema; rebuilding public deletes reference seeds required across the integration suite.
 - [Quran Foundation integration](quran-foundation-environments.md) — QCF V2 is the Madani page source; production also needs strict counts, no auth redirects, and exact-origin audio.
-- [Maher Al-Muaiqly standard recitation](maher-standard-recitation.md) — use the familiar ayah-scoped 128kbps recording, not Quranicaudio’s year1440 chapter recording.
+- [Quran audio and provenance](quran-audio-guide.md) — recitation selection, boundaries, Hafiz availability, release gates and recording rights.
 - [Reward avatar visual identity](reward-avatar-visual-identity.md) — illustrated adventure characters are official; teacher point grants keep the full celebration card, not a compact banner.
 - [Neutral reward balance adjustments](neutral-reward-balance-adjustments.md) — balance reductions are calm audited corrections, never loss/punishment scenes; student totals must remain nonnegative.
 - [Class reward balance](class-reward-balance.md) — class points use an independent balance and ledger; never distribute them to students or mix them with group scores.
@@ -117,41 +118,23 @@
 - [Personal Quran reader state](quran-personal-reader-state.md) — bookmarks and last-read are private browsing aids, separate from wards, practice, and measured progress.
 - [Public game start throttling](public-game-start-throttling.md) — public-link room creation is limited atomically in PostgreSQL per durable link token, never in process memory or by caller IP.
 - [Quran smart review safety](quran-smart-review-safety.md) — assessment retries are receipt-idempotent; due sessions advance through due items only, using the Quran calendar day.
-- [Quran audio implementation notes](quran-audio-implementation-notes.md) — pause, seamless playback, audible checks, mobile redirects, and chapter-only reciters.
-- [Quran partial hiding](quran-partial-hiding.md) — a one-ayah guided session hides alternating words; progressive range logic must not reveal the only target ayah.
-- [Quran tafsir playback follow](quran-tafsir-playback-follow.md) — tafsir follows the playing ayah unless the user locks the current explanation.
 - [Homework Vitest DOM setup](homework-vitest-dom-setup.md) — use cleanup, native assertions and real providers; blur-dependent saves require native focus.
 - [Public Quran delivery](public-quran-delivery.md) — ship the anonymous reader as an isolated /quran experience first; create a separate artifact only after shared Quran libraries exist.
-- [Pending recitation release gates](pending-recitation-release-gates.md) — unverified custom reciters may appear only to reader sessions; gate catalogs, timing, and direct audio routes together.
 - [Optional public Quran sync](optional-public-quran-sync.md) — anonymous reading stays local; account sync is opt-in, unions bookmarks, and never deletes either copy when disabled.
-- [Quran reader interaction notes](quran-reader-interaction-notes.md) — page swipes, viewport, appearance, word actions, QCF line metrics, and toolbar density.
-- [Quran continuous navigation](quran-continuous-navigation.md) — manual jumps in continuous mode must freeze scroll observation and reset scrollTop, or browser anchoring can cascade through pages.
+- [Quran reader behavior](quran-reader-guide.md) — interactions, continuous navigation, control hierarchy, overlays, hiding, tafsir, bookmarks and Arabic search.
 - [Direct upload finalization](direct-upload-finalization.md) — bind signed upload policy and object generation; recipient links must authorize both the active token and the exact referenced attachment.
-- [Recitation boundary chain shifts](recitation-boundary-chain-shifts.md) — one false silence edge can shift many ayahs until a compensating edge; audit durations and semantic starts together.
 - [Worksheet immediate-save state](worksheet-immediate-save-state.md) — save must read synchronously updated question-style state or the final toolbar click can be lost.
 - [Worksheet workspace invariants](worksheet-workspace-invariants.md) — one settings organization; printable renderers cannot overlap during transitions; freeze the live draft during export.
 - [Shared upload cleanup scope](shared-upload-cleanup-scope.md) — cleanup jobs must enumerate only their own namespace; table references cannot prove ownership of every object under shared uploads.
-- [Live recitation fail-closed](live-recitation-fail-closed.md) — hide direct recitation unless Hafiz availability is positively confirmed; configuration alone is not service health.
-- [Quran specialized bookmarks](quran-specialized-bookmarks.md) — each ayah has one categorized bookmark; old or missing categories normalize to “stopped here.”
 - [Browser film audio startup](browser-film-audio-startup.md) — canplay and paused=false do not mean narration has started; pre-roll the same audio element before the recording clock.
 - [Screen-recording crop motion](screen-recording-crop-motion.md) — a fixed crop may lose content when the recording itself zooms; inspect every chosen source moment before publishing.
 - [Wouter encoded route params](wouter-encoded-route-params.md) — decode reserved characters from the raw URL once; decoding Wouter params again can corrupt literal percent sequences.
 - [Quran mutashabihat source rights](quran-mutashabihat-source-rights.md) — QUL's MIT software license does not establish rights to its sign-in-only dataset; bundle only explicitly licensed relations.
-- [Quran joined-vocative madd](quran-joined-vocative-madd.md) — Quran Foundation may tag «يا» + hamza as connected from its joined written form; preserve the linguistic boundary and label local corrections.
-- [Quran orthographic search](quran-orthographic-search.md) — index both omitted and written dagger-alif forms; split joined vocatives before stripping marks.
 - [Authenticated personal Quran plans](authenticated-personal-quran-plans.md) — device-local self-assessment is account-scoped; assigned wards link to independent practice, never inherit its state.
-- [Quran reader control hierarchy](quran-reader-control-hierarchy.md) — keep the page primary, nest personal plans under memorization, and give listening repetition one ayah/segment entry.
 - [Guided Quran plan opt-in](quran-guided-plan-opt-in.md) — “memorize from current ayah” must never enter or update My Plan; only explicitly starting from My Plan enables its prompts and progress.
-- [Mushaf Hasaad icon treatment](quran-icon-source.md) — preserve the approved square artwork untouched; never add app-side masking, rounding, framing, or overlays.
-- [Guided Quran overlay stacking](quran-guided-overlay-stacking.md) — raise the player dock only while its settings popover is open; keep the guided panel clear of the dock.
-- [Third-party recitation provenance](third-party-recitation-provenance.md) — a Commons license label does not prove the uploader owned a reciter's externally sourced recording; verify upstream rights before public reuse.
-- [Native Quran sync storage](native-quran-sync-storage.md) — Content Sync snapshots exceed Android AsyncStorage's usual size; keep bulk data in document files and commit only a small manifest.
-- [Mushaf word order](mushaf-word-order.md) — Content Sync position_in_line can repeat or skip; sort glyphs by unique position_in_page within each physical line.
-- [Native QCF color support](native-qcf-colrv1.md) — loading a V4 COLRv1 font does not prove that iOS and Android render its color layers; verify on physical devices.
+- [Native Mushaf constraints](native-mushaf-guide.md) — approved icon, bulk sync storage, word order, color fonts, pinch gestures and guided printed-page parity.
 - [Expo device preview readiness](expo-device-preview-readiness.md) — an Expo HTTP 200 may come from an older Metro process; check the managed workflow and iOS bundle before sharing its QR.
 - [Preview process reconciliation](preview-process-reconciliation.md) — after reconciliation, surviving old servers can hide failed workflows; verify managed state and proxied API together.
-- [Expo Quran pinch gestures](expo-quran-pinch-gestures.md) — two-finger PanResponder needs browser touch-action disabled or the web preview zooms its whole viewport.
-- [Guided Quran printed-page parity](guided-quran-printed-page-parity.md) — حفظني must teach on the printed QCF page, not a second plain-text rendering; conceal unavailable page fallbacks.
 - [X O remote team participation](xo-remote-team-participation.md) — one shared room, rotating connected representatives; room join links differ from permanent new-match links.
 - [Live presentation verification](live-presentation-verification.md) — static inspection is not proof of live participation; check first-slide opening and real recipient screens.
 - [Live socket browser diagnostics](browser-socket-diagnostics.md) — correlate transport warnings with participation; reload polling errors and anonymous auth probes are not UI failures.
