@@ -11,6 +11,7 @@ export type AssistantParametersGameType = typeof AssistantParametersGameType[key
 
 export const AssistantParametersGameType = {
   solo: 'solo',
+  wameeth_class: 'wameeth_class',
   tug: 'tug',
   xo: 'xo',
 } as const;

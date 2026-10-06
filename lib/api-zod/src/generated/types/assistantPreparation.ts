@@ -5,12 +5,15 @@
  * Homework auto-grading platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { AssistantPreparationGameType } from './assistantPreparationGameType';
 import type { AssistantPreparationLanguage } from './assistantPreparationLanguage';
 import type { AssistantPreparationTool } from './assistantPreparationTool';
 import type { AssistantWorksheetRequest } from './assistantWorksheetRequest';
 
 export interface AssistantPreparation {
   tool?: AssistantPreparationTool;
+  /** Teacher-selected game for preparation; never replaced by an AI suggestion. */
+  gameType?: AssistantPreparationGameType;
   /**
      * @minLength 2
      * @maxLength 12000

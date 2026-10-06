@@ -25,6 +25,19 @@ export const AssistantPreparationTool = {
   'lesson-plan': 'lesson-plan',
 } as const;
 
+/**
+ * Teacher-selected game for preparation; never replaced by an AI suggestion.
+ */
+export type AssistantPreparationGameType = typeof AssistantPreparationGameType[keyof typeof AssistantPreparationGameType];
+
+
+export const AssistantPreparationGameType = {
+  solo: 'solo',
+  wameeth_class: 'wameeth_class',
+  tug: 'tug',
+  xo: 'xo',
+} as const;
+
 export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
 
 
@@ -265,6 +278,7 @@ export type AssistantParametersGameType = typeof AssistantParametersGameType[key
 
 export const AssistantParametersGameType = {
   solo: 'solo',
+  wameeth_class: 'wameeth_class',
   tug: 'tug',
   xo: 'xo',
 } as const;
@@ -315,6 +329,8 @@ export interface AssistantWorksheetRequest {
 
 export interface AssistantPreparation {
   tool?: AssistantPreparationTool;
+  /** Teacher-selected game for preparation; never replaced by an AI suggestion. */
+  gameType?: AssistantPreparationGameType;
   /**
      * @minLength 2
      * @maxLength 12000

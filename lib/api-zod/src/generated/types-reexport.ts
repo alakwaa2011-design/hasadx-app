@@ -58,6 +58,7 @@ export type * from "./types/assistantParametersGameType";
 export type * from "./types/assistantParametersPedagogy";
 export type * from "./types/assistantParametersQuestionTypesItem";
 export type * from "./types/assistantPreparation";
+export type * from "./types/assistantPreparationGameType";
 export type * from "./types/assistantPreparationLanguage";
 export type * from "./types/assistantPreparationTool";
 export type * from "./types/assistantQuote";

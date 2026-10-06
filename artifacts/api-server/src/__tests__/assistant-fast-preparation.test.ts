@@ -23,6 +23,21 @@ describe("assistant fast preparation and tool contracts", () => {
   it("preserves explicit Arabic-numeral quiz counts", () => {
     expect(fastAssistantPreparation("اختبار عن الكسور للصف الرابع من ٨ أسئلة", "ar", "quiz")?.parameters.questionCount).toBe(8);
   });
+  it.each(["solo", "wameeth_class", "tug", "xo"] as const)("honors the teacher-selected %s game, including XO default count", gameType => {
+    const result = fastAssistantPreparation("لعبة عن الكسور للصف الرابع", "ar", "game", undefined, gameType);
+    expect(result?.parameters.gameType).toBe(gameType);
+    expect(result?.parameters.questionCount).toBe(gameType === "xo" ? 9 : 5);
+  });
+  it("does not silently increase an explicitly chosen low XO count", () => {
+    const result = fastAssistantPreparation("لعبة عن الكسور للصف الرابع من ٥ أسئلة", "ar", "game", undefined, "xo");
+    expect(result?.parameters.questionCount).toBe(5);
+    expect(() => validateAssistantToolRequest({ title: "الكسور", template: "geometric", parameters: result!.parameters }, "game")).toThrow();
+  });
+  it("rejects a classroom draft that its native editor cannot open", () => {
+    const result = fastAssistantPreparation("لعبة عن الكسور للصف الرابع من 1 سؤال", "ar", "game", undefined, "wameeth_class");
+    expect(result?.parameters.questionCount).toBe(1);
+    expect(() => validateAssistantToolRequest({ title: "الكسور", template: "geometric", parameters: result!.parameters }, "game")).toThrow();
+  });
   it("keeps English content English even from an Arabic interface", () => {
     expect(fastAssistantPreparation("quiz about fractions for grade 4", "ar", "quiz")?.parameters.language).toBe("en");
   });

@@ -21,6 +21,16 @@ export declare const AssistantPreparationTool: {
     readonly quiz: "quiz";
     readonly 'lesson-plan': "lesson-plan";
 };
+/**
+ * Teacher-selected game for preparation; never replaced by an AI suggestion.
+ */
+export type AssistantPreparationGameType = typeof AssistantPreparationGameType[keyof typeof AssistantPreparationGameType];
+export declare const AssistantPreparationGameType: {
+    readonly solo: "solo";
+    readonly wameeth_class: "wameeth_class";
+    readonly tug: "tug";
+    readonly xo: "xo";
+};
 export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
 export declare const AssistantPreparationLanguage: {
     readonly ar: "ar";
@@ -210,6 +220,7 @@ export declare const AssistantParametersQuestionTypesItem: {
 export type AssistantParametersGameType = typeof AssistantParametersGameType[keyof typeof AssistantParametersGameType];
 export declare const AssistantParametersGameType: {
     readonly solo: "solo";
+    readonly wameeth_class: "wameeth_class";
     readonly tug: "tug";
     readonly xo: "xo";
 };
@@ -254,6 +265,8 @@ export interface AssistantWorksheetRequest {
 }
 export interface AssistantPreparation {
     tool?: AssistantPreparationTool;
+    /** Teacher-selected game for preparation; never replaced by an AI suggestion. */
+    gameType?: AssistantPreparationGameType;
     /**
        * @minLength 2
        * @maxLength 12000

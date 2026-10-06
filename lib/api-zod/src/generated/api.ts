@@ -134,7 +134,7 @@ export const ListAssistantOperationsResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(listAssistantOperationsResponseOperationsItemParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(listAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMin).max(listAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(listAssistantOperationsResponseOperationsItemParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),
@@ -209,6 +209,7 @@ export const prepareAssistantWorksheetBodySettingsParametersTwoNotesMax = 800;
 
 export const PrepareAssistantWorksheetBody = zod.object({
   "tool": zod.enum(['worksheet', 'game', 'quiz', 'lesson-plan']).default(prepareAssistantWorksheetBodyToolDefault),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional().describe('Teacher-selected game for preparation; never replaced by an AI suggestion.'),
   "message": zod.string().min(prepareAssistantWorksheetBodyMessageMin).max(prepareAssistantWorksheetBodyMessageMax),
   "language": zod.enum(['ar', 'en']),
   "operationId": zod.uuid().optional(),
@@ -248,7 +249,7 @@ export const PrepareAssistantWorksheetBody = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(prepareAssistantWorksheetBodySettingsParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(prepareAssistantWorksheetBodySettingsParametersTwoDurationMinutesMin).max(prepareAssistantWorksheetBodySettingsParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(prepareAssistantWorksheetBodySettingsParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 }))
 }).optional()
@@ -340,7 +341,7 @@ export const PrepareAssistantWorksheetResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(prepareAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(prepareAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(prepareAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(prepareAssistantWorksheetResponseParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),
@@ -452,7 +453,7 @@ export const GetAssistantOperationResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(getAssistantOperationResponseParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(getAssistantOperationResponseParametersTwoDurationMinutesMin).max(getAssistantOperationResponseParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(getAssistantOperationResponseParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),
@@ -567,7 +568,7 @@ export const QuoteAssistantWorksheetBody = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(quoteAssistantWorksheetBodyParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(quoteAssistantWorksheetBodyParametersTwoDurationMinutesMin).max(quoteAssistantWorksheetBodyParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(quoteAssistantWorksheetBodyParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 }))
 })
@@ -658,7 +659,7 @@ export const QuoteAssistantWorksheetResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(quoteAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(quoteAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(quoteAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(quoteAssistantWorksheetResponseParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),
@@ -774,7 +775,7 @@ export const ConfirmAssistantWorksheetResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(confirmAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(confirmAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(confirmAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(confirmAssistantWorksheetResponseParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),
@@ -886,7 +887,7 @@ export const CancelAssistantWorksheetResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(cancelAssistantWorksheetResponseParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(cancelAssistantWorksheetResponseParametersTwoDurationMinutesMin).max(cancelAssistantWorksheetResponseParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(cancelAssistantWorksheetResponseParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),
@@ -1005,7 +1006,7 @@ export const ListAdminAssistantOperationsResponse = zod.object({
   "questionTypes": zod.array(zod.enum(['mcq', 'true_false'])).min(1).max(listAdminAssistantOperationsResponseOperationsItemParametersTwoQuestionTypesMax).optional(),
   "durationMinutes": zod.int().min(listAdminAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMin).max(listAdminAssistantOperationsResponseOperationsItemParametersTwoDurationMinutesMax).optional(),
   "notes": zod.string().max(listAdminAssistantOperationsResponseOperationsItemParametersTwoNotesMax).optional(),
-  "gameType": zod.enum(['solo', 'tug', 'xo']).optional(),
+  "gameType": zod.enum(['solo', 'wameeth_class', 'tug', 'xo']).optional(),
   "pedagogy": zod.enum(['direct', 'inquiry', 'project', 'flipped', 'mixed']).optional()
 })),
   "template": zod.string(),

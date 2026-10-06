@@ -33,6 +33,7 @@ import { THEMES } from "@/pages/teacher/worksheet-themes";
 import { INSUFFICIENT_CREDITS_EVENT } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { ExecutionAccess } from "./execution-access";
+import { AssistantGameChoice, requestsAssistantGame, type AssistantGameType } from "./game-choice";
 
 type Tool = "worksheet" | "game" | "quiz" | "lesson-plan";
 const TOOLS: [Tool, string, string][] = [["worksheet", "ورقة عمل", "Worksheet"], ["game", "لعبة", "Game"], ["quiz", "اختبار", "Quiz"], ["lesson-plan", "خطة درس", "Lesson plan"]];
@@ -42,7 +43,7 @@ const TOOL_EXAMPLES: Record<Tool, [string, string][]> = {
   quiz: [["اختبار قصير عن الكسور للصف الخامس", "A short fractions quiz for grade 5"], ["اختبار عن الحروف الهجائية، 5 أسئلة", "A 5-question alphabet quiz"]],
   "lesson-plan": [["خطة درس عن دورة الماء للصف الثالث", "A water-cycle lesson plan for grade 3"], ["خطة درس عن الفاعل في النحو، 45 دقيقة", "A 45-minute grammar lesson plan"]],
 };
-const GAME_TYPES: [string, string, string][] = [["solo", "فردي (وميض)", "Individual (Wameeth)"], ["tug", "شد الحبل", "Tug of war"], ["xo", "إكس أو", "XO"]];
+const GAME_TYPES: [string, string, string][] = [["solo", "وميض فردي — الأجهزة", "Wameeth — devices"], ["wameeth_class", "وميض الصف — فريقان", "Wameeth — two teams"], ["tug", "شد الحبل", "Tug of war"], ["xo", "إكس أو", "XO"]];
 const PEDAGOGY: [string, string, string][] = [["direct", "مباشر", "Direct"], ["inquiry", "استقصاء", "Inquiry"], ["project", "مشروع", "Project"], ["flipped", "مقلوب", "Flipped"], ["mixed", "مزيج", "Mixed"]];
 const STAGES: [string, string, string][] = [["prepare", "التحضير", "Prepare"], ["queued", "في الانتظار", "Queued"], ["generating", "التوليد", "Generating"], ["saving", "الحفظ", "Saving"], ["completed", "اكتمل", "Done"]];
 const ACTIVE = ["queued", "running", "saving"];
@@ -151,6 +152,7 @@ export function AssistantCreate({
   const [op, setOp] = useState<AssistantOperation | null>(null);
   const [form, setForm] = useState<Form | null>(null);
   const [tool, setTool] = useState<Tool>("worksheet");
+  const [selectedGameType, setSelectedGameType] = useState<AssistantGameType | null>(null);
   const [detail, setDetail] = useState(false);
   const [priceNote, setPriceNote] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
@@ -182,6 +184,7 @@ export function AssistantCreate({
   useEffect(() => {
     setOp(null); setForm(null); setStale(false); setNotice(null); setErrorCode(null); setBusy(null); setRequest(""); setView("compose"); setDetail(false); setPriceNote(null); setTool("worksheet");
     restoredRef.current = false;
+    setSelectedGameType(null);
   }, [scope]);
   useEffect(() => {
     if (!history.data || restoredRef.current) return;
@@ -206,6 +209,7 @@ export function AssistantCreate({
       setOp(d);
       setErrorCode(d.errorCode);
       if (TERMINAL.includes(d.status)) {
+        setSelectedGameType(null);
         refreshBalance();
         void qc.invalidateQueries({ queryKey: listKey });
       }
@@ -214,6 +218,8 @@ export function AssistantCreate({
   }, [polled.data]);
 
   function applyOp(next: AssistantOperation, keepForm = false) {
+    if (next.tool === "game") setSelectedGameType(next.parameters.gameType ?? null);
+    else setSelectedGameType(null);
     if (next.tool === "game" && (op?.id !== next.id || op?.tool !== next.tool)) setDetail(true);
     setTool((next.tool as Tool | undefined) ?? "worksheet");
     setOp(next);
@@ -238,14 +244,23 @@ export function AssistantCreate({
   }
 
   const terminalOrNew = !op || TERMINAL.includes(op.status);
+  const selectingGame = (terminalOrNew && tool === "game") || (requestsAssistantGame(request) && op?.tool !== "game");
+  const needsGameChoice = selectingGame && !selectedGameType;
 
   function send() {
     const message = request.trim();
     if (message.length < 2 || busy) return;
+    if (needsGameChoice) {
+      setTool("game");
+      setNotice(tr("اختر اللعبة من الخيارات أولًا، ثم أرسل طلبك.", "Choose a game first, then send your request."));
+      return;
+    }
     const s = scope;
+    const gameChoice = selectingGame ? { tool: "game" as const, gameType: selectedGameType! }
+      : op?.tool === "game" && !terminalOrNew ? { gameType: form?.params.gameType ?? selectedGameType ?? undefined } : {};
     setBusy("prepare"); setErrorCode(null); setNotice(null);
     prepare.mutate(
-      { data: { message, language: ar ? "ar" : "en", ...(op && !terminalOrNew ? { operationId: op.id, ...(form ? { settings: requestBody() } : {}) } : { tool }) } satisfies AssistantPreparation },
+      { data: { message, language: ar ? "ar" : "en", ...(op && !terminalOrNew ? { operationId: op.id, ...(form ? { settings: requestBody() } : {}) } : { tool }), ...gameChoice } satisfies AssistantPreparation },
       {
         onSuccess: (r) => { if (!alive(s)) return; applyOp(r); setRequest(""); void qc.invalidateQueries({ queryKey: listKey }); },
         onError: (e) => { if (alive(s)) fail(e); },
@@ -268,6 +283,7 @@ export function AssistantCreate({
     if (!p.subject?.trim()) m.push("subject");
     if (!p.gradeLevel?.trim()) m.push("gradeLevel");
     if (op?.tool === "game" && p.gameType === "xo" && p.questionCount !== undefined && p.questionCount < 9) m.push("xo");
+    if (op?.tool === "game" && p.gameType === "wameeth_class" && p.questionCount !== undefined && p.questionCount < 2) m.push("wameeth_class");
     if (p.questionSelection === "manual" && Object.values(p.counts ?? {}).reduce((a, b) => a + b, 0) < 1) m.push("counts");
     return m;
   }, [p, op?.tool]);
@@ -348,7 +364,7 @@ export function AssistantCreate({
     });
   }
 
-  function reset() { setDetail(false); setPriceNote(null); setTool("worksheet"); restoredRef.current = true; setOp(null); setForm(null); setStale(false); setErrorCode(null); setNotice(null); setView("compose"); }
+  function reset() { setDetail(false); setPriceNote(null); setTool("worksheet"); setSelectedGameType(null); restoredRef.current = true; setOp(null); setForm(null); setStale(false); setErrorCode(null); setNotice(null); setView("compose"); }
 
   function openOp(o: AssistantOperation) { applyOp(o); setView("compose"); }
 
@@ -429,7 +445,7 @@ export function AssistantCreate({
               <div className="text-sm font-bold">{tr("ماذا تريد أن تُجهّز؟", "What should we prepare?")}</div>
               <p className="text-[11px] text-muted-foreground">{tr("اكتب طلبك بحرية، ثم راجع الإعدادات والسعر قبل أي خصم.", "Describe it freely, then review settings and price before any charge.")}</p>
               <div className="flex flex-wrap justify-center gap-1.5 pt-2" role="group" aria-label={tr("الأداة", "Tool")}>
-                {TOOLS.map(([v, a, e]) => <button key={v} type="button" onClick={() => setTool(v)} aria-pressed={tool === v} className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold ${tool === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`} data-testid={`button-tool-${v}`}>{tr(a, e)}</button>)}
+                {TOOLS.map(([v, a, e]) => <button key={v} type="button" onClick={() => { setTool(v); setSelectedGameType(null); }} aria-pressed={tool === v} className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold ${tool === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`} data-testid={`button-tool-${v}`}>{tr(a, e)}</button>)}
               </div>
               <div className="flex flex-wrap justify-center gap-1.5 pt-1">
                 {TOOL_EXAMPLES[tool].map(([a, e], i) => <button key={i} type="button" onClick={() => setRequest(tr(a, e))} className="rounded-full bg-muted px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground" data-testid={`button-example-${i}`}>{tr(a, e)}</button>)}
@@ -437,6 +453,9 @@ export function AssistantCreate({
               <p className="text-[10px] text-muted-foreground">{tr("التحضير مجاني. تُخصم تكلفة الأداة فقط عند التأكيد.", "Preparing is free. Credits are charged only when you confirm.")}</p>
             </div>
           )}
+
+          {selectingGame && <AssistantGameChoice ar={ar} selected={selectedGameType} disabled={!!busy}
+            onSelect={(game) => { setSelectedGameType(game); setTool("game"); setNotice(null); }} />}
 
           {op?.messages?.length ? (
             <div className="space-y-1.5">
@@ -449,7 +468,7 @@ export function AssistantCreate({
           <ErrBanner />
           {priceNote && <p role="status" className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-bold text-primary" data-testid="text-assistant-price-note">{priceNote}</p>}
 
-          {editing && form && p && (
+          {editing && !selectingGame && form && p && (
             <div className="rounded-xl border border-border bg-card p-3 space-y-2.5" data-testid="form-assistant-setup">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs font-bold" data-testid="text-assistant-tool">{tr(TOOLS.find(t => t[0] === opTool)![1], TOOLS.find(t => t[0] === opTool)![2])}</div>
@@ -463,8 +482,9 @@ export function AssistantCreate({
               {missing.length > 0 && <p className="text-[11px] text-destructive">{tr("أكمل الحقول المطلوبة المعلّمة بنجمة.", "Fill the required fields marked with *.")}</p>}
               {(detail || missing.length > 0) && <div className="space-y-2.5" data-testid="form-assistant-detail">
               {opTool !== "worksheet" && <label className="block text-[11px] font-bold">{tr("متطلبات إضافية", "Additional requirements")}<textarea maxLength={800} rows={2} className={`${field} mt-1`} value={p.notes ?? ""} onChange={e => edit({ notes: e.target.value })} data-testid="input-assistant-notes" /></label>}
-              {opTool === "game" && <div className="flex gap-1.5" role="group">{GAME_TYPES.map(([v, a, e]) => <button key={v} type="button" onClick={() => edit({ gameType: v as AssistantParameters["gameType"], ...(v === "xo" && p.questionCount === undefined ? { questionCount: 9 } : {}) })} aria-pressed={(p.gameType ?? "solo") === v} className={`flex-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold ${(p.gameType ?? "solo") === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{tr(a, e)}</button>)}</div>}
+              {opTool === "game" && <div className="grid grid-cols-2 gap-1.5" role="group">{GAME_TYPES.map(([v, a, e]) => <button key={v} type="button" onClick={() => edit({ gameType: v as AssistantParameters["gameType"], ...(v === "xo" && p.questionCount === undefined ? { questionCount: 9 } : {}) })} aria-pressed={(p.gameType ?? "solo") === v} className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold ${(p.gameType ?? "solo") === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{tr(a, e)}</button>)}</div>}
               {opTool === "game" && (p.gameType === "xo") && p.questionCount !== undefined && p.questionCount < 9 && <p className="text-[11px] text-destructive" data-testid="text-assistant-xo-min">{tr("إكس أو يحتاج 9 أسئلة على الأقل.", "XO needs at least 9 questions.")}</p>}
+              {opTool === "game" && p.gameType === "wameeth_class" && p.questionCount !== undefined && p.questionCount < 2 && <p className="text-[11px] text-destructive">{tr("وميض الصف يحتاج سؤالين على الأقل.", "Classroom Wameeth needs at least 2 questions.")}</p>}
               {opTool === "game" && <label className="block text-[11px] font-bold">{tr("عدد الأسئلة", "Question count")}<input type="number" min={1} max={30} className={`${field} mt-1`} value={p.questionCount ?? (p.gameType === "xo" ? 9 : "")} onChange={(e) => edit({ questionCount: e.target.value ? Math.max(1, Math.min(30, Number(e.target.value))) : undefined })} data-testid="input-assistant-game-count" /></label>}
               {opTool === "quiz" && <label className="block text-[11px] font-bold">{tr("عدد الأسئلة", "Question count")}<input type="number" min={1} max={30} className={`${field} mt-1`} value={p.questionCount ?? 5} onChange={(e) => edit({ questionCount: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })} data-testid="input-assistant-question-count" /></label>}
               {opTool === "lesson-plan" && <div className="grid grid-cols-2 gap-2">
@@ -621,7 +641,7 @@ export function AssistantCreate({
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
             placeholder={editing ? tr("اطلب تعديلاً على الإعدادات…", "Ask to adjust the setup…") : tr(TOOL_EXAMPLES[tool][0][0], TOOL_EXAMPLES[tool][0][1])}
             className="flex-1 resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/35 max-h-32" data-testid="input-assistant-request" />
-          <button type="button" onClick={send} disabled={!!busy || request.trim().length < 2} className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40" aria-label={tr("إرسال", "Send")} data-testid="button-assistant-send">
+          <button type="button" onClick={send} disabled={!!busy || needsGameChoice || request.trim().length < 2} className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40" aria-label={tr("إرسال", "Send")} data-testid="button-assistant-send">
             {busy === "prepare" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>

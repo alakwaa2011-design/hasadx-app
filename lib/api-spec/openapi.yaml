@@ -3077,6 +3077,7 @@ components:
       required: [message, language]
       properties:
         tool: { type: string, enum: [worksheet, game, quiz, lesson-plan], default: worksheet }
+        gameType: { type: string, enum: [solo, wameeth_class, tug, xo], description: Teacher-selected game for preparation; never replaced by an AI suggestion. }
         message: { type: string, minLength: 2, maxLength: 12000 }
         language: { type: string, enum: [ar, en] }
         operationId: { type: string, format: uuid }
@@ -3101,7 +3102,7 @@ components:
               items: { type: string, enum: [mcq, true_false] }
             durationMinutes: { type: integer, minimum: 15, maximum: 180 }
             notes: { type: string, maxLength: 800 }
-            gameType: { type: string, enum: [solo, tug, xo] }
+            gameType: { type: string, enum: [solo, wameeth_class, tug, xo] }
             pedagogy: { type: string, enum: [direct, inquiry, project, flipped, mixed] }
     AssistantConfirmation:
       type: object

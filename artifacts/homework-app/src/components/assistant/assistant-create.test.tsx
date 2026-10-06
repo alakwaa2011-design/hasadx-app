@@ -76,8 +76,15 @@ describe("assistant automatic price and single confirmation", () => {
     });
     const ta = host.querySelector("textarea")!;
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "اريد لعبة عن مكروهات الصيام للصف الرابع"); ta.dispatchEvent(new Event("input", { bubbles: true })); });
+    expect(host.querySelector('[data-testid="panel-assistant-game-choice"]')).not.toBeNull();
+    expect(button("button-assistant-confirm")).toBeNull();
+    expect(host.querySelector('[data-testid="form-assistant-setup"]')).toBeNull();
+    expect(button("button-assistant-send").disabled).toBe(true);
+    expect(mocks.prepare).not.toHaveBeenCalled();
+    await act(async () => button("button-assistant-game-solo").click());
     await act(async () => button("button-assistant-send").click());
     await settle();
+    expect(mocks.prepare.mock.calls[0][0].data.gameType).toBe("solo");
     expect(button("text-assistant-tool").textContent).toBe("لعبة");
     expect(host.querySelector('[data-testid="form-assistant-detail"]')).not.toBeNull();
     expect(host.textContent).toContain("شد الحبل");
@@ -115,11 +122,35 @@ describe("assistant automatic price and single confirmation", () => {
         onSeedUsed={mocks.noop} onAskGuide={mocks.noop} onNavigate={mocks.noop} /></QueryClientProvider>);
     });
     await act(async () => button("button-tool-game").click());
+    expect(button("button-assistant-game-tug").getAttribute("aria-pressed")).toBe("false");
     const ta = host.querySelector("textarea")!;
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "لعبة عن الكسور"); ta.dispatchEvent(new Event("input", { bubbles: true })); });
+    await act(async () => button("button-assistant-game-tug").click());
     await act(async () => button("button-assistant-send").click());
     expect(prep.mock.calls[0][0].data.tool).toBe("game");
+    expect(prep.mock.calls[0][0].data.gameType).toBe("tug");
     history.operations.push(mocks.operation as any);
+  });
+  it.each(["solo", "wameeth_class", "tug", "xo"])("requires an explicit %s choice before preparation, including keyboard submit", async gameType => {
+    const prep = vi.fn(); mocks.prepare = prep;
+    await act(async () => {
+      root.render(<QueryClientProvider client={client}><AssistantCreate teacherId={1} lang="ar" seed=""
+        onSeedUsed={mocks.noop} onAskGuide={mocks.noop} onNavigate={mocks.noop} /></QueryClientProvider>);
+    });
+    await act(async () => button("button-tool-game").click());
+    const ta = host.querySelector('[data-testid="input-assistant-request"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "لعبة عن الكسور للصف الرابع");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(button("button-assistant-send").disabled).toBe(true);
+    await act(async () => ta.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(prep).not.toHaveBeenCalled();
+    await act(async () => button(`button-assistant-game-${gameType}`).click());
+    expect(button("button-assistant-send").disabled).toBe(false);
+    await act(async () => button("button-assistant-send").click());
+    expect(prep.mock.calls[0][0].data).toMatchObject({ tool: "game", gameType });
+    expect(mocks.confirm).not.toHaveBeenCalled();
   });
   it("explains real account exemptions instead of presenting the trial as free", async () => {
     price = 0; await open();

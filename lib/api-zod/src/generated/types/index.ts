@@ -65,6 +65,7 @@ export * from './assistantParametersGameType';
 export * from './assistantParametersPedagogy';
 export * from './assistantParametersQuestionTypesItem';
 export * from './assistantPreparation';
+export * from './assistantPreparationGameType';
 export * from './assistantPreparationLanguage';
 export * from './assistantPreparationTool';
 export * from './assistantQuote';

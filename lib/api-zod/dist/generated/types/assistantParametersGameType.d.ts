@@ -8,6 +8,7 @@
 export type AssistantParametersGameType = typeof AssistantParametersGameType[keyof typeof AssistantParametersGameType];
 export declare const AssistantParametersGameType: {
     readonly solo: "solo";
+    readonly wameeth_class: "wameeth_class";
     readonly tug: "tug";
     readonly xo: "xo";
 };

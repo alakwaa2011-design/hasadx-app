@@ -75,6 +75,32 @@ async function getOperation(id: string) {
 }
 
 describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
+  it("keeps the selected game for a followup but permits an explicit switch to a quiz", async () => {
+    const game = await request(app).post("/api/assistant/prepare").set(header()).send({
+      message: "لعبة عن الكسور للصف الرابع", language: "ar", tool: "game", gameType: "tug",
+    }).expect(200);
+    const updated = await request(app).post("/api/assistant/prepare").set(header()).send({
+      operationId: game.body.id, message: "اجعلها أصعب", language: "ar", gameType: "tug",
+    }).expect(200);
+    expect(updated.body.id).toBe(game.body.id);
+    expect(updated.body.tool).toBe("game");
+    expect(updated.body.parameters.gameType).toBe("tug");
+    const quiz = await request(app).post("/api/assistant/prepare").set(header()).send({
+      operationId: game.body.id, message: "أريد اختبار عن الكسور", language: "ar", gameType: "tug",
+    }).expect(200);
+    expect(quiz.body.tool).toBe("quiz");
+    expect(quiz.body.id).not.toBe(game.body.id);
+  });
+  it.each(["solo", "wameeth_class", "tug", "xo"])("persists the teacher-selected %s game instead of a model default", async gameType => {
+    const result = await request(app).post("/api/assistant/prepare").set(header()).send({
+      message: "لعبة عن الكسور للصف الرابع", language: "ar", tool: "game", gameType,
+    }).expect(200);
+    expect(result.body.tool).toBe("game");
+    expect(result.body.parameters.gameType).toBe(gameType);
+    expect(vi.mocked(prepareWorksheetRequest).mock.lastCall?.[5]).toBe(gameType);
+    expect(result.body.status).toBe("draft");
+    expect(result.body.credits).toBe(0);
+  });
   it("routes an explicit game request to game even when the client defaults to worksheet", async () => {
     const game = await request(app).post("/api/assistant/prepare").set(header()).send({
       message: "اريد لعبة عن مكروهات الصيام للصف الرابع", language: "ar", tool: "worksheet",
@@ -226,6 +252,19 @@ describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
     expect(vi.mocked(generateAssistantToolOutput)).toHaveBeenCalledTimes(1);
     expect(await CreditService.getBalance(teacher)).toBe(48);
     expect(await db.select().from(creditHoldsTable).where(eq(creditHoldsTable.teacherId, teacher))).toHaveLength(1);
+  });
+  it("saves classroom Wameeth as a private two-team draft in the native editor format", async () => {
+    const op = await toolQuote("game", "wameeth_class");
+    await confirm(op).expect(200); await runAssistantJob();
+    const done = await getOperation(op.id);
+    expect(done.resultUrl).toContain("/game/wameeth/create?savedGameId=");
+    const saved = (await db.execute(sql`SELECT game_type, content, settings, is_shared, play_count FROM saved_game_activities WHERE id=${done.resultId}`)).rows[0] as any;
+    expect(saved.game_type).toBe("wameeth");
+    expect(saved.settings).toMatchObject({ mode: "classroom", teamCount: 2 });
+    expect(saved.content).toHaveLength(5);
+    expect(saved.content[0]).toMatchObject({ type: "mcq", correctAnswer: "A" });
+    expect(saved.is_shared).toBe(false);
+    expect(saved.play_count).toBe(0);
   });
   it.each(["tug", "xo"])("persists compatible %s questions and its real editor link", async gameType => {
     const op = await toolQuote("game", gameType); await confirm(op).expect(200); await runAssistantJob();

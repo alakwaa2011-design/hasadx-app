@@ -37,3 +37,9 @@ Explicit creation intent must select the corresponding tool even when the curren
 **Why:** Requiring a manual “New → Game” workaround did not resolve the user's experience; the assistant must understand a direct game request rather than interpret it as a printable game activity.
 
 **How to apply:** Open the actual game settings when preparing a game. Switching tools creates a separate private draft and discards incompatible tool-specific choices; never reinterpret an accepted operation or charge without fresh confirmation.
+
+The teacher must choose the game before the assistant prepares its content; never silently select a default game. The approved options are Wameeth individual on student devices, Wameeth classroom with two teams, Tug, and XO.
+
+**Why:** The user explicitly approved showing the existing supported games first, then having AI tailor the content to the teacher's choice.
+
+**How to apply:** Keep game selection authoritative through preparation, generation, and private saving. Show a short gameplay description, preserve explicit question counts, and require the normal price confirmation; do not launch or publish automatically.

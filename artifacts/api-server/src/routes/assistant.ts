@@ -91,7 +91,8 @@ router.post("/prepare", prepareLimit, async (req, res) => {
     }
     const [previous] = body.operationId ? await db.select().from(operations).where(and(eq(operations.id, body.operationId), eq(operations.teacherId, teacherId), eq(operations.archived, false))) : [];
     if (body.operationId && !previous) throw failure("NOT_FOUND", 404);
-    const tool = resolveAssistantToolIntent(body.message, toolSchema.parse(body.tool ?? previous?.tool ?? "worksheet"));
+    const fallbackTool = req.body.tool === undefined ? previous?.tool ?? "worksheet" : body.tool;
+    const tool = body.gameType && req.body.tool === "game" ? "game" : resolveAssistantToolIntent(body.message, toolSchema.parse(fallbackTool));
     const switchingTool = !!previous && tool !== previous.tool;
     if (previous && !editableStatuses.includes(previous.status)) throw failure("LOCKED");
     if (previous && !switchingTool && previous.messages.length >= 30) throw failure("RATE_LIMITED", 429);
@@ -104,7 +105,9 @@ router.post("/prepare", prepareLimit, async (req, res) => {
       base = { ...previous!, tool, title: body.settings?.title ?? previous!.title, parameters: common, template: "geometric" };
     }
     if (!continued) await recordAssistantEvent(teacherId, "execution_requested", null, { tool });
-    const prepared = await prepareWorksheetRequest(req, body.message, body.language, base, tool);
+    const selectedGameType = tool === "game" ? body.gameType : undefined;
+    const prepared = await prepareWorksheetRequest(req, body.message, body.language, base, tool, selectedGameType);
+    if (selectedGameType) prepared.parameters.gameType = selectedGameType;
     const fields = {
       title: prepared.title, tool, requestText: body.message, reply: prepared.reply,
       parameters: prepared.parameters as Record<string, unknown>,
