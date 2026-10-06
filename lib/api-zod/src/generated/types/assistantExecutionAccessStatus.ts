@@ -14,4 +14,5 @@ export const AssistantExecutionAccessStatus = {
   trial_available: 'trial_available',
   trial_reserved: 'trial_reserved',
   upgrade_required: 'upgrade_required',
+  admin_preview: 'admin_preview',
 } as const;

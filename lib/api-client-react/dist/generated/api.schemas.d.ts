@@ -338,6 +338,7 @@ export declare const AssistantExecutionAccessStatus: {
     readonly trial_available: "trial_available";
     readonly trial_reserved: "trial_reserved";
     readonly upgrade_required: "upgrade_required";
+    readonly admin_preview: "admin_preview";
 };
 export interface AssistantExecutionAccess {
     status: AssistantExecutionAccessStatus;

@@ -14,6 +14,12 @@ Free accounts get one successful direct execution across the entire assistant, a
 
 **How to apply:** Keep normal conversation charging untouched and bill each execution only once through the existing hold/capture/refund system. All current and future tools reuse the same account-wide entitlement rather than receive separate trials. Preserve accepted save retries without regenerating. Keep the existing administrative availability settings separate from subscription eligibility. Measure successful saving and paid conversion using trusted server evidence, not clicks or a return URL.
 
+Allow administrator accounts to test direct creation in the development preview without subscription eligibility or consuming/resetting the shared first trial. This exception is preview-only; ordinary credit accounting remains unchanged.
+
+**Why:** The user asked: «اسمح لحساب المسؤول في المعاينة التجربة».
+
+**How to apply:** Never carry this access exception into the published site or grant it to non-administrator accounts. Do not fake a paid subscription or modify existing trial history.
+
 في مساعد حصاد، السعر معلومة وليس إجراءً مطلوبًا من المستخدم: لا تُجبره على الضغط على «احسب السعر» قبل «تأكيد وبدء الإنشاء». يجب تحميل التكلفة تلقائيًا، ثم بدء التنفيذ من زر التأكيد مباشرة.
 
 **Why:** The user explicitly rejected a separate manual pricing prerequisite.

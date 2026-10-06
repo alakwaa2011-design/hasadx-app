@@ -86,19 +86,19 @@ export declare const listAssistantOperationsResponseOperationsItemQuoteOneCredit
 export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
     enabled: zodV3.ZodBoolean;
     executionAccess: zodV3.ZodOptional<zodV3.ZodObject<{
-        status: zodV3.ZodEnum<["subscription", "trial_available", "trial_reserved", "upgrade_required"]>;
+        status: zodV3.ZodEnum<["subscription", "trial_available", "trial_reserved", "upgrade_required", "admin_preview"]>;
         canExecute: zodV3.ZodBoolean;
         planCode: zodV3.ZodString;
         reservedOperationId: zodV3.ZodNullable<zodV3.ZodString>;
         consumedOperationId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
         consumedOperationId?: string | null | undefined;
     }, {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
@@ -461,7 +461,7 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
         teacherId?: number | undefined;
     }[];
     executionAccess?: {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
@@ -535,7 +535,7 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
         teacherId?: number | undefined;
     }[];
     executionAccess?: {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
@@ -2742,19 +2742,19 @@ export declare const listAdminAssistantOperationsResponseOperationsItemQuoteOneC
 export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
     enabled: zodV3.ZodBoolean;
     executionAccess: zodV3.ZodOptional<zodV3.ZodObject<{
-        status: zodV3.ZodEnum<["subscription", "trial_available", "trial_reserved", "upgrade_required"]>;
+        status: zodV3.ZodEnum<["subscription", "trial_available", "trial_reserved", "upgrade_required", "admin_preview"]>;
         canExecute: zodV3.ZodBoolean;
         planCode: zodV3.ZodString;
         reservedOperationId: zodV3.ZodNullable<zodV3.ZodString>;
         consumedOperationId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
     }, "strip", zodV3.ZodTypeAny, {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
         consumedOperationId?: string | null | undefined;
     }, {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
@@ -3117,7 +3117,7 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
         teacherId?: number | undefined;
     }[];
     executionAccess?: {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;
@@ -3191,7 +3191,7 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
         teacherId?: number | undefined;
     }[];
     executionAccess?: {
-        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required";
+        status: "subscription" | "trial_available" | "trial_reserved" | "upgrade_required" | "admin_preview";
         canExecute: boolean;
         planCode: string;
         reservedOperationId: string | null;

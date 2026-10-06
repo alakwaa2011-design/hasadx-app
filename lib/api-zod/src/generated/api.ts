@@ -83,7 +83,7 @@ export const listAssistantOperationsResponseOperationsItemQuoteOneCreditsMin = 0
 export const ListAssistantOperationsResponse = zod.object({
   "enabled": zod.boolean(),
   "executionAccess": zod.object({
-  "status": zod.enum(['subscription', 'trial_available', 'trial_reserved', 'upgrade_required']),
+  "status": zod.enum(['subscription', 'trial_available', 'trial_reserved', 'upgrade_required', 'admin_preview']),
   "canExecute": zod.boolean(),
   "planCode": zod.string(),
   "reservedOperationId": zod.uuid().nullable(),
@@ -954,7 +954,7 @@ export const listAdminAssistantOperationsResponseOperationsItemQuoteOneCreditsMi
 export const ListAdminAssistantOperationsResponse = zod.object({
   "enabled": zod.boolean(),
   "executionAccess": zod.object({
-  "status": zod.enum(['subscription', 'trial_available', 'trial_reserved', 'upgrade_required']),
+  "status": zod.enum(['subscription', 'trial_available', 'trial_reserved', 'upgrade_required', 'admin_preview']),
   "canExecute": zod.boolean(),
   "planCode": zod.string(),
   "reservedOperationId": zod.uuid().nullable(),

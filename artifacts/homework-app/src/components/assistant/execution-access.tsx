@@ -21,7 +21,9 @@ export function ExecutionAccess({ access, operationId, ar, teacherId }: {
   if (!access) return null;
   if (!blocked) return (
     <div className="rounded-xl border bg-muted/40 p-3 text-xs leading-relaxed" data-testid="assistant-execution-access">
-      {access.status === "trial_available"
+      {access.status === "admin_preview"
+        ? tr("تجربة المسؤول متاحة في المعاينة فقط، دون اشتراك أو استهلاك التجربة الأولى. تبقى محاسبة النقاط وفق إعدادات حسابك.", "Admin testing is enabled in preview only, without a subscription or consuming the first trial. Your account's normal credit settings still apply.")
+        : access.status === "trial_available"
         ? tr("لديك تجربة تنفيذ مباشر واحدة. تُخصم تكلفة الأداة من نقاطك، ولا تُستهلك التجربة إلا بعد حفظ الناتج بنجاح.", "You have one direct-execution trial. Normal tool credits apply; the trial is used only after successful saving.")
         : access.status === "trial_reserved"
           ? tr("تجربتك محجوزة للعملية الحالية. لن تُستهلك إلا بعد نجاح الحفظ.", "Your trial is reserved for the current operation until saving succeeds.")

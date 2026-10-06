@@ -3166,7 +3166,7 @@ components:
       type: object
       required: [status, canExecute, planCode, reservedOperationId]
       properties:
-        status: { type: string, enum: [subscription, trial_available, trial_reserved, upgrade_required] }
+        status: { type: string, enum: [subscription, trial_available, trial_reserved, upgrade_required, admin_preview] }
         canExecute: { type: boolean }
         planCode: { type: string }
         reservedOperationId: { type: ["string", "null"], format: uuid }

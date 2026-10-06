@@ -22,9 +22,16 @@ export async function getAssistantExecutionAccess(teacherId: number, executor: E
   `);
   const trial = trialResult.rows[0] as { reserved_operation_id: string | null; consumed_operation_id: string | null } | undefined;
   const subscribed = subscription?.entitled === true;
-  const status = subscribed ? "subscription" : trial?.consumed_operation_id ? "upgrade_required" : trial?.reserved_operation_id ? "trial_reserved" : "trial_available";
+  // Explicit development-only access, never a subscription or a trial reset.
+  let adminPreview = false;
+  if (process.env.NODE_ENV === "development" && process.env.REPLIT_DEPLOYMENT !== "1" &&
+      process.env.ASSISTANT_PREVIEW_ADMIN_ACCESS === "true") {
+    const adminResult = await executor.execute(sql`SELECT is_admin FROM teachers WHERE id = ${teacherId}`);
+    adminPreview = adminResult.rows[0]?.is_admin === true;
+  }
+  const status = adminPreview ? "admin_preview" : subscribed ? "subscription" : trial?.consumed_operation_id ? "upgrade_required" : trial?.reserved_operation_id ? "trial_reserved" : "trial_available";
   return {
-    status, canExecute: status === "subscription" || status === "trial_available",
+    status, canExecute: status === "admin_preview" || status === "subscription" || status === "trial_available",
     planCode: subscribed ? subscription!.code : "free",
     reservedOperationId: trial?.reserved_operation_id ?? null,
     consumedOperationId: trial?.consumed_operation_id ?? null,
@@ -49,7 +56,7 @@ export function executionAccessError(status: string) {
 /** Must run under the caller's per-teacher transaction lock, before any hold. */
 export async function authorizeAssistantExecution(executor: Executor, teacherId: number, operationId: string) {
   const access = await getAssistantExecutionAccess(teacherId, executor);
-  if (access.status === "subscription") return "subscription";
+  if (access.status === "subscription" || access.status === "admin_preview") return access.status;
   if (access.status === "trial_reserved" && access.reservedOperationId === operationId) return "trial";
   if (!access.canExecute) throw executionAccessError(access.status);
   await executor.execute(sql`
