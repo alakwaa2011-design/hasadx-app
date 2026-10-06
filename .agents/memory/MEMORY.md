@@ -149,6 +149,7 @@
 - [Mushaf word order](mushaf-word-order.md) — Content Sync position_in_line can repeat or skip; sort glyphs by unique position_in_page within each physical line.
 - [Native QCF color support](native-qcf-colrv1.md) — loading a V4 COLRv1 font does not prove that iOS and Android render its color layers; verify on physical devices.
 - [Expo device preview readiness](expo-device-preview-readiness.md) — an Expo HTTP 200 may come from an older Metro process; check the managed workflow and iOS bundle before sharing its QR.
+- [Preview process reconciliation](preview-process-reconciliation.md) — after reconciliation, surviving old servers can hide failed workflows; verify managed state and proxied API together.
 - [Expo Quran pinch gestures](expo-quran-pinch-gestures.md) — two-finger PanResponder needs browser touch-action disabled or the web preview zooms its whole viewport.
 - [Guided Quran printed-page parity](guided-quran-printed-page-parity.md) — حفظني must teach on the printed QCF page, not a second plain-text rendering; conceal unavailable page fallbacks.
 - [X O remote team participation](xo-remote-team-participation.md) — one shared room, rotating connected representatives; room join links differ from permanent new-match links.
