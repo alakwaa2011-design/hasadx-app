@@ -75,6 +75,39 @@ async function getOperation(id: string) {
 }
 
 describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
+  it("routes an explicit game request to game even when the client defaults to worksheet", async () => {
+    const game = await request(app).post("/api/assistant/prepare").set(header()).send({
+      message: "اريد لعبة عن مكروهات الصيام للصف الرابع", language: "ar", tool: "worksheet",
+    }).expect(200);
+    expect(game.body.tool).toBe("game");
+    expect(vi.mocked(prepareWorksheetRequest).mock.lastCall?.[4]).toBe("game");
+    expect(game.body.status).toBe("draft");
+  });
+  it("switches a quoted worksheet to a separate game draft without its old settings or quote", async () => {
+    const original = await quoted();
+    const game = await request(app).post("/api/assistant/prepare").set(header()).send({
+      operationId: original.id, settings, message: "اريد لعبة عن مكروهات الصيام للصف الرابع", language: "ar",
+    }).expect(200);
+    expect(game.body.tool).toBe("game");
+    expect(game.body.id).not.toBe(original.id);
+    expect(game.body.quote).toBeNull();
+    expect(vi.mocked(prepareWorksheetRequest).mock.lastCall?.[3]).toBeUndefined();
+    const unchanged = await getOperation(original.id);
+    expect(unchanged.tool).toBe("worksheet");
+    expect(unchanged.quote.id).toBe(original.quote.id);
+  });
+  it("keeps the latest shared teacher edits when converting to a game, but not worksheet settings", async () => {
+    const original = await quoted();
+    await request(app).post("/api/assistant/prepare").set(header()).send({
+      operationId: original.id, message: "حولها إلى لعبة", language: "ar",
+      settings: { ...settings, parameters: { ...settings.parameters, gradeLevel: "السادس" } },
+    }).expect(200);
+    const context = vi.mocked(prepareWorksheetRequest).mock.lastCall?.[3];
+    expect(context?.parameters.gradeLevel).toBe("السادس");
+    expect(context?.parameters.topic).toBe("دورة الماء");
+    expect(context?.parameters.counts).toBeUndefined();
+    expect(context?.parameters.pages).toBeUndefined();
+  });
   beforeAll(async () => {
     await migrateAssistantSchema();
     await db.execute(sql`ALTER TABLE assistant_worksheet_operations ADD COLUMN IF NOT EXISTS tool TEXT NOT NULL DEFAULT 'worksheet', ADD COLUMN IF NOT EXISTS result_id INTEGER`);

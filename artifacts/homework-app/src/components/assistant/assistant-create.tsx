@@ -214,6 +214,8 @@ export function AssistantCreate({
   }, [polled.data]);
 
   function applyOp(next: AssistantOperation, keepForm = false) {
+    if (next.tool === "game" && (op?.id !== next.id || op?.tool !== next.tool)) setDetail(true);
+    setTool((next.tool as Tool | undefined) ?? "worksheet");
     setOp(next);
     if (!keepForm) setForm(toForm(next));
     setErrorCode(next.errorCode);
@@ -432,7 +434,7 @@ export function AssistantCreate({
               <div className="flex flex-wrap justify-center gap-1.5 pt-1">
                 {TOOL_EXAMPLES[tool].map(([a, e], i) => <button key={i} type="button" onClick={() => setRequest(tr(a, e))} className="rounded-full bg-muted px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground" data-testid={`button-example-${i}`}>{tr(a, e)}</button>)}
               </div>
-              <p className="text-[10px] text-muted-foreground">{tr("التحضير مجاني. يُخصم رصيد ورقة العمل فقط عند التأكيد.", "Preparing is free. Credits are charged only when you confirm.")}</p>
+              <p className="text-[10px] text-muted-foreground">{tr("التحضير مجاني. تُخصم تكلفة الأداة فقط عند التأكيد.", "Preparing is free. Credits are charged only when you confirm.")}</p>
             </div>
           )}
 
@@ -485,23 +487,23 @@ export function AssistantCreate({
               <label className="block text-[11px] font-bold">{tr("نص مصدر ألصقه (اختياري)", "Pasted source text (optional)")}
                 <textarea className={`${field} mt-1 min-h-[64px]`} value={p.sourceText ?? ""} maxLength={12000} onChange={(e) => edit({ sourceText: e.target.value })} data-testid="input-assistant-source" />
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid ${opTool === "worksheet" ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
                 <label className="block text-[11px] font-bold">{tr("اللغة", "Language")}
                   <select className={`${field} mt-1`} value={p.language ?? (ar ? "ar" : "en")} onChange={(e) => edit({ language: e.target.value as "ar" | "en" })}><option value="ar">العربية</option><option value="en">English</option></select>
                 </label>
-                <label className="block text-[11px] font-bold">{tr("الصفحات", "Pages")}
+                {opTool === "worksheet" && <label className="block text-[11px] font-bold">{tr("الصفحات", "Pages")}
                   <select className={`${field} mt-1`} value={p.pages ?? 1} onChange={(e) => edit({ pages: Number(e.target.value) as 1 | 2 | 3 })}>{[1, 2, 3].map((n) => <option key={n} value={n}>{n}</option>)}</select>
-                </label>
+                </label>}
                 <label className="block text-[11px] font-bold">{tr("الصعوبة", "Difficulty")}
                   <select className={`${field} mt-1`} value={p.difficulty ?? "mixed"} onChange={(e) => edit({ difficulty: e.target.value as any })}>{OPTS.difficulty.map(([v, a, e]) => <option key={v} value={v}>{tr(a, e)}</option>)}</select>
                 </label>
               </div>
-              <label className="block text-[11px] font-bold">{tr("تصميم الورقة", "Design")}
+              {opTool === "worksheet" && <label className="block text-[11px] font-bold">{tr("تصميم الورقة", "Design")}
                 <select className={`${field} mt-1`} value={form.template} onChange={(e) => edit({}, undefined, e.target.value)} data-testid="select-assistant-template">
                   {!Object.keys(THEMES).includes(form.template) && form.template && <option value={form.template}>{form.template}</option>}
                   {Object.values(THEMES).map((t: any) => <option key={t.id} value={t.id}>{ar ? t.nameAr : t.nameEn}</option>)}
                 </select>
-              </label>
+              </label>}
 
               {opTool === "worksheet" && <>
               <div className="text-[11px] font-bold">{tr("الأسئلة", "Questions")}{missing.includes("counts") && <span className="text-destructive"> *</span>}</div>
@@ -525,7 +527,7 @@ export function AssistantCreate({
               )}
 
               </>}
-              <details className="group rounded-lg border border-border">
+              {opTool === "worksheet" && <details className="group rounded-lg border border-border">
                 <summary className="flex cursor-pointer list-none items-center justify-between px-2.5 py-1.5 text-[11px] font-bold">{tr("إعدادات تدريس متقدمة", "Advanced teaching settings")}<ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" /></summary>
                 <div className="grid grid-cols-2 gap-2 p-2.5 pt-1">
                   {(["cognitiveSkill", "assessmentMode", "differentiation", "activityStyle", "executionMode"] as const).map((k) => {
@@ -551,7 +553,7 @@ export function AssistantCreate({
                     <input className={`${field} mt-1`} maxLength={500} value={p.learningObjective ?? ""} onChange={(e) => edit({ learningObjective: e.target.value || undefined })} />
                   </label>
                 </div>
-              </details>
+              </details>}
 
               </div>}
 

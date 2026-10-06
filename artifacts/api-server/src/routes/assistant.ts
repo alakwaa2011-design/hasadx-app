@@ -9,7 +9,7 @@ import { estimateCreditsForToolRequest, holdCreditsForToolRequest, InsufficientC
 import { CreditService } from "../lib/credit-service";
 import { canonicalJson, editableStatuses, activeStatuses, missingWorksheetFields, prepareWorksheetRequest, publicAssistantOperation, validateWorksheetRequest } from "../lib/assistant-worksheet";
 import { getAssistantExecutionAccess, authorizeAssistantExecution, executionAccessError, recordAssistantEvent, releaseAssistantTrial, getAssistantExecutionMetrics } from "../lib/assistant-execution-access";
-import { assistantCreditTool, toolSchema, validateAssistantToolRequest } from "../lib/assistant-tools";
+import { assistantCreditTool, resolveAssistantToolIntent, toolSchema, validateAssistantToolRequest } from "../lib/assistant-tools";
 
 const router = Router();
 router.use((req, res, next) => {
@@ -84,7 +84,6 @@ router.post("/prepare", prepareLimit, async (req, res) => {
     if (!await isEnabled(req.session.teacherId!)) throw failure("DISABLED");
     const body = PrepareAssistantWorksheetBody.parse({ ...req.body, message: typeof req.body.message === "string" ? req.body.message.trim() : req.body.message });
     const teacherId = req.session.teacherId!;
-    if (!body.operationId) await recordAssistantEvent(teacherId, "execution_requested", null, { tool: body.tool ?? "worksheet" });
     const access = await getAssistantExecutionAccess(teacherId);
     if (!access.canExecute) {
       await recordAssistantEvent(teacherId, "execution_blocked", null, { reason: access.status });
@@ -92,21 +91,30 @@ router.post("/prepare", prepareLimit, async (req, res) => {
     }
     const [previous] = body.operationId ? await db.select().from(operations).where(and(eq(operations.id, body.operationId), eq(operations.teacherId, teacherId), eq(operations.archived, false))) : [];
     if (body.operationId && !previous) throw failure("NOT_FOUND", 404);
-    const tool = toolSchema.parse(previous?.tool ?? body.tool ?? "worksheet");
+    const tool = resolveAssistantToolIntent(body.message, toolSchema.parse(body.tool ?? previous?.tool ?? "worksheet"));
+    const switchingTool = !!previous && tool !== previous.tool;
     if (previous && !editableStatuses.includes(previous.status)) throw failure("LOCKED");
-    if (previous && previous.messages.length >= 30) throw failure("RATE_LIMITED", 429);
-    const base = previous && body.settings ? { ...previous, parameters: body.settings.parameters as Record<string, unknown>, template: worksheetThemeIdSchema.parse(body.settings.template), title: body.settings.title } : previous;
+    if (previous && !switchingTool && previous.messages.length >= 30) throw failure("RATE_LIMITED", 429);
+    // A different tool is a NEW private draft, never a reinterpretation of an old quote or result.
+    const continued = switchingTool ? undefined : previous;
+    let base = continued && body.settings ? { ...continued, parameters: body.settings.parameters as Record<string, unknown>, template: worksheetThemeIdSchema.parse(body.settings.template), title: body.settings.title } : continued;
+    if (switchingTool && !/(?:عن|حول|about|on)\s+/i.test(body.message)) {
+      const common = Object.fromEntries(Object.entries(body.settings?.parameters ?? previous!.parameters).filter(([key]) =>
+        ["topic", "subject", "gradeLevel", "language", "difficulty", "sourceText", "notes"].includes(key)));
+      base = { ...previous!, tool, title: body.settings?.title ?? previous!.title, parameters: common, template: "geometric" };
+    }
+    if (!continued) await recordAssistantEvent(teacherId, "execution_requested", null, { tool });
     const prepared = await prepareWorksheetRequest(req, body.message, body.language, base, tool);
     const fields = {
       title: prepared.title, tool, requestText: body.message, reply: prepared.reply,
       parameters: prepared.parameters as Record<string, unknown>,
       template: base?.template ?? "geometric", status: "draft", quote: null,
       missingFields: missingWorksheetFields(prepared.parameters, tool), errorCode: prepared.supported ? null : "UNSUPPORTED",
-      messages: [...previous?.messages ?? [], { role: "user" as const, text: body.message }, { role: "assistant" as const, text: prepared.reply }],
+      messages: [...continued?.messages ?? [], { role: "user" as const, text: body.message }, { role: "assistant" as const, text: prepared.reply }],
       updatedAt: new Date(),
     };
-    const [saved] = previous
-      ? await db.update(operations).set(fields).where(and(eq(operations.id, previous.id), eq(operations.updatedAt, previous.updatedAt), inArray(operations.status, editableStatuses))).returning()
+    const [saved] = continued
+      ? await db.update(operations).set(fields).where(and(eq(operations.id, continued.id), eq(operations.updatedAt, continued.updatedAt), inArray(operations.status, editableStatuses))).returning()
       : await db.insert(operations).values({ ...fields, id: randomUUID(), teacherId, creditRequestId: `assistant:${teacherId}:${randomUUID()}` }).returning();
     if (!saved) throw failure("STATE_CHANGED");
     res.json(publicAssistantOperation(saved));

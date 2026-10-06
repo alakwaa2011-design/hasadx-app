@@ -31,3 +31,9 @@ Treat equivalent flat/nested AI count fields as the same structured choice; neve
 **Why:** Real-provider checks exposed both a flattened count response and a “mandatory MCQ example” that caused the model to substitute an MCQ for a confirmed short-answer question.
 
 **How to apply:** Normalize only known equivalent count keys, omit irrelevant format examples, and reject any generated result that does not match the teacher-approved manual counts.
+
+Explicit creation intent must select the corresponding tool even when the current draft is a worksheet. The user reported twice that a requested game remained a worksheet and its settings did not open.
+
+**Why:** Requiring a manual “New → Game” workaround did not resolve the user's experience; the assistant must understand a direct game request rather than interpret it as a printable game activity.
+
+**How to apply:** Open the actual game settings when preparing a game. Switching tools creates a separate private draft and discards incompatible tool-specific choices; never reinterpret an accepted operation or charge without fresh confirmation.

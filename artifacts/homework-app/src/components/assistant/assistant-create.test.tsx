@@ -63,6 +63,29 @@ afterEach(async () => {
 });
 
 describe("assistant automatic price and single confirmation", () => {
+  it("shows game settings when a request switches an existing worksheet to a new game draft", async () => {
+    await open();
+    mocks.quote.mockImplementation((input, cb) => {
+      cb.onSuccess({ ...response(input), id: "new-game", tool: "game" }); cb.onSettled?.();
+    });
+    mocks.prepare.mockImplementationOnce((_input: any, cb: any) => {
+      cb.onSuccess({ ...mocks.operation, id: "new-game", tool: "game", parameters: {
+        topic: "مكروهات الصيام", subject: "التربية الإسلامية", gradeLevel: "الرابع", gameType: "solo", questionCount: 5,
+      } });
+      cb.onSettled?.();
+    });
+    const ta = host.querySelector("textarea")!;
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "اريد لعبة عن مكروهات الصيام للصف الرابع"); ta.dispatchEvent(new Event("input", { bubbles: true })); });
+    await act(async () => button("button-assistant-send").click());
+    await settle();
+    expect(button("text-assistant-tool").textContent).toBe("لعبة");
+    expect(host.querySelector('[data-testid="form-assistant-detail"]')).not.toBeNull();
+    expect(host.textContent).toContain("شد الحبل");
+    expect(host.textContent).toContain("إكس أو");
+    expect(host.textContent).not.toContain("الصفحات");
+    expect(host.querySelector('[data-testid="select-assistant-template"]')).toBeNull();
+    expect(host.textContent).not.toContain("إعدادات تدريس متقدمة");
+  });
   it("loads price without a price button, then confirms directly with the valid quote", async () => {
     await open();
     expect(button("button-assistant-quote")).toBeNull();

@@ -11,6 +11,15 @@ import { resolveAiContentLanguage } from "./ai-content-language";
 
 export type AssistantTool = "worksheet" | "game" | "quiz" | "lesson-plan";
 export const toolSchema = z.enum(["worksheet", "game", "quiz", "lesson-plan"]);
+/** Only an explicit creation request chooses a tool; mentions inside worksheet content do not. */
+export function resolveAssistantToolIntent(message: string, fallback: AssistantTool): AssistantTool {
+  const text = message.replace(/[\u064B-\u065F\u0670]/g, "").trim();
+  const match = text.match(/^(?:(?:أريد|اريد|أحتاج|احتاج|أنشئ|انشئ|اصنع|اعمل|أعد|اعد|جهز|حضر|بدلها|غيرها|حولها|create|make|prepare|I want|I need)\s+)?(?:(?:أن|ان)\s+)?(?:(?:تنشئ|تصنع|تجهز|تعد)\s+)?(?:(?:لي|me)\s+)?(?:(?:إلى|الى|to|a|an)\s+)?(ورقة(?:\s+عمل)?|worksheet|لعبة|game|اختبار|quiz|تحضير(?:\s+درس)?|خطة(?:\s+درس)?|lesson\s+plan)(?=\s|$|[،,.!؟?:])/i);
+  if (!match) return fallback;
+  const noun = match[1].toLowerCase();
+  return /^(?:ورقة|worksheet)/.test(noun) ? "worksheet" : /^(?:لعبة|game)/.test(noun) ? "game"
+    : /^(?:اختبار|quiz)/.test(noun) ? "quiz" : "lesson-plan";
+}
 export function assistantCreditTool(tool: string) {
   return tool === "worksheet" ? "worksheet" : tool === "lesson-plan" ? "lesson-plan" : "ai-questions";
 }
