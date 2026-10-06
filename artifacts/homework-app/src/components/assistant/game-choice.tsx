@@ -1,3 +1,5 @@
+import { trackAssistantGameStage } from "./game-analytics";
+
 export type AssistantGameType = "solo" | "wameeth_class" | "tug" | "xo";
 
 const games = [
@@ -23,7 +25,10 @@ export function AssistantGameChoice({ ar, selected, disabled, onSelect }: {
     <p className="text-[11px] text-muted-foreground">{ar ? "سأصيغ المحتوى حسب اللعبة التي تختارها، دون تشغيلها تلقائيًا." : "I'll tailor the content to your choice, without starting the game."}</p>
     <div className="space-y-1.5" role="group" aria-label={ar ? "اللعبة المختارة" : "Selected game"}>
       {games.map(game => <button key={game.id} type="button" disabled={disabled} aria-pressed={selected === game.id}
-        onClick={() => onSelect(game.id)} data-testid={`button-assistant-game-${game.id}`}
+        onClick={() => {
+          onSelect(game.id);
+          if (selected !== game.id) trackAssistantGameStage(game.id, "selected");
+        }} data-testid={`button-assistant-game-${game.id}`}
         className={`w-full flex items-center gap-2.5 rounded-lg border p-2.5 text-start transition-colors disabled:opacity-50 ${selected === game.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted/50"}`}>
         <span aria-hidden="true" className={`h-4 w-4 shrink-0 rounded-full border flex items-center justify-center ${selected === game.id ? "border-primary" : "border-muted-foreground/40"}`}>
           {selected === game.id && <span className="h-2 w-2 rounded-full bg-primary" />}

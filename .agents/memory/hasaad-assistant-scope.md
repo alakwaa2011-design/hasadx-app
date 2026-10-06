@@ -43,3 +43,9 @@ The teacher must choose the game before the assistant prepares its content; neve
 **Why:** The user explicitly approved showing the existing supported games first, then having AI tailor the content to the teacher's choice.
 
 **How to apply:** Keep game selection authoritative through preparation, generation, and private saving. Show a short gameplay description, preserve explicit question counts, and require the normal price confirmation; do not launch or publish automatically.
+
+Assistant game analytics measures creation choices and progress, not gameplay. Never equate choosing or saving a game with starting it, and keep teacher content and account identity out of event properties.
+
+**Why:** The user requested an optional, privacy-safe creation funnel restricted to game type and stage, without changing prices, creation behavior, or publishing.
+
+**How to apply:** Preserve this distinction in future reports and instrumentation. Analytics delivery is best-effort, never a requirement for completing the teacher's work.

@@ -68,7 +68,7 @@ type ProjectAnalyticsData = Record<string, string | number | boolean>;
 declare global {
   interface Window {
     umami?: {
-      track(name: string, data?: ProjectAnalyticsData): void;
+      track(name: string, data?: ProjectAnalyticsData): void | Promise<unknown>;
     };
   }
 }
@@ -86,7 +86,8 @@ export function trackProjectAnalyticsEvent(
   if (typeof window === "undefined") return;
 
   try {
-    window.umami?.track(name, data);
+    const result = window.umami?.track(name, data);
+    if (result) void Promise.resolve(result).catch(() => {});
   } catch {
     // Analytics must never interrupt the product flow.
   }

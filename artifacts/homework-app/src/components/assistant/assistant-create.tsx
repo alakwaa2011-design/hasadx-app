@@ -34,6 +34,7 @@ import { INSUFFICIENT_CREDITS_EVENT } from "@/lib/credit-aware-fetch";
 import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { ExecutionAccess } from "./execution-access";
 import { AssistantGameChoice, requestsAssistantGame, type AssistantGameType } from "./game-choice";
+import { trackAssistantGameStage } from "./game-analytics";
 
 type Tool = "worksheet" | "game" | "quiz" | "lesson-plan";
 const TOOLS: [Tool, string, string][] = [["worksheet", "ورقة عمل", "Worksheet"], ["game", "لعبة", "Game"], ["quiz", "اختبار", "Quiz"], ["lesson-plan", "خطة درس", "Lesson plan"]];
@@ -205,6 +206,9 @@ export function AssistantCreate({
   useEffect(() => {
     const d = polled.data;
     if (!d || !op || d.id !== op.id || !alive(scope)) return;
+    if (d.tool === "game" && d.status === "completed") {
+      trackAssistantGameStage(d.parameters.gameType, "completed", d.id);
+    }
     if (d.updatedAt !== op.updatedAt || d.status !== op.status) {
       setOp(d);
       setErrorCode(d.errorCode);
@@ -262,7 +266,11 @@ export function AssistantCreate({
     prepare.mutate(
       { data: { message, language: ar ? "ar" : "en", ...(op && !terminalOrNew ? { operationId: op.id, ...(form ? { settings: requestBody() } : {}) } : { tool }), ...gameChoice } satisfies AssistantPreparation },
       {
-        onSuccess: (r) => { if (!alive(s)) return; applyOp(r); setRequest(""); void qc.invalidateQueries({ queryKey: listKey }); },
+        onSuccess: (r) => {
+          if (!alive(s)) return;
+          applyOp(r); setRequest(""); void qc.invalidateQueries({ queryKey: listKey });
+          if (r.tool === "game") trackAssistantGameStage(r.parameters.gameType, "prepared");
+        },
         onError: (e) => { if (alive(s)) fail(e); },
         onSettled: () => { if (alive(s)) setBusy(null); },
       },
@@ -270,6 +278,9 @@ export function AssistantCreate({
   }
 
   function edit(patch: Partial<AssistantParameters>, title?: string, template?: string) {
+    if (op?.tool === "game" && patch.gameType && patch.gameType !== form?.params.gameType) {
+      trackAssistantGameStage(patch.gameType, "selected");
+    }
     setForm((f) => (f ? { title: title ?? f.title, template: template ?? f.template, params: { ...f.params, ...patch } } : f));
     setPriceNote(null);
     setStale(true); // any change invalidates the local quote immediately
@@ -321,7 +332,14 @@ export function AssistantCreate({
     const s = scope;
     setBusy("confirm");
     confirm.mutate({ id: op.id, data: { quoteId } }, {
-      onSuccess: (r) => { if (!alive(s)) return; applyOp(r, true); refreshBalance(); void qc.invalidateQueries({ queryKey: listKey }); },
+      onSuccess: (r) => {
+        if (!alive(s)) return;
+        applyOp(r, true); refreshBalance(); void qc.invalidateQueries({ queryKey: listKey });
+        if (r.tool === "game" && (ACTIVE.includes(r.status) || r.status === "completed")) {
+          trackAssistantGameStage(r.parameters.gameType, "confirmed", r.id);
+          if (r.status === "completed") trackAssistantGameStage(r.parameters.gameType, "completed", r.id);
+        }
+      },
       onError: (e) => { if (alive(s)) fail(e); refreshBalance(); },
       onSettled: () => { if (alive(s)) setBusy(null); },
     });

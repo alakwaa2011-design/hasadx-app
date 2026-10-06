@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   prepare: vi.fn(), quote: vi.fn(), confirm: vi.fn(), noop: vi.fn(),
+  polled: undefined as any,
   operation: {
     id: "fixture-draft", title: "دورة الماء", requestText: "ورقة عمل", reply: "جاهزة",
     parameters: { topic: "دورة الماء", subject: "العلوم", gradeLevel: "الخامس", pages: 1, language: "ar", questionSelection: "auto" },
@@ -20,7 +21,7 @@ vi.mock("@workspace/api-client-react", () => ({
   getListAssistantOperationsQueryKey: () => ["operations"],
   getGetAssistantOperationQueryKey: () => ["operation"],
   useListAssistantOperations: () => ({ data: history, refetch: mocks.noop }),
-  useGetAssistantOperation: () => ({ data: undefined }),
+  useGetAssistantOperation: () => ({ data: mocks.polled }),
   usePrepareAssistantWorksheet: () => ({ mutate: (...a: any[]) => (mocks as any).prepare(...a) }),
   useQuoteAssistantWorksheet: () => ({ mutate: mocks.quote }),
   useConfirmAssistantWorksheet: () => ({ mutate: mocks.confirm }),
@@ -36,18 +37,23 @@ function response(input: any, credits = price) {
 }
 function button(id: string) { return host.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement; }
 async function settle(ms = 30) { await act(async () => { await new Promise(resolve => setTimeout(resolve, ms)); }); }
-async function open() {
+async function open(id = "fixture-draft") {
   await act(async () => {
     root.render(<QueryClientProvider client={client}><AssistantCreate teacherId={1} lang="ar" seed=""
       onSeedUsed={mocks.noop} onAskGuide={mocks.noop} onNavigate={mocks.noop} /></QueryClientProvider>);
   });
   await act(async () => button("button-create-history").click());
-  await act(async () => (host.querySelector('[data-testid="row-operation-fixture-draft"] button') as HTMLButtonElement).click());
+  await act(async () => (host.querySelector(`[data-testid="row-operation-${id}"] button`) as HTMLButtonElement).click());
   await settle();
 }
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.clearAllMocks(); price = 10;
+  mocks.prepare.mockReset();
+  mocks.polled = undefined;
+  history.operations = [mocks.operation];
+  delete window.umami;
+  window.sessionStorage.clear();
   mocks.quote.mockImplementation((input, callbacks) => {
     callbacks.onSuccess(response(input)); callbacks.onSettled?.();
   });
@@ -60,6 +66,107 @@ beforeEach(() => {
 });
 afterEach(async () => {
   await act(async () => root.unmount()); client.clear(); host.remove(); vi.unstubAllGlobals();
+  delete window.umami;
+});
+
+describe("optional assistant game analytics", () => {
+  let game: any;
+  async function renderAgain() {
+    await act(async () => {
+      root.render(<QueryClientProvider client={client}><AssistantCreate teacherId={1} lang="ar" seed=""
+        onSeedUsed={mocks.noop} onAskGuide={mocks.noop} onNavigate={mocks.noop} /></QueryClientProvider>);
+    });
+  }
+  beforeEach(() => {
+    game = { ...mocks.operation, id: `analytics-${crypto.randomUUID()}`, tool: "game",
+      parameters: { ...mocks.operation.parameters, gameType: "tug", questionCount: 5 } };
+    mocks.quote.mockImplementation((input, cb) => {
+      cb.onSuccess({ ...response(input), ...game, ...input.data, status: "quoted", quote: response(input).quote });
+      cb.onSettled?.();
+    });
+  });
+  it.each(["solo", "tug", "xo"])("tracks explicit %s choice and successful preparation with only allowed properties", async gameType => {
+    const track = vi.fn(); window.umami = { track };
+    await renderAgain();
+    await act(async () => button("button-tool-game").click());
+    expect(track).not.toHaveBeenCalled();
+    const ta = host.querySelector('[data-testid="input-assistant-request"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "لعبة عن موضوع خاص للصف الرابع");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      button(`button-assistant-game-${gameType}`).click();
+    });
+    await act(async () => button(`button-assistant-game-${gameType}`).click());
+    expect(track.mock.calls).toEqual([["assistant_game_selected", { game_type: gameType, stage: "selected" }]]);
+    await act(async () => button("button-assistant-send").click());
+    expect(track).toHaveBeenCalledTimes(1);
+    const cb = mocks.prepare.mock.calls[0][1];
+    await act(async () => {
+      cb.onSuccess({ ...game, parameters: { ...game.parameters, gameType, questionCount: gameType === "xo" ? 9 : 5 } });
+      cb.onSettled();
+    });
+    await settle();
+    expect(track.mock.calls).toEqual([
+      ["assistant_game_selected", { game_type: gameType, stage: "selected" }],
+      ["assistant_game_prepared", { game_type: gameType, stage: "prepared" }],
+    ]);
+    expect(mocks.quote).toHaveBeenCalled();
+    expect(mocks.confirm).not.toHaveBeenCalled();
+  });
+  it("tracks accepted confirmation and server completion once, never replays history", async () => {
+    const track = vi.fn(); window.umami = { track };
+    history.operations = [game];
+    await open(game.id);
+    expect(track).not.toHaveBeenCalled();
+    mocks.confirm.mockImplementation((_input, cb) => {
+      cb.onSuccess({ ...game, status: "queued" }); cb.onSettled();
+    });
+    await act(async () => button("button-assistant-confirm").click());
+    expect(track.mock.calls).toEqual([["assistant_game_confirmed", { game_type: "tug", stage: "confirmed" }]]);
+    mocks.polled = { ...game, status: "completed", updatedAt: "new", resultUrl: "/solo/private" };
+    await renderAgain();
+    expect(track.mock.calls[1]).toEqual(["assistant_game_completed", { game_type: "tug", stage: "completed" }]);
+    mocks.polled = { ...mocks.polled, updatedAt: "newer" };
+    await renderAgain();
+    expect(track).toHaveBeenCalledTimes(2);
+    history.operations = [mocks.polled];
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await open(game.id);
+    expect(track).toHaveBeenCalledTimes(2);
+  });
+  it.each(["absent", "throws", "rejects"])("keeps pricing and confirmation working when analytics %s", async mode => {
+    if (mode !== "absent") window.umami = { track: vi.fn(() => {
+      if (mode === "throws") throw new Error("tracker failed");
+      return Promise.reject(new Error("tracker failed"));
+    }) };
+    history.operations = [game];
+    mocks.confirm.mockImplementation((_input, cb) => {
+      cb.onSuccess({ ...game, status: "completed", resultUrl: "/solo/private" }); cb.onSettled();
+    });
+    await open(game.id);
+    expect(button("text-assistant-price").textContent).toContain("10");
+    await act(async () => button("button-assistant-confirm").click());
+    expect(mocks.confirm).toHaveBeenCalledTimes(1);
+    expect(button("button-assistant-open-draft")).not.toBeNull();
+  });
+  it("does not emit successful stages for rejected preparation or confirmation", async () => {
+    const track = vi.fn(); window.umami = { track };
+    history.operations = [game];
+    await open(game.id);
+    mocks.confirm.mockImplementation((_input, cb) => {
+      cb.onError({ status: 409, data: { code: "STATE_CHANGED" } }); cb.onSettled();
+    });
+    await act(async () => button("button-assistant-confirm").click());
+    const ta = host.querySelector('[data-testid="input-assistant-request"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(ta, "غيّر الموضوع");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    mocks.prepare.mockImplementation((_input, cb) => { cb.onError({ status: 500 }); cb.onSettled(); });
+    await act(async () => button("button-assistant-send").click());
+    expect(track).not.toHaveBeenCalled();
+  });
 });
 
 describe("assistant automatic price and single confirmation", () => {
