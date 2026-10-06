@@ -14,5 +14,9 @@ export declare const AssistantPreparationGameType: {
     readonly wameeth_class: "wameeth_class";
     readonly tug: "tug";
     readonly xo: "xo";
+    readonly wheel: "wheel";
+    readonly rocket: "rocket";
+    readonly hack: "hack";
+    readonly self: "self";
 };
 //# sourceMappingURL=assistantPreparationGameType.d.ts.map

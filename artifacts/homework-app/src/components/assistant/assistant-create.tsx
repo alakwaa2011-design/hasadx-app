@@ -44,7 +44,7 @@ const TOOL_EXAMPLES: Record<Tool, [string, string][]> = {
   quiz: [["اختبار قصير عن الكسور للصف الخامس", "A short fractions quiz for grade 5"], ["اختبار عن الحروف الهجائية، 5 أسئلة", "A 5-question alphabet quiz"]],
   "lesson-plan": [["خطة درس عن دورة الماء للصف الثالث", "A water-cycle lesson plan for grade 3"], ["خطة درس عن الفاعل في النحو، 45 دقيقة", "A 45-minute grammar lesson plan"]],
 };
-const GAME_TYPES: [string, string, string][] = [["solo", "وميض فردي — الأجهزة", "Wameeth — devices"], ["wameeth_class", "وميض الصف — فريقان", "Wameeth — two teams"], ["tug", "شد الحبل", "Tug of war"], ["xo", "إكس أو", "XO"]];
+const GAME_TYPES: [string, string, string][] = [["solo", "وميض فردي — الأجهزة", "Wameeth — devices"], ["wameeth_class", "وميض الصف — فريقان", "Wameeth — two teams"], ["tug", "شد الحبل", "Tug of war"], ["xo", "إكس أو", "XO"], ["wheel", "عجلة التحدي", "Challenge wheel"], ["rocket", "سباق الصواريخ", "Rocket race"], ["hack", "لعبة الاختراق", "Hack game"], ["self", "مسابقة ذاتية", "Self-paced challenge"]];
 const PEDAGOGY: [string, string, string][] = [["direct", "مباشر", "Direct"], ["inquiry", "استقصاء", "Inquiry"], ["project", "مشروع", "Project"], ["flipped", "مقلوب", "Flipped"], ["mixed", "مزيج", "Mixed"]];
 const STAGES: [string, string, string][] = [["prepare", "التحضير", "Prepare"], ["queued", "في الانتظار", "Queued"], ["generating", "التوليد", "Generating"], ["saving", "الحفظ", "Saving"], ["completed", "اكتمل", "Done"]];
 const ACTIVE = ["queued", "running", "saving"];
@@ -295,6 +295,7 @@ export function AssistantCreate({
     if (!p.gradeLevel?.trim()) m.push("gradeLevel");
     if (op?.tool === "game" && p.gameType === "xo" && p.questionCount !== undefined && p.questionCount < 9) m.push("xo");
     if (op?.tool === "game" && p.gameType === "wameeth_class" && p.questionCount !== undefined && p.questionCount < 2) m.push("wameeth_class");
+    if (op?.tool === "game" && p.gameType === "wheel" && p.questionCount !== undefined && (p.questionCount < 2 || p.questionCount > 16)) m.push("wheel");
     if (p.questionSelection === "manual" && Object.values(p.counts ?? {}).reduce((a, b) => a + b, 0) < 1) m.push("counts");
     return m;
   }, [p, op?.tool]);
@@ -503,6 +504,7 @@ export function AssistantCreate({
               {opTool === "game" && <div className="grid grid-cols-2 gap-1.5" role="group">{GAME_TYPES.map(([v, a, e]) => <button key={v} type="button" onClick={() => edit({ gameType: v as AssistantParameters["gameType"], ...(v === "xo" && p.questionCount === undefined ? { questionCount: 9 } : {}) })} aria-pressed={(p.gameType ?? "solo") === v} className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold ${(p.gameType ?? "solo") === v ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{tr(a, e)}</button>)}</div>}
               {opTool === "game" && (p.gameType === "xo") && p.questionCount !== undefined && p.questionCount < 9 && <p className="text-[11px] text-destructive" data-testid="text-assistant-xo-min">{tr("إكس أو يحتاج 9 أسئلة على الأقل.", "XO needs at least 9 questions.")}</p>}
               {opTool === "game" && p.gameType === "wameeth_class" && p.questionCount !== undefined && p.questionCount < 2 && <p className="text-[11px] text-destructive">{tr("وميض الصف يحتاج سؤالين على الأقل.", "Classroom Wameeth needs at least 2 questions.")}</p>}
+              {opTool === "game" && p.gameType === "wheel" && p.questionCount !== undefined && (p.questionCount < 2 || p.questionCount > 16) && <p className="text-[11px] text-destructive">{tr("عجلة التحدي تحتاج من سؤالين إلى 16 سؤالًا.", "Challenge wheel needs 2–16 questions.")}</p>}
               {opTool === "game" && <label className="block text-[11px] font-bold">{tr("عدد الأسئلة", "Question count")}<input type="number" min={1} max={30} className={`${field} mt-1`} value={p.questionCount ?? (p.gameType === "xo" ? 9 : "")} onChange={(e) => edit({ questionCount: e.target.value ? Math.max(1, Math.min(30, Number(e.target.value))) : undefined })} data-testid="input-assistant-game-count" /></label>}
               {opTool === "quiz" && <label className="block text-[11px] font-bold">{tr("عدد الأسئلة", "Question count")}<input type="number" min={1} max={30} className={`${field} mt-1`} value={p.questionCount ?? 5} onChange={(e) => edit({ questionCount: Math.max(1, Math.min(30, Number(e.target.value) || 1)) })} data-testid="input-assistant-question-count" /></label>}
               {opTool === "lesson-plan" && <div className="grid grid-cols-2 gap-2">

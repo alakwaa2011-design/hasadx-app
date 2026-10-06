@@ -8,6 +8,7 @@ import { generateAssistantQuestionSet } from "../routes/ai-questions";
 import { generateLessonPlanContent } from "../routes/lesson_plans";
 import { gameContentFingerprint } from "./saved-game-activities";
 import { resolveAiContentLanguage } from "./ai-content-language";
+import { assistantGameDraft, type AssistantGameType } from "./assistant-game-content";
 
 export type AssistantTool = "worksheet" | "game" | "quiz" | "lesson-plan";
 export const toolSchema = z.enum(["worksheet", "game", "quiz", "lesson-plan"]);
@@ -30,7 +31,9 @@ export function assistantResultUrl(row: Pick<AssistantOperationRow, "tool" | "wo
   if (row.tool === "quiz") return `/teacher/assignment/${row.resultId}`;
   if (row.parameters.gameType === "solo") return `/teacher/solo-challenges/new?savedGameId=${row.resultId}`;
   if (row.parameters.gameType === "wameeth_class") return `/game/wameeth/create?savedGameId=${row.resultId}`;
-  return `/game/${row.parameters.gameType === "xo" ? "xo" : "tug"}/create?savedGameId=${row.resultId}`;
+  if (row.parameters.gameType === "self") return `/teacher/solo-challenges/new?savedGameId=${row.resultId}`;
+  if (row.parameters.gameType === "hack") return `/game/hack?savedGameId=${row.resultId}`;
+  return `/game/${row.parameters.gameType}/create?savedGameId=${row.resultId}`;
 }
 const toolParameters = z.object({
   topic: z.string().max(500).default(""), sourceText: z.string().max(12000).optional(),
@@ -39,7 +42,7 @@ const toolParameters = z.object({
   difficulty: z.enum(["easy", "medium", "hard", "mixed"]).default("medium"),
   questionCount: z.number().int().min(1).max(30).default(5),
   questionTypes: z.array(z.enum(["mcq", "true_false"])).min(1).max(30).optional(),
-  gameType: z.enum(["solo", "wameeth_class", "tug", "xo"]).default("solo"),
+  gameType: z.enum(["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]).default("solo"),
   durationMinutes: z.number().int().min(15).max(180).default(45),
   pedagogy: z.enum(["direct", "inquiry", "project", "flipped", "mixed"]).default("mixed"),
   notes: z.string().max(800).optional(),
@@ -53,6 +56,9 @@ export function validateAssistantToolRequest(input: unknown, tool: string) {
   if (tool === "game" && parameters.gameType === "wameeth_class" && parameters.questionCount < 2) {
     throw Object.assign(new Error("Classroom Wameeth needs at least two questions"), { status: 400, code: "INVALID_COUNTS" });
   }
+  if (tool === "game" && parameters.gameType === "wheel" && (parameters.questionCount < 2 || parameters.questionCount > 16)) {
+    throw Object.assign(new Error("Challenge wheel needs 2–16 questions"), { status: 400, code: "INVALID_COUNTS" });
+  }
   return { title: parsed.title.trim(), template: "geometric", parameters };
 }
 
@@ -63,7 +69,7 @@ const subjectHints: Array<[RegExp, string, string]> = [
   [/نحو|حروف|لغتي|عربية|grammar|arabic/i, "اللغة العربية", "Arabic"],
 ];
 /** Only unambiguous first requests bypass AI. Complex teacher choices use the normal parser. */
-export function fastAssistantPreparation(message: string, language: "ar" | "en", tool: AssistantTool, previous?: AssistantOperationRow, selectedGameType?: "solo" | "wameeth_class" | "tug" | "xo") {
+export function fastAssistantPreparation(message: string, language: "ar" | "en", tool: AssistantTool, previous?: AssistantOperationRow, selectedGameType?: AssistantGameType) {
   if (previous || message.length > 600) return null;
   const normalized = message.replace(/[٠-٩]/g, n => String("٠١٢٣٤٥٦٧٨٩".indexOf(n)));
   const contentLanguage = resolveAiContentLanguage({ preferredLanguage: language, primaryText: message });
@@ -78,7 +84,7 @@ export function fastAssistantPreparation(message: string, language: "ar" | "en",
   const subject = subjectHints.find(([pattern]) => pattern.test(normalized));
   if (!grade || !topic || !subject) return null;
   const countText = normalized.match(/(?:من|بـ?)?\s*(\d+)\s*(?:أسئلة|اسئلة|سؤال|questions?)/i);
-  const gameType = selectedGameType ?? (/وميض الصف|wameeth classroom/i.test(normalized) ? "wameeth_class" : /شد الحبل|tug/i.test(normalized) ? "tug" : /(?:إكس|اكس|X\s*O)/i.test(normalized) ? "xo" : "solo");
+  const gameType = selectedGameType ?? (/عجلة|wheel/i.test(normalized) ? "wheel" : /صواريخ|rocket/i.test(normalized) ? "rocket" : /اختراق|hack/i.test(normalized) ? "hack" : /ذاتية|self/i.test(normalized) ? "self" : /وميض الصف|wameeth classroom/i.test(normalized) ? "wameeth_class" : /شد الحبل|tug/i.test(normalized) ? "tug" : /(?:إكس|اكس|X\s*O)/i.test(normalized) ? "xo" : "solo");
   const questionCount = countText ? Number(countText[1]) : tool === "game" && gameType === "xo" ? 9 : 5;
   if (questionCount < 1 || questionCount > 30) return null;
   if (/دقيقة|minutes?|استقصاء|مشروع|مقلوب|صفحة|صعب|سهل|متوسط|سؤالين|سؤالان|إنجليزي|إنجليزية|English|عربي[ة]?|ابتدائي|متوسّ?ط|ثانوي/i.test(normalized)) return null;
@@ -100,7 +106,7 @@ export async function generateAssistantToolOutput(req: Request, row: AssistantOp
   const generated = await generateAssistantQuestionSet(req, {
     topic: p.topic, sourceText: p.sourceText, subject: p.subject, gradeLevel: p.gradeLevel,
     notes: row.tool === "game" ? [
-      `These questions are for ${p.gameType === "solo" ? "Wameeth individual challenge on each student's device" : p.gameType === "wameeth_class" ? "Wameeth classroom: two teams competing on a shared screen" : p.gameType === "tug" ? "a two-team educational tug-of-war game" : "a two-team educational tic-tac-toe game"}. Write clear, independently answerable questions suitable for quick gameplay, not printable worksheet activities.`,
+      `Game format: ${p.gameType}. Write clear, independently answerable questions suitable for quick gameplay, not printable worksheet activities. Output all questions and choices in ${p.language === "ar" ? "Arabic" : "English"}.`,
       p.notes,
     ].filter(Boolean).join("\n") : p.notes,
     count: p.questionCount, language: p.language, difficulty: p.difficulty === "mixed" ? "medium" : p.difficulty,
@@ -141,29 +147,34 @@ export async function saveAssistantToolOutput(row: AssistantOperationRow, output
       })));
       resultId = assignment.id;
     } else {
-      const gameType = String(row.parameters.gameType ?? "solo");
-      const classroom = gameType === "wameeth_class";
-      const storedGameType = classroom ? "wameeth" : gameType;
-      const content = classroom ? output.questions.map((q: any) => ({
-        text: q.text, type: q.questionType === "true_false" ? "tf" : "mcq",
-        optionA: q.questionType === "true_false" ? (output.language === "en" ? "True" : "صح") : q.optionA,
-        optionB: q.questionType === "true_false" ? (output.language === "en" ? "False" : "خطأ") : q.optionB,
-        optionC: q.optionC ?? "", optionD: q.optionD ?? "",
-        correctAnswer: q.questionType === "true_false" ? (q.correctAnswer === "true" ? "A" : "B") : q.correctAnswer,
-        fillAnswer: "", closeAnswers: "", imageUrl: q.imageUrl ?? null,
-      })) : { questions: gameType === "solo" ? output.questions : output.questions.map((q: any) => {
-        const tf = q.questionType === "true_false";
-        return { text: q.text, options: tf ? [output.language === "en" ? "True" : "صح", output.language === "en" ? "False" : "خطأ"]
-          : [q.optionA, q.optionB, q.optionC, q.optionD],
-        correct: tf ? (q.correctAnswer === "true" ? 0 : 1) : ["A", "B", "C", "D"].indexOf(q.correctAnswer) };
-      }), topic: row.parameters.topic, subject: row.parameters.subject, source: "ai", assistantOperationId: row.id };
+      const gameType = String(row.parameters.gameType ?? "solo") as AssistantGameType;
+      const draft = assistantGameDraft(gameType, output.questions, output.language);
+      let assignmentId: number | undefined;
+      // Hack rooms use the existing owned-assignment launch path. Its backing
+      // questions are private and saved atomically with the game, never assigned.
+      if (gameType === "hack") {
+        const [assignment] = await tx.insert(assignmentsTable).values({
+          teacherId: row.teacherId, title: row.title, subject: String(row.parameters.subject),
+          description: String(row.parameters.gradeLevel), accessMode: "private", accessCode: randomUUID(),
+          isShared: false, isShareApproved: false, source: "assistant_game", submissionMode: "electronic",
+          totalPoints: output.questions.reduce((sum: number, q: any) => sum + (Number(q.points) || 1), 0),
+        }).returning();
+        assignmentId = assignment.id;
+        await tx.insert(questionsTable).values(output.questions.map((q: any) => ({
+          assignmentId: assignment.id, questionType: q.questionType, text: q.text,
+          optionA: q.optionA, optionB: q.optionB, optionC: q.optionC, optionD: q.optionD,
+          correctAnswer: q.correctAnswer, points: q.points ?? 1,
+        })));
+      }
+      const content = Array.isArray(draft.content) ? draft.content : {
+        ...draft.content, ...(assignmentId ? { assignmentId } : {}),
+        topic: row.parameters.topic, subject: row.parameters.subject, source: "ai", assistantOperationId: row.id,
+      };
       const [game] = await tx.insert(savedGameActivitiesTable).values({
-        teacherId: row.teacherId, gameType: storedGameType, title: row.title, content,
-        settings: classroom ? { mode: "classroom", teamCount: 2 }
-          : gameType === "solo" ? { timePerQuestion: 20, leaderboardDisplay: "top3", maxAttempts: 0 }
-          : { duration: 20, questionDuration: 20 },
+        teacherId: row.teacherId, gameType: draft.gameType, title: row.title, content,
+        settings: draft.settings,
         source: "assistant", isShared: false, publishedAt: null, playCount: 0,
-        contentFingerprint: gameContentFingerprint(storedGameType, content), questionCount: output.questions.length,
+        contentFingerprint: gameContentFingerprint(draft.gameType, content), questionCount: output.questions.length,
       }).returning();
       resultId = game.id;
     }

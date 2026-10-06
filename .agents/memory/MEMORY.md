@@ -156,4 +156,4 @@
 - [Live presentation verification](live-presentation-verification.md) — static inspection is not proof of live participation; check first-slide opening and real recipient screens.
 - [Live socket browser diagnostics](browser-socket-diagnostics.md) — correlate transport warnings with participation; reload polling errors and anonymous auth probes are not UI failures.
 - [Presentation control discoverability](presentation-control-discoverability.md) — keep activity actions near their titles and essential presentation controls visible during class.
-- [Hasaad Assistant scope](hasaad-assistant-scope.md) — phase one creates private worksheet drafts only; keep Guide/support context separate and honor explicit teacher choices and price consent.
+- [Hasaad Assistant scope](hasaad-assistant-scope.md) — create new private content for review, including eight approved games; separate Guide/support and honor teacher choices and price consent.

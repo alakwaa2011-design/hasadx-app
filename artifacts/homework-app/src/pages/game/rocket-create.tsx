@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui-elements";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,9 +13,10 @@ import { toast } from "@/components/ui/sonner";
 import { UnifiedQuestionSourceFlow } from "@/components/game/unified-question-source-flow";
 import { GameFlowBackButton } from "@/components/game/game-flow-back-button";
 import { GameLibraryPublishChoice } from "@/components/game/game-library-publish-choice";
-import { saveGameActivity } from "@/lib/saved-game-activities";
+import { getSavedGameActivity, saveGameActivity } from "@/lib/saved-game-activities";
 import QRCode from "react-qr-code";
 import { normalizeGameQuestion } from "@/lib/normalize-game-question";
+import { emptyQuestion, type Correct } from "@/components/game/question-editor";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -116,6 +117,36 @@ export default function RocketCreate() {
   const [savedOpen, setSavedOpen] = useState(false);
   const [savedTemplates, setSavedTemplates] = useState<{ id: number; title: string; questions: RocketQuestion[]; duration: number; isOwn?: boolean; fromAdmin?: boolean }[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
+  const savedGameId = new URLSearchParams(useSearch()).get("savedGameId");
+  useEffect(() => {
+    if (!savedGameId) return;
+    let cancelled = false;
+    void getSavedGameActivity(savedGameId).then(activity => {
+      if (cancelled) return;
+      if (activity.gameType !== "rocket" || !activity.content || typeof activity.content !== "object"
+        || Array.isArray(activity.content)) throw new Error("invalid-saved-game");
+      const content = activity.content as Record<string, unknown>;
+      if (!Array.isArray(content.questions) || !content.questions.length) throw new Error("invalid-questions");
+      const restored = content.questions.map(q => {
+        const normalized = normalizeGameQuestion(q);
+        if (!normalized) throw new Error("invalid-question");
+        return normalized;
+      });
+      setQuestions(restored);
+      setTitle(activity.title);
+      setIsShared(activity.isShared);
+      setStep("settings");
+      const settings = savedSettings(activity.settings);
+      if (settings && [10, 15, 20, 30, 45].includes(Number(settings.duration))) setDuration(Number(settings.duration));
+      if (settings?.advanceMode === "per_player" || settings?.advanceMode === "host_sync") setAdvanceMode(settings.advanceMode);
+      if (typeof settings?.totalDurationSecs === "number" && settings.totalDurationSecs >= 60 && settings.totalDurationSecs <= 1800) {
+        setGameDurationMins(settings.totalDurationSecs / 60);
+      }
+    }).catch(() => {
+      if (!cancelled) toast.error(ar ? "تعذّر تحميل سباق الصواريخ المحفوظ" : "Could not load the saved rocket race");
+    });
+    return () => { cancelled = true; };
+  }, [savedGameId]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/teacher/grade-levels`, { credentials: "include" })
@@ -555,6 +586,14 @@ export default function RocketCreate() {
 
           {step === "questions" && (
             <UnifiedQuestionSourceFlow
+              skipSavedGameAutoLoad
+              initialEditorQuestions={questions.map(q => ({
+                ...emptyQuestion(q.type === "true_false" ? "tf" : q.type === "fill_blank" ? "fill_blank" : "mcq"), text: q.text,
+                optionA: q.options[0] ?? "", optionB: q.options[1] ?? "",
+                optionC: q.options[2] ?? "", optionD: q.options[3] ?? "",
+                correctAnswer: (["A", "B", "C", "D"][q.correct] ?? "A") as Correct,
+                fillAnswer: q.correctText ?? "", imageUrl: q.imageUrl,
+              }))}
               gameTitle={ar ? "أنشئ سباق الصواريخ" : "Create Rocket Race"}
               gameDescription={ar ? "حضّر الأسئلة أولاً، ثم اضبط السباق وابدأ اللعب." : "Prepare questions, configure the race, then launch."}
               gameIcon={<Rocket className="h-8 w-8 text-white" />}

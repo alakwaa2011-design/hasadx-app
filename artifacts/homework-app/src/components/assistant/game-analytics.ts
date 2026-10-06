@@ -9,7 +9,7 @@ export function trackAssistantGameStage(
   stage: AssistantGameStage,
   operationId?: string,
 ): void {
-  if (gameType !== "solo" && gameType !== "tug" && gameType !== "xo") return;
+  if (typeof gameType !== "string" || !["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"].includes(gameType)) return;
   if (typeof window === "undefined") return;
   if (operationId) {
     const key = `hasaad:assistant-game:${stage}:${operationId}`;

@@ -1,12 +1,16 @@
 import { trackAssistantGameStage } from "./game-analytics";
 
-export type AssistantGameType = "solo" | "wameeth_class" | "tug" | "xo";
+export type AssistantGameType = "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self";
 
 const games = [
   { id: "solo", ar: "وميض فردي — على الأجهزة", en: "Wameeth individual — on devices", descriptionAr: "كل طالب يلعب ويجيب فرديًا من جهازه.", descriptionEn: "Each student plays and answers individually on their own device." },
   { id: "wameeth_class", ar: "وميض الصف — فريقان", en: "Wameeth classroom — two teams", descriptionAr: "فريقان يتنافسان على شاشة الصف المشتركة.", descriptionEn: "Two teams compete on the shared classroom screen." },
   { id: "tug", ar: "شد الحبل", en: "Tug of war", descriptionAr: "فريقان يتنافسان بالإجابات الصحيحة لسحب الحبل.", descriptionEn: "Two teams pull the rope by answering correctly." },
   { id: "xo", ar: "إكس أو", en: "XO", descriptionAr: "فريقان يتنافسان على الشبكة؛ 9 أسئلة على الأقل.", descriptionEn: "Two teams compete on the grid; at least 9 questions." },
+  { id: "wheel", ar: "عجلة التحدي", en: "Challenge wheel", descriptionAr: "عجلة أسئلة للصف؛ من سؤالين إلى 16 سؤالًا.", descriptionEn: "A classroom question wheel with 2–16 questions." },
+  { id: "rocket", ar: "سباق الصواريخ", en: "Rocket race", descriptionAr: "يتسابق الطلاب بالإجابات الصحيحة من أجهزتهم.", descriptionEn: "Students race by answering correctly on their devices." },
+  { id: "hack", ar: "لعبة الاختراق", en: "Hack game", descriptionAr: "منافسة كلمات سر وأسئلة؛ تُجهّز للمراجعة قبل التشغيل.", descriptionEn: "A password-and-question competition, prepared for review before launch." },
+  { id: "self", ar: "مسابقة ذاتية", en: "Self-paced challenge", descriptionAr: "مسابقة يفتحها الطالب ويكملها في وقته.", descriptionEn: "A challenge students open and complete at their own pace." },
 ] as const;
 
 /** Detect a new game request, not a game mentioned inside a worksheet request. */

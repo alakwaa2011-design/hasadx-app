@@ -238,7 +238,7 @@ describe("assistant automatic price and single confirmation", () => {
     expect(prep.mock.calls[0][0].data.gameType).toBe("tug");
     history.operations.push(mocks.operation as any);
   });
-  it.each(["solo", "wameeth_class", "tug", "xo"])("requires an explicit %s choice before preparation, including keyboard submit", async gameType => {
+  it.each(["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"])("requires an explicit %s choice before preparation, including keyboard submit", async gameType => {
     const prep = vi.fn(); mocks.prepare = prep;
     await act(async () => {
       root.render(<QueryClientProvider client={client}><AssistantCreate teacherId={1} lang="ar" seed=""

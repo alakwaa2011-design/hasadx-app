@@ -14,4 +14,8 @@ export const AssistantParametersGameType = {
   wameeth_class: 'wameeth_class',
   tug: 'tug',
   xo: 'xo',
+  wheel: 'wheel',
+  rocket: 'rocket',
+  hack: 'hack',
+  self: 'self',
 } as const;

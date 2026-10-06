@@ -4,6 +4,7 @@ import { generateWorksheetQuestions } from "../routes/worksheets";
 import { missingWorksheetFields, prepareWorksheetRequest } from "../lib/assistant-worksheet";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { anthropic } from "../lib/anthropic-client";
+import { generateAssistantQuestionSet } from "../routes/ai-questions";
 
 vi.mock("@workspace/integrations-openai-ai-server", () => ({
   openai: { chat: { completions: { create: vi.fn() } } },
@@ -56,5 +57,28 @@ describe("assistant worksheet generation contract", () => {
     const result = await prepareWorksheetRequest(req, "Two short-answer questions", "en");
     expect(result.parameters.counts).toMatchObject({ short_answer: 2, mcq: 0 });
     expect(missingWorksheetFields(result.parameters)).toEqual([]);
+  });
+  it("lets an explicit Arabic request override both an English UI and an incorrect model language", async () => {
+    vi.mocked(anthropic.messages.create).mockResolvedValue(prepareResponse({
+      supported: true, title: "الكسور", reply: "راجع الطلب",
+      parameters: { topic: "الكسور", subject: "الرياضيات", gradeLevel: "الرابع", language: "en", gameType: "rocket", questionCount: 5 },
+    }));
+    const prepared = await prepareWorksheetRequest(req, "أريد سباق الصواريخ عن الكسور للصف الرابع باللغة العربية", "en", undefined, "game", "rocket");
+    expect(prepared.parameters.language).toBe("ar");
+  });
+  it.each(["ar", "en"] as const)("uses confirmed %s for generation despite English internal game notes", async language => {
+    vi.mocked(openai.chat.completions.create).mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify([
+        { text: "ما نتيجة ٢ + ٢؟", optionA: "٤", optionB: "٥", optionC: "٦", optionD: "٧", correctAnswer: "A", points: 1 },
+      ]) } }],
+    } as any);
+    const generated = await generateAssistantQuestionSet(req, {
+      topic: "الرياضيات", subject: "Mathematics", gradeLevel: "4", count: 1, questionTypes: ["mcq"],
+      language, notes: "These questions are for an educational rocket race. Write clear independently answerable questions.",
+    });
+    expect(generated.questions).toHaveLength(1);
+    const call = vi.mocked(openai.chat.completions.create).mock.calls[0][0];
+    const prompt = JSON.stringify(call);
+    expect(prompt).toContain(language === "ar" ? "باللغة العربية" : "Write every question");
   });
 });

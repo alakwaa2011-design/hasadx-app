@@ -30,6 +30,10 @@ export declare const AssistantPreparationGameType: {
     readonly wameeth_class: "wameeth_class";
     readonly tug: "tug";
     readonly xo: "xo";
+    readonly wheel: "wheel";
+    readonly rocket: "rocket";
+    readonly hack: "hack";
+    readonly self: "self";
 };
 export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
 export declare const AssistantPreparationLanguage: {
@@ -223,6 +227,10 @@ export declare const AssistantParametersGameType: {
     readonly wameeth_class: "wameeth_class";
     readonly tug: "tug";
     readonly xo: "xo";
+    readonly wheel: "wheel";
+    readonly rocket: "rocket";
+    readonly hack: "hack";
+    readonly self: "self";
 };
 export type AssistantParametersPedagogy = typeof AssistantParametersPedagogy[keyof typeof AssistantParametersPedagogy];
 export declare const AssistantParametersPedagogy: {

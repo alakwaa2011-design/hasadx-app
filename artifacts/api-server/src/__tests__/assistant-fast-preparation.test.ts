@@ -23,7 +23,7 @@ describe("assistant fast preparation and tool contracts", () => {
   it("preserves explicit Arabic-numeral quiz counts", () => {
     expect(fastAssistantPreparation("اختبار عن الكسور للصف الرابع من ٨ أسئلة", "ar", "quiz")?.parameters.questionCount).toBe(8);
   });
-  it.each(["solo", "wameeth_class", "tug", "xo"] as const)("honors the teacher-selected %s game, including XO default count", gameType => {
+  it.each(["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"] as const)("honors the teacher-selected %s game, including XO default count", gameType => {
     const result = fastAssistantPreparation("لعبة عن الكسور للصف الرابع", "ar", "game", undefined, gameType);
     expect(result?.parameters.gameType).toBe(gameType);
     expect(result?.parameters.questionCount).toBe(gameType === "xo" ? 9 : 5);

@@ -223,21 +223,21 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
             durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
             notes: zodV3.ZodOptional<zodV3.ZodString>;
-            gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+            gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
             pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
         }, "strip", zodV3.ZodTypeAny, {
             questionCount?: number | undefined;
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         }, {
             questionCount?: number | undefined;
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         }>>;
         template: zodV3.ZodString;
@@ -309,7 +309,7 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -371,7 +371,7 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -436,7 +436,7 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -510,7 +510,7 @@ export declare const ListAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -575,7 +575,7 @@ export declare const prepareAssistantWorksheetBodySettingsParametersTwoDurationM
 export declare const prepareAssistantWorksheetBodySettingsParametersTwoNotesMax = 800;
 export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
     tool: zodV3.ZodDefault<zodV3.ZodEnum<["worksheet", "game", "quiz", "lesson-plan"]>>;
-    gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+    gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
     message: zodV3.ZodString;
     language: zodV3.ZodEnum<["ar", "en"]>;
     operationId: zodV3.ZodOptional<zodV3.ZodString>;
@@ -689,21 +689,21 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
             questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
             durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
             notes: zodV3.ZodOptional<zodV3.ZodString>;
-            gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+            gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
             pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
         }, "strip", zodV3.ZodTypeAny, {
             questionCount?: number | undefined;
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         }, {
             questionCount?: number | undefined;
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         }>>;
     }, "strip", zodV3.ZodTypeAny, {
@@ -741,7 +741,7 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -780,7 +780,7 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -790,7 +790,7 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
     tool: "worksheet" | "game" | "quiz" | "lesson-plan";
     language: "ar" | "en";
     operationId?: string | undefined;
-    gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+    gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
     settings?: {
         title: string;
         parameters: {
@@ -826,7 +826,7 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -836,7 +836,7 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
     language: "ar" | "en";
     operationId?: string | undefined;
     tool?: "worksheet" | "game" | "quiz" | "lesson-plan" | undefined;
-    gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+    gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
     settings?: {
         title: string;
         parameters: {
@@ -872,7 +872,7 @@ export declare const PrepareAssistantWorksheetBody: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -1019,21 +1019,21 @@ export declare const PrepareAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
         durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
         notes: zodV3.ZodOptional<zodV3.ZodString>;
-        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
         pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
     }, "strip", zodV3.ZodTypeAny, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }>>;
     template: zodV3.ZodString;
@@ -1105,7 +1105,7 @@ export declare const PrepareAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -1167,7 +1167,7 @@ export declare const PrepareAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -1339,21 +1339,21 @@ export declare const GetAssistantOperationResponse: zodV3.ZodObject<{
         questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
         durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
         notes: zodV3.ZodOptional<zodV3.ZodString>;
-        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
         pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
     }, "strip", zodV3.ZodTypeAny, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }>>;
     template: zodV3.ZodString;
@@ -1425,7 +1425,7 @@ export declare const GetAssistantOperationResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -1487,7 +1487,7 @@ export declare const GetAssistantOperationResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -1662,21 +1662,21 @@ export declare const QuoteAssistantWorksheetBody: zodV3.ZodObject<{
         questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
         durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
         notes: zodV3.ZodOptional<zodV3.ZodString>;
-        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
         pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
     }, "strip", zodV3.ZodTypeAny, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }>>;
 }, "strip", zodV3.ZodTypeAny, {
@@ -1714,7 +1714,7 @@ export declare const QuoteAssistantWorksheetBody: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -1753,7 +1753,7 @@ export declare const QuoteAssistantWorksheetBody: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -1899,21 +1899,21 @@ export declare const QuoteAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
         durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
         notes: zodV3.ZodOptional<zodV3.ZodString>;
-        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
         pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
     }, "strip", zodV3.ZodTypeAny, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }>>;
     template: zodV3.ZodString;
@@ -1985,7 +1985,7 @@ export declare const QuoteAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -2047,7 +2047,7 @@ export declare const QuoteAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -2226,21 +2226,21 @@ export declare const ConfirmAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
         durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
         notes: zodV3.ZodOptional<zodV3.ZodString>;
-        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
         pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
     }, "strip", zodV3.ZodTypeAny, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }>>;
     template: zodV3.ZodString;
@@ -2312,7 +2312,7 @@ export declare const ConfirmAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -2374,7 +2374,7 @@ export declare const ConfirmAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -2546,21 +2546,21 @@ export declare const CancelAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
         durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
         notes: zodV3.ZodOptional<zodV3.ZodString>;
-        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+        gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
         pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
     }, "strip", zodV3.ZodTypeAny, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }, {
         questionCount?: number | undefined;
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     }>>;
     template: zodV3.ZodString;
@@ -2632,7 +2632,7 @@ export declare const CancelAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -2694,7 +2694,7 @@ export declare const CancelAssistantWorksheetResponse: zodV3.ZodObject<{
         questionTypes?: ("mcq" | "true_false")[] | undefined;
         durationMinutes?: number | undefined;
         notes?: string | undefined;
-        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+        gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
         pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
     };
     template: string;
@@ -2882,21 +2882,21 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodEnum<["mcq", "true_false"]>, "many">>;
             durationMinutes: zodV3.ZodOptional<zodV3.ZodNumber>;
             notes: zodV3.ZodOptional<zodV3.ZodString>;
-            gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo"]>>;
+            gameType: zodV3.ZodOptional<zodV3.ZodEnum<["solo", "wameeth_class", "tug", "xo", "wheel", "rocket", "hack", "self"]>>;
             pedagogy: zodV3.ZodOptional<zodV3.ZodEnum<["direct", "inquiry", "project", "flipped", "mixed"]>>;
         }, "strip", zodV3.ZodTypeAny, {
             questionCount?: number | undefined;
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         }, {
             questionCount?: number | undefined;
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         }>>;
         template: zodV3.ZodString;
@@ -2968,7 +2968,7 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -3030,7 +3030,7 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -3095,7 +3095,7 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -3169,7 +3169,7 @@ export declare const ListAdminAssistantOperationsResponse: zodV3.ZodObject<{
             questionTypes?: ("mcq" | "true_false")[] | undefined;
             durationMinutes?: number | undefined;
             notes?: string | undefined;
-            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | undefined;
+            gameType?: "solo" | "wameeth_class" | "tug" | "xo" | "wheel" | "rocket" | "hack" | "self" | undefined;
             pedagogy?: "mixed" | "direct" | "inquiry" | "project" | "flipped" | undefined;
         };
         template: string;
@@ -6790,7 +6790,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -6833,7 +6833,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -6879,7 +6879,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -6929,7 +6929,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -6999,7 +6999,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7071,7 +7071,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7211,7 +7211,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7254,7 +7254,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7300,7 +7300,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7350,7 +7350,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7420,7 +7420,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7492,7 +7492,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7638,7 +7638,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7681,7 +7681,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7727,7 +7727,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7777,7 +7777,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7834,7 +7834,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -7894,7 +7894,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8015,7 +8015,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8058,7 +8058,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8104,7 +8104,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8154,7 +8154,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8224,7 +8224,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8296,7 +8296,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8453,7 +8453,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8496,7 +8496,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8542,7 +8542,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8592,7 +8592,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8662,7 +8662,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8734,7 +8734,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8874,7 +8874,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8917,7 +8917,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -8963,7 +8963,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9013,7 +9013,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9083,7 +9083,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9155,7 +9155,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9367,7 +9367,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9410,7 +9410,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9456,7 +9456,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9506,7 +9506,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9576,7 +9576,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;
@@ -9648,7 +9648,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             activityKind?: "mcq" | "true_false" | "poll" | "open" | null | undefined;
             correctIndex?: number | null | undefined;
             accentColor?: string | null | undefined;
-            gameKind?: "tug" | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "rocket" | "maraqui" | "hack" | null | undefined;
+            gameKind?: "tug" | "wheel" | "rocket" | "hack" | "kahoot" | "millionaire" | "flag-quiz" | "capitals" | "letrly" | "maraqui" | null | undefined;
             objectFit?: "fill" | "none" | "cover" | "contain" | null | undefined;
             objectPosition?: string | null | undefined;
             imageOpacity?: number | null | undefined;

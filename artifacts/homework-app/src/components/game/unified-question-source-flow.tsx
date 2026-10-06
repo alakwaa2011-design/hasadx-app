@@ -40,6 +40,10 @@ export interface UnifiedQuestionSourceFlowProps {
   manualEntryMode?: "button" | "immediate";
   /** Enables typed-answer questions for games that render a text field. */
   allowFillBlank?: boolean;
+  /** Preserve an already loaded draft when returning from game settings. */
+  initialEditorQuestions?: Question[];
+  /** The parent owns saved-game hydration; do not reload it on editor remount. */
+  skipSavedGameAutoLoad?: boolean;
   minQuestions: number;
   maxQuestions: number;
   /** Leaves the source menu through the caller's safe in-app route. */
@@ -100,6 +104,8 @@ export function UnifiedQuestionSourceFlow({
   menuFooter,
   manualEntryMode = "button",
   allowFillBlank = false,
+  initialEditorQuestions = [],
+  skipSavedGameAutoLoad = false,
   minQuestions,
   maxQuestions,
   onBackFromMenu,
@@ -111,7 +117,7 @@ export function UnifiedQuestionSourceFlow({
   const dir = ar ? "rtl" : "ltr";
   const refreshCreditsBalance = useRefreshCreditsBalance();
 
-  const [viewState, setViewState] = useState<ViewState>("menu");
+  const [viewState, setViewState] = useState<ViewState>(initialEditorQuestions.length ? "editor" : "menu");
   const [editorSource, setEditorSource] = useState<"manual" | "ai">("manual");
 
   // ─── API Hooks ───
@@ -182,7 +188,7 @@ export function UnifiedQuestionSourceFlow({
   }, [user?.id]);
 
   useEffect(() => {
-    if (deepLinkLoadedRef.current) return;
+    if (skipSavedGameAutoLoad || deepLinkLoadedRef.current) return;
     const savedGameId = new URLSearchParams(window.location.search).get("savedGameId");
     if (!savedGameId) return;
     deepLinkLoadedRef.current = true;
@@ -206,7 +212,7 @@ export function UnifiedQuestionSourceFlow({
   }, [ar, maxQuestions, minQuestions, onComplete]);
 
   // Editor (Manual & AI)
-  const [manualQuestions, setManualQuestions] = useState<Question[]>([]);
+  const [manualQuestions, setManualQuestions] = useState<Question[]>(initialEditorQuestions);
   const [aiQuestions, setAiQuestions] = useState<Question[]>([]);
   const [manualTitle, setManualTitle] = useState("");
   const [aiTitle, setAiTitle] = useState("");

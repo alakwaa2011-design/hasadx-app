@@ -182,7 +182,7 @@ const MAX_QUESTIONS = 30;
 
 const captureQuestionCredits = captureCredits;
 const refundQuestionCredits = refundCredits;
-async function generateQuestionsResponse(req: Request, res: Response, manageBilling = true) {
+async function generateQuestionsResponse(req: Request, res: Response, manageBilling = true, confirmedLanguage?: QuestionLanguage) {
   // Assistant workers own their hold and settle only after durable saving.
   const captureCredits = manageBilling ? captureQuestionCredits : async (_req: Request) => {};
   const refundCredits = manageBilling ? refundQuestionCredits : async (_req: Request, _reason: string) => {};
@@ -251,7 +251,7 @@ async function generateQuestionsResponse(req: Request, res: Response, manageBill
   }
 
   const diff = VALID_DIFFICULTIES.includes(difficulty) ? difficulty : "medium";
-  const questionLanguage = resolveQuestionLanguage(req.body?.language, rawSourceText || rawTopic, subject, req.body?.notes);
+  const questionLanguage = confirmedLanguage ?? resolveQuestionLanguage(req.body?.language, rawSourceText || rawTopic, subject, req.body?.notes);
   const english = questionLanguage === "en";
   const difficultyText = targetedAdaptiveRequest
     ? (english
@@ -515,7 +515,10 @@ export async function generateAssistantQuestionSet(req: Request, input: Record<s
     status(code: number) { status = code; return this; },
     json(value: unknown) { result = value; return this; },
   };
-  await generateQuestionsResponse(Object.assign(req, { body: input }), response as unknown as Response, false);
+  // The assistant has already resolved and confirmed the teacher's content
+  // language. Internal English instructions must not infer a new language.
+  await generateQuestionsResponse(Object.assign(req, { body: input }), response as unknown as Response, false,
+    input.language === "en" ? "en" : "ar");
   if (status >= 400 || !result?.questions) throw new Error("Question generation failed validation");
   return result as { questions: Array<Record<string, any>> };
 }

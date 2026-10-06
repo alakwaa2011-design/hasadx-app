@@ -274,6 +274,27 @@ describe.skipIf(!enabledIntegration)("durable worksheet assistant", () => {
     expect(saved.content.questions[0].options).toHaveLength(4);
     expect(saved.content.questions[0].correct).toBe(0);
   });
+  it.each(["wheel", "rocket", "hack", "self"])("persists a private %s draft with its working review link", async gameType => {
+    const op = await toolQuote("game", gameType);
+    await confirm(op).expect(200);
+    await runAssistantJob();
+    const done = await getOperation(op.id);
+    expect(done.status).toBe("completed");
+    expect(done.resultUrl).toContain(gameType === "self" ? "/teacher/solo-challenges/new?savedGameId="
+      : gameType === "hack" ? "/game/hack?savedGameId=" : `/game/${gameType}/create?savedGameId=`);
+    const saved = (await db.execute(sql`
+      SELECT game_type, content, settings, is_shared FROM saved_game_activities WHERE id=${done.resultId}
+    `)).rows[0] as any;
+    expect(saved.game_type).toBe(gameType === "self" ? "solo" : gameType);
+    expect(saved.is_shared).toBe(false);
+    expect(gameType === "wheel" ? saved.content.segments : saved.content.questions).toHaveLength(5);
+    if (gameType === "hack") {
+      const backing = (await db.execute(sql`
+        SELECT access_mode, is_shared FROM assignments WHERE id=${saved.content.assignmentId}
+      `)).rows[0] as any;
+      expect(backing).toMatchObject({ access_mode: "private", is_shared: false });
+    }
+  });
 
   it("charges the one Free execution once, then blocks even a purchased-credit balance", async () => {
     const before = await CreditService.getBalance(teacher);

@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import { getSavedGameActivity } from "@/lib/saved-game-activities";
 import { useListAssignments, useGetCurrentTeacher } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { motion } from "framer-motion";
@@ -73,11 +74,32 @@ export default function HackSetup() {
   const [targetClass, setTargetClass] = useState<string>(() =>
     getRememberedTargetClass(),
   );
-  const preselectedAssignmentId = Number(
+  const [preselectedAssignmentId, setPreselectedAssignmentId] = useState(Number(
     typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("assignmentId"),
-  ) || null;
+  ) || null);
+  const [savedAssignment, setSavedAssignment] = useState<Assignment | null>(null);
+  const savedGameId = new URLSearchParams(useSearch()).get("savedGameId");
+  useEffect(() => {
+    if (!savedGameId) return;
+    let cancelled = false;
+    setSavedAssignment(null);
+    void getSavedGameActivity(savedGameId).then(activity => {
+      if (cancelled) return;
+      if (activity.gameType !== "hack" || !activity.content || typeof activity.content !== "object"
+        || Array.isArray(activity.content)) throw new Error("invalid-hack");
+      const id = Number((activity.content as Record<string, unknown>).assignmentId);
+      if (!Number.isSafeInteger(id) || id <= 0) throw new Error("invalid-assignment");
+      setPreselectedAssignmentId(id);
+      setSource("assignments");
+      setSearch("");
+      setSavedAssignment({ id, title: activity.title, questionCount: activity.questionCount });
+    }).catch(() => {
+      if (!cancelled) toast.error(lang === "ar" ? "تعذّر تحميل لعبة الاختراق المحفوظة" : "Could not load the saved hack game");
+    });
+    return () => { cancelled = true; };
+  }, [savedGameId]);
 
-  const filtered = (assignments || [])
+  const filtered = (savedAssignment ? [savedAssignment, ...(assignments || []).filter(a => a.id !== savedAssignment.id)] : (assignments || []))
     .filter((a: Assignment) => !search || a.title.toLowerCase().includes(search.toLowerCase()))
     .sort((a: Assignment, b: Assignment) =>
       a.id === preselectedAssignmentId ? -1 : b.id === preselectedAssignmentId ? 1 : 0,

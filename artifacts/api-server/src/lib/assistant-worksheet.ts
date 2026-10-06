@@ -5,7 +5,8 @@ import { db, assistantOperationsTable as operations, type AssistantOperationRow,
 import { QuoteAssistantWorksheetBody, GetAssistantOperationResponse, worksheetThemeIdSchema, worksheetSettingsSchema } from "@workspace/api-zod";
 import { anthropic, SONNET_MODEL } from "./anthropic-client";
 import { trackAiUsageCall } from "./ai-usage-ledger";
-import { resolveAiContentLanguage } from "./ai-content-language";
+import { resolveAiContentLanguage, findExplicitAiContentLanguage } from "./ai-content-language";
+import type { AssistantGameType } from "./assistant-game-content";
 import { generateWorksheetQuestions, createWorksheetDraft, aiGenerateBody } from "../routes/worksheets";
 import { CreditService } from "./credit-service";
 import { logger } from "./logger";
@@ -59,7 +60,7 @@ export function validateWorksheetRequest(input: unknown) {
 }
 
 /** Free, bounded preparation. Model output is data, never tool permission. */
-export async function prepareWorksheetRequest(req: Request, message: string, language: "ar" | "en", previous?: AssistantOperationRow, tool: AssistantTool = "worksheet", selectedGameType?: "solo" | "wameeth_class" | "tug" | "xo") {
+export async function prepareWorksheetRequest(req: Request, message: string, language: "ar" | "en", previous?: AssistantOperationRow, tool: AssistantTool = "worksheet", selectedGameType?: AssistantGameType) {
   const fast = fastAssistantPreparation(message, language, tool, previous, selectedGameType);
   if (fast) return { ...fast, parameters: QuoteAssistantWorksheetBody.shape.parameters.parse(fast.parameters) };
   const response = await trackAiUsageCall(req, {
@@ -75,7 +76,7 @@ export async function prepareWorksheetRequest(req: Request, message: string, lan
         : `Only preparing a NEW private ${tool} is supported, not launching, assigning, sharing, publishing, deleting, existing-content edits, file uploads, URLs or support. Games and quizzes support only multiple choice and true/false; reject requests for other question types.`,
       ...(tool === "worksheet" ? [] : [
         "For game/quiz use questionCount (integer1..30,default5), questionTypes (mcq/true_false; explicit types preserved), difficulty(easy/medium/hard/mixed). Do NOT use worksheet counts for these tools.",
-        "Game: gameType solo (Wameeth individual on student devices, default), wameeth_class (وميض الصف, two teams on a shared classroom screen), tug (شد الحبل), xo (إكس أو). Classroom Wameeth requires at least2 questions; reject an explicit lower count. XO requires at least9 questions; reject an explicit lower count, otherwise use9 for XO. Never claim that a game was started.",
+        "Game: gameType solo (Wameeth individual on student devices), wameeth_class (وميض الصف), tug (شد الحبل), xo (إكس أو), wheel (عجلة التحدي), rocket (سباق الصواريخ), hack (الاختراق), self (مسابقة ذاتية). Classroom Wameeth needs at least2 questions; wheel needs2..16; XO needs at least9 (default9). Reject explicit incompatible counts, never truncate or silently change them. Never claim that a game was started.",
         ...(selectedGameType ? [`The teacher explicitly selected gameType=${selectedGameType}. This choice is authoritative: preserve it even if the request mentions another game. For selected XO use at least9 questions by default, but never silently increase an explicitly requested lower count; explain that it is unsupported.`] : []),
         "Lesson plan: durationMinutes(15..180,default45), pedagogy(direct/inquiry/project/flipped/mixed,defaultmixed). Preserve explicit duration and pedagogy.",
         "All these tools support notes(max800) for any additional explicit teacher constraints. Preserve them; do not invent or drop them.",
@@ -116,7 +117,7 @@ export async function prepareWorksheetRequest(req: Request, message: string, lan
     assessmentMode: "formative", executionMode: "individual",
     ...previous?.parameters, ...modelParameters,
     ...(raw.sourceFromRequest === true ? { sourceText: message } : {}),
-    language: raw.parameters.language ?? previous?.parameters.language ?? resolveAiContentLanguage({ preferredLanguage: language, primaryText: message }),
+    language: findExplicitAiContentLanguage(message) ?? previous?.parameters.language ?? resolveAiContentLanguage({ preferredLanguage: language, primaryText: message }),
   });
   // An incomplete model response must never erase an explicit zero-valued manual count.
   if (validated.questionSelection === "manual") {

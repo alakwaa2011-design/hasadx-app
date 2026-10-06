@@ -31,6 +31,12 @@ vi.mock("@/lib/i18n", () => ({
   useI18n: () => ({ lang: "en" }),
 }));
 vi.mock("@/lib/saved-game-activities", () => savedGames);
+// Source-flow tests exercise draft ownership/navigation, not the card's locale
+// rendering (covered separately and in the real browser).
+vi.mock("@/components/game/question-editor", async importOriginal => ({
+  ...await importOriginal<typeof import("@/components/game/question-editor")>(),
+  QuestionCard: ({ q }: { q: { text: string } }) => <div>{q.text}</div>,
+}));
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => children,
   motion: {
@@ -76,7 +82,7 @@ let currentTeacher: { id: number } | null;
 
 function buttonContaining(text: string) {
   return Array.from(document.querySelectorAll("button")).find((button) =>
-    button.textContent?.includes(text),
+    button.textContent?.includes(text) || button.getAttribute("aria-label")?.includes(text),
   ) as HTMLButtonElement;
 }
 
@@ -144,12 +150,12 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
       );
     });
 
-    await click(buttonContaining("Back one step"));
+    await click(buttonContaining("Back"));
     expect(onBackFromMenu).toHaveBeenCalledOnce();
 
     await click(buttonContaining("From an assignment"));
     expect(container.textContent).toContain("Choose an assignment");
-    await click(buttonContaining("Back one step"));
+    await click(buttonContaining("Back"));
 
     expect(container.textContent).toContain("From an assignment");
     expect(onBackFromMenu).toHaveBeenCalledOnce();
@@ -198,6 +204,24 @@ describe("UnifiedQuestionSourceFlow assignment selection", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/assignments/101", { credentials: "include" });
     expect(fetchMock).toHaveBeenCalledWith("/api/assignments/202", { credentials: "include" });
     expect(fetchMock).toHaveBeenCalledWith("/api/assignments/303", { credentials: "include" });
+  });
+
+  it("returns to an initialized editor without reloading a saved-game deep link", async () => {
+    const previousUrl = window.location.href;
+    window.history.replaceState({}, "", "?savedGameId=rocket-draft");
+    try {
+      await act(async () => {
+        root.render(<UnifiedQuestionSourceFlow gameTitle="Rocket" gameDescription="" gameIcon={null}
+          minQuestions={1} maxQuestions={30} skipSavedGameAutoLoad
+          initialEditorQuestions={[{ text: "سؤال عربي محفوظ", type: "mcq", optionA: "الإجابة الأولى",
+            optionB: "الإجابة الثانية", optionC: "", optionD: "", correctAnswer: "A", fillAnswer: "", closeAnswers: "" }]}
+          onComplete={vi.fn()} />);
+      });
+      expect(savedGames.getSavedGameActivity).not.toHaveBeenCalled();
+      expect(container.textContent).toContain("سؤال عربي محفوظ");
+    } finally {
+      window.history.replaceState({}, "", previousUrl);
+    }
   });
 
   it("reveals the fixed continue card when an Escape Room assignment is ready", async () => {

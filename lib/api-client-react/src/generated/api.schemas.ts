@@ -36,6 +36,10 @@ export const AssistantPreparationGameType = {
   wameeth_class: 'wameeth_class',
   tug: 'tug',
   xo: 'xo',
+  wheel: 'wheel',
+  rocket: 'rocket',
+  hack: 'hack',
+  self: 'self',
 } as const;
 
 export type AssistantPreparationLanguage = typeof AssistantPreparationLanguage[keyof typeof AssistantPreparationLanguage];
@@ -281,6 +285,10 @@ export const AssistantParametersGameType = {
   wameeth_class: 'wameeth_class',
   tug: 'tug',
   xo: 'xo',
+  wheel: 'wheel',
+  rocket: 'rocket',
+  hack: 'hack',
+  self: 'self',
 } as const;
 
 export type AssistantParametersPedagogy = typeof AssistantParametersPedagogy[keyof typeof AssistantParametersPedagogy];
