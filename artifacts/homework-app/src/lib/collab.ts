@@ -5,6 +5,7 @@ import {
   getGetCollaborationBoardQueryKey,
   getListCollaborationBoardsQueryKey,
   useUpdateCollaborationBoard,
+  updateCollaborationBoard,
   useGetCurrentTeacher,
   getGetCurrentTeacherQueryKey,
   type CollaborationAction,
@@ -12,6 +13,7 @@ import {
   type CollaborationSettings,
   type CollaborationColumn,
 } from "@workspace/api-client-react";
+import { collaborationRequest } from "./collab-request";
 
 export const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -123,6 +125,10 @@ export function useAct(id: string) {
   const qc = useQueryClient();
   return useUpdateCollaborationBoard({
     mutation: {
+      networkMode: "always",
+      retry: false,
+      mutationFn: ({ id: boardId, data }) => collaborationRequest(signal =>
+        updateCollaborationBoard(boardId, data, { headers: authHeaders(boardId), signal })),
       onSuccess: (view: CollaborationView) => {
         qc.setQueriesData<CollaborationView>({ queryKey: getGetCollaborationBoardQueryKey(id) }, old =>
           !old || old.selfId !== view.selfId ? old : old.revision > view.revision ? old : view);

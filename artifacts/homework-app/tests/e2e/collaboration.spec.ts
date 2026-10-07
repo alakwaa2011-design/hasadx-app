@@ -121,13 +121,14 @@ test("focused collaboration moderation, reaction, silent reveal, display and clo
     }).toBe(1);
     await guestB.screenshot({ path: "test-results/collaboration-focused-student-peer.png", fullPage: true });
 
+    await page.getByTestId("button-board-more").click();
     await page.getByTestId("button-settings").click();
     const settings = page.getByRole("dialog");
     const silentSwitch = settings.getByRole("switch", { name: "وضع الصمت (المعرض المخفي)" });
     await expect(silentSwitch).toHaveAttribute("aria-checked", "false");
     await silentSwitch.click();
     await settings.getByRole("button", { name: "حفظ الإعدادات" }).click();
-    await expect(page.getByTestId("button-settings")).toBeVisible();
+    await expect(page.getByTestId("button-board-more")).toBeVisible();
     await guestB.reload();
     await expect(guestB.getByText("وضع الصمت: ترى مشاركاتك فقط حتى يكشف المعلم المعرض.")).toBeVisible();
     await expect(guestB.getByText(postText, { exact: true })).toHaveCount(0);
@@ -137,6 +138,7 @@ test("focused collaboration moderation, reaction, silent reveal, display and clo
     await expect(page.getByText(postText, { exact: true })).toHaveCount(0);
     await page.screenshot({ path: "test-results/collaboration-focused-teacher-concealed-display.png", fullPage: true });
     await page.getByRole("button", { name: "خروج" }).click();
+    await page.getByTestId("button-board-more").click();
     await page.getByRole("button", { name: "كشف المعرض للطلاب" }).click();
     await guestB.reload();
     await expect(guestB.getByText(postText, { exact: true })).toBeVisible();

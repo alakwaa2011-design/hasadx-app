@@ -5,10 +5,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   Search, Plus, Pin, EyeOff, Eye, Check, Trash2, MessageCircle, Lightbulb, HelpCircle, ThumbsUp, Vote,
   Maximize2, Printer, Download, Copy, Settings, Users, Timer, Play, Lock, Unlock, Archive, RotateCcw,
-  Image as ImageIcon, Link2, Pencil, Sparkles, WifiOff, X, Ban, Megaphone, Loader2, Send,
+  Link2, Pencil, Sparkles, WifiOff, X, Ban, Megaphone, Loader2, Send, MoreHorizontal,
 } from "lucide-react";
 import {
-  useCreateCollaborationBoard, useUploadCollaborationImage, getListCollaborationBoardsQueryKey,
+  useCreateCollaborationBoard, createCollaborationBoard, getListCollaborationBoardsQueryKey,
   type CollaborationView, type CollaborationPost, type CollaborationAction, type CollaborationSettings, type CollaborationColumn,
 } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
@@ -17,6 +17,8 @@ import {
   useOnline, exportCsv, loadSession,
 } from "@/lib/collab";
 import { Modal, Field, inputCls, btnPrimary, btnGhost, SettingsEditor, Skeleton, StatusPill, GREEN, GOLD } from "./parts";
+import { Composer } from "./composer";
+import { collaborationRequest } from "@/lib/collab-request";
 
 const KINDS = [
   { k: "like", Icon: ThumbsUp, label: "إعجاب" },
@@ -31,7 +33,7 @@ export function BoardWorkspace({ id }: { id: string }) {
   const online = useOnline();
   const [err, setErr] = useState<string | null>(null);
   const [composer, setComposer] = useState<{ post?: CollaborationPost } | null>(null);
-  const [panel, setPanel] = useState<null | "settings" | "people" | "timer" | "share">(null);
+  const [panel, setPanel] = useState<null | "settings" | "people" | "timer" | "share" | "more">(null);
   const [display, setDisplay] = useState(false);
   const [search, setSearch] = useState("");
   const [colF, setColF] = useState("all");
@@ -43,6 +45,10 @@ export function BoardWorkspace({ id }: { id: string }) {
 
   const run = async (data: CollaborationAction) => {
     setErr(null);
+    if (!navigator.onLine) {
+      setErr("أنت غير متصل. لم تُرسل العملية. أعد المحاولة بعد عودة الاتصال.");
+      return false;
+    }
     try { await act.mutateAsync({ id, data }); return true; } catch (e) { setErr(errMessage(e)); return false; }
   };
 
@@ -88,7 +94,7 @@ export function BoardWorkspace({ id }: { id: string }) {
   return (
     <div className="collab-root" dir="rtl">
       <style>{`@media print{.no-print{display:none!important}.collab-root{background:#fff}.collab-card{break-inside:avoid}header,nav,footer{display:none!important}}`}</style>
-      {!online && <div className="bg-amber-100 text-amber-900 text-xs font-bold px-4 py-1.5 flex items-center gap-2 no-print"><WifiOff className="w-3.5 h-3.5" /> أنت غير متصل. ستتم المزامنة عند عودة الاتصال، ولن تُفقد مسودتك.</div>}
+      {!online && <div role="status" className="bg-amber-100 text-amber-900 text-xs font-bold px-4 py-2 flex items-center gap-2 no-print"><WifiOff className="w-3.5 h-3.5 shrink-0" /> أنت غير متصل. المعروض آخر نسخة محمّلة؛ الإرسال متوقف. أعد المحاولة بعد عودة الاتصال، ولا توجد مزامنة تلقائية للمشاركات.</div>}
       {q.isRefetchError && online && <div className="bg-rose-100 text-rose-900 text-xs font-bold px-4 py-1.5 no-print">تعذر تحديث اللوحة مؤقتاً، نعيد المحاولة تلقائياً.</div>}
 
       <div className="px-4 pt-4 pb-3 border-b border-border" style={{ background: "linear-gradient(180deg,#f2f7f4,transparent)" }}>
@@ -106,29 +112,20 @@ export function BoardWorkspace({ id }: { id: string }) {
             {left !== null && left > 0 && (
               <div className="rounded-xl px-3 py-2 text-white font-black text-2xl tabular-nums" style={{ background: GREEN }} data-testid="text-timer"><Timer className="w-4 h-4 inline ms-1" />{fmtTime(left)}</div>
             )}
-            <div className="flex flex-wrap gap-1.5 no-print">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto no-print" data-testid="teacher-classroom-actions">
               {owner && <>
-                <button className={btnGhost} onClick={() => setPanel("share")} data-testid="button-share-board"><Link2 className="w-4 h-4" /> دعوة الطلاب</button>
-                <button className={btnGhost} onClick={() => setDisplay(true)} data-testid="button-display"><Maximize2 className="w-4 h-4" /> عرض للصف</button>
-                <button className={btnGhost} onClick={() => setPanel("timer")}><Timer className="w-4 h-4" /> المؤقت</button>
-                <button className={btnGhost} onClick={() => setPanel("people")}><Users className="w-4 h-4" /> المشاركون ({b.members.length})</button>
-                <button className={btnGhost} onClick={() => setPanel("settings")} data-testid="button-settings"><Settings className="w-4 h-4" /> الإعدادات</button>
-                <button className={btnGhost} onClick={() => exportCsv(b)}><Download className="w-4 h-4" /> CSV</button>
-                <button className={btnGhost} onClick={() => window.print()}><Printer className="w-4 h-4" /> طباعة / PDF</button>
-                <DuplicateButton b={b} />
+                <button className={`${btnPrimary} min-h-[44px]`} style={{ background: GREEN }} onClick={() => setPanel("share")} data-testid="button-share-board"><Link2 className="w-4 h-4" /> دعوة الطلاب</button>
+                <button className={`${btnGhost} min-h-[44px]`} onClick={() => setDisplay(true)} data-testid="button-display"><Maximize2 className="w-4 h-4" /> عرض للصف</button>
+                {b.status !== "archived" ? <button className={`${btnGhost} min-h-[44px]`} disabled={!online || act.isPending} onClick={() => run({ type: "board.status", status: b.status === "open" ? "closed" : "open" })} data-testid="button-toggle-participation">{b.status === "open" ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}{b.status === "open" ? "إغلاق المشاركة" : "فتح اللوحة"}</button>
+                  : <button className={`${btnGhost} min-h-[44px]`} disabled={!online || act.isPending} onClick={() => run({ type: "board.status", status: "draft" })}><RotateCcw className="w-4 h-4" /> استعادة من الأرشيف</button>}
+                <button className={`${btnGhost} min-h-[44px]`} onClick={() => setPanel("more")} data-testid="button-board-more" aria-haspopup="dialog"><MoreHorizontal className="w-4 h-4" /> المزيد</button>
               </>}
             </div>
           </div>
 
           {owner && (
-            <div className="flex flex-wrap items-center gap-2 mt-3 no-print">
-              {b.status !== "open" && b.status !== "archived" && <button className={btnPrimary} style={{ background: GREEN }} onClick={() => run({ type: "board.status", status: "open" })}><Unlock className="w-4 h-4" /> فتح اللوحة</button>}
-              {b.status === "open" && <button className={btnGhost} onClick={() => run({ type: "board.status", status: "closed" })}><Lock className="w-4 h-4" /> إغلاق المشاركة</button>}
-              {b.status !== "archived" && <button className={btnGhost} onClick={() => run({ type: "board.status", status: "archived" })}><Archive className="w-4 h-4" /> أرشفة</button>}
-              {b.status === "archived" && <button className={btnPrimary} style={{ background: GREEN }} onClick={() => run({ type: "board.status", status: "draft" })}><RotateCcw className="w-4 h-4" /> استعادة من الأرشيف</button>}
-              {b.settings.silent && <button className={btnGhost} onClick={() => run({ type: "board.reveal" })}>{b.settings.revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />} {b.settings.revealed ? "إخفاء المعرض" : "كشف المعرض للطلاب"}</button>}
-              {b.spotlightId && <button className={btnGhost} onClick={() => run({ type: "board.spotlight" })}><X className="w-4 h-4" /> إلغاء التسليط</button>}
-              <span className="text-xs text-muted-foreground">{act.isPending ? "جارٍ الحفظ..." : "تم الحفظ"}</span>
+            <div role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2 no-print">
+              {!online ? "غير متصل — الإرسال متوقف" : act.isPending ? "جارٍ إرسال التغيير..." : err ? "لم يصل تأكيد العملية الأخيرة" : "آخر نسخة محمّلة من اللوحة"}
             </div>
           )}
           {err && <div role="alert" className="mt-3 text-sm bg-rose-50 border border-rose-200 text-rose-800 rounded-lg px-3 py-2 flex justify-between"><span>{err}</span><button onClick={() => setErr(null)}><X className="w-4 h-4" /></button></div>}
@@ -203,11 +200,25 @@ export function BoardWorkspace({ id }: { id: string }) {
         )}
       </div>
 
-      {composer && <Composer id={id} b={b} post={composer.post} onClose={() => setComposer(null)} run={run} />}
+      {composer && <Composer key={`${id}:${b.selfId}:${composer.post?.id ?? "new"}`} id={id} b={b} post={composer.post} onClose={() => setComposer(null)} run={run} />}
       {panel === "settings" && <SettingsPanel b={b} onClose={() => setPanel(null)} run={run} />}
       {panel === "people" && <People b={b} onClose={() => setPanel(null)} run={run} />}
       {panel === "timer" && <TimerPanel b={b} onClose={() => setPanel(null)} run={run} />}
       {panel === "share" && <ShareBoard b={b} onClose={() => setPanel(null)} />}
+      {panel === "more" && <Modal title="المزيد من أدوات اللوحة" onClose={() => setPanel(null)}>
+        <div className="grid grid-cols-2 gap-2 [&>button]:min-h-[44px]">
+          <button className={btnGhost} onClick={() => setPanel("timer")}><Timer className="w-4 h-4" /> المؤقت</button>
+          <button className={btnGhost} onClick={() => setPanel("people")}><Users className="w-4 h-4" /> المشاركون ({b.members.length})</button>
+          <button className={btnGhost} onClick={() => setPanel("settings")} data-testid="button-settings"><Settings className="w-4 h-4" /> الإعدادات</button>
+          <button className={btnGhost} onClick={() => { exportCsv(b); setPanel(null); }}><Download className="w-4 h-4" /> CSV</button>
+          <button className={btnGhost} onClick={() => window.print()}><Printer className="w-4 h-4" /> طباعة / PDF</button>
+          <DuplicateButton b={b} disabled={!online} />
+          {b.settings.silent && <button className={`${btnGhost} col-span-2`} disabled={!online || act.isPending} onClick={async () => { if (await run({ type: "board.reveal" })) setPanel(null); }}>{b.settings.revealed ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />} {b.settings.revealed ? "إخفاء المعرض" : "كشف المعرض للطلاب"}</button>}
+          {b.spotlightId && <button className={`${btnGhost} col-span-2`} disabled={!online || act.isPending} onClick={async () => { if (await run({ type: "board.spotlight" })) setPanel(null); }}><X className="w-4 h-4" /> إلغاء التسليط</button>}
+        </div>
+        {b.status !== "archived" && <div className="border-t border-border mt-4 pt-3"><button className={`${btnGhost} w-full min-h-[44px]`} disabled={!online || act.isPending} onClick={async () => { if (await run({ type: "board.status", status: "archived" })) setPanel(null); }}><Archive className="w-4 h-4" /> أرشفة</button></div>}
+        {err && <p role="alert" className="text-sm text-rose-700 mt-3">{err}</p>}
+      </Modal>}
     </div>
   );
 }
@@ -300,67 +311,6 @@ function PostCard({ b, p, run, onEdit, canWrite }: { b: CollaborationView; p: Co
   );
 }
 
-function Composer({ id, b, post, onClose, run }: { id: string; b: CollaborationView; post?: CollaborationPost; onClose: () => void; run: (a: CollaborationAction) => Promise<boolean> }) {
-  const [text, setText] = useState(post?.text ?? "");
-  const [columnId, setColumnId] = useState(post?.columnId ?? b.columns[0]?.id ?? "");
-  const [color, setColor] = useState<string>(post?.color ?? "mint");
-  const [tags, setTags] = useState((post?.tags ?? []).join("، "));
-  const [ref, setRef] = useState(post?.referenceUrl ?? "");
-  const [imageId, setImageId] = useState<string | null>(post?.imageId ?? null);
-  const [preview, setPreview] = useState<string | null>(post?.imageUrl ? mediaUrl(post.imageUrl) : null);
-  const [clientId] = useState(newId());
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const up = useUploadCollaborationImage({ request: { headers: authHeaders(id) } });
-
-  const pick = async (f?: File) => {
-    if (!f) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return setMsg("الصيغ المسموحة: JPEG وPNG وWebP");
-    if (f.size > 5 * 1024 * 1024) return setMsg("حجم الصورة يجب ألا يتجاوز 5 ميغابايت");
-    setMsg(null);
-    try {
-      const r = await up.mutateAsync({ id, data: { file: f } });
-      setImageId(r.imageId);
-      setPreview(URL.createObjectURL(f));
-    } catch (e) { setMsg(errMessage(e)); }
-  };
-  const submit = async () => {
-    const tagList = tags.split(/[,،]/).map((t) => t.trim().slice(0, 30)).filter(Boolean).slice(0, 5);
-    const r = ref.trim();
-    if (r && !safeLink(r)) return setMsg("الرابط يجب أن يبدأ بـ https://");
-    if (!text.trim() && !imageId) return setMsg("اكتب نصاً أو أضف صورة");
-    setBusy(true);
-    const base = { text: text.trim(), columnId, color: color as CollaborationAction["color"], tags: tagList, referenceUrl: r || null, imageId };
-    const ok = await run(post ? { type: "post.edit", postId: post.id, ...base } : { type: "post.create", clientId, ...base });
-    setBusy(false);
-    if (ok) onClose(); else setMsg("لم يُحفظ. مسودتك محفوظة هنا، أعد المحاولة.");
-  };
-  return (
-    <Modal title={post ? "تعديل المشاركة" : "مشاركة جديدة"} onClose={onClose}>
-      <Field label="فكرتك"><textarea className={inputCls} rows={4} maxLength={2000} value={text} onChange={(e) => setText(e.target.value)} autoFocus data-testid="input-post-text" /></Field>
-      {b.columns.length > 1 && <Field label="العمود"><select className={inputCls} value={columnId} onChange={(e) => setColumnId(e.target.value)}>{b.columns.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select></Field>}
-      <div className="mb-3"><span className="block text-xs font-bold text-muted-foreground mb-1">لون البطاقة</span>
-        <div className="flex gap-2">{Object.entries(COLORS).map(([k, v]) => <button key={k} type="button" aria-label={v.label} onClick={() => setColor(k)} className="w-8 h-8 rounded-full min-h-0" style={{ background: v.bg, border: `3px solid ${color === k ? v.bar : "transparent"}` }} />)}</div>
-      </div>
-      <Field label="وسوم (حتى 5، تفصل بينها فاصلة)"><input className={inputCls} value={tags} onChange={(e) => setTags(e.target.value)} /></Field>
-      <Field label="رابط مرجعي (https فقط)"><input className={inputCls} dir="ltr" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="https://" /></Field>
-      {(b.settings.allowImages || b.owner) && (
-        <div className="mb-3">
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => pick(e.target.files?.[0])} />
-          {preview && <div className="relative mb-2"><img src={preview} alt="" className="max-h-40 rounded-lg" /><button type="button" aria-label="إزالة الصورة" className="absolute top-1 start-1 bg-white rounded-full p-1 min-h-0" onClick={() => { setImageId(null); setPreview(null); }}><X className="w-3.5 h-3.5" /></button></div>}
-          <button type="button" className={btnGhost} disabled={up.isPending} onClick={() => fileRef.current?.click()}>{up.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />} {preview ? "تغيير الصورة" : "إضافة صورة"}</button>
-        </div>
-      )}
-      {msg && <div role="alert" className="text-sm text-rose-700 mb-3">{msg}</div>}
-      <div className="flex gap-2 justify-end">
-        <button className={btnGhost} onClick={onClose}>إلغاء</button>
-        <button className={btnPrimary} style={{ background: GREEN }} disabled={busy || up.isPending} onClick={submit} data-testid="button-submit-post">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {post ? "حفظ" : "نشر"}</button>
-      </div>
-    </Modal>
-  );
-}
-
 function SettingsPanel({ b, onClose, run }: { b: CollaborationView; onClose: () => void; run: (a: CollaborationAction) => Promise<boolean> }) {
   const [title, setTitle] = useState(b.title);
   const [prompt, setPrompt] = useState(b.prompt);
@@ -418,15 +368,20 @@ function TimerPanel({ b, onClose, run }: { b: CollaborationView; onClose: () => 
   );
 }
 
-function DuplicateButton({ b }: { b: CollaborationView }) {
-  const create = useCreateCollaborationBoard();
+function DuplicateButton({ b, disabled }: { b: CollaborationView; disabled?: boolean }) {
+  const create = useCreateCollaborationBoard({
+    mutation: {
+      networkMode: "always", retry: false,
+      mutationFn: ({ data }) => collaborationRequest(signal => createCollaborationBoard(data, { signal })),
+    },
+  });
   const retryId = useRef(newId());
   const qc = useQueryClient();
   const [, nav] = useLocation();
   const [e, setE] = useState<string | null>(null);
   return (
     <>
-      <button className={btnGhost} disabled={create.isPending} title={e ?? undefined} onClick={async () => {
+      <button className={btnGhost} disabled={disabled || create.isPending} title={e ?? undefined} onClick={async () => {
         setE(null);
         try {
           const nb = await create.mutateAsync({ data: { clientId: retryId.current, title: `${b.title} (نسخة)`.slice(0, 120), prompt: b.prompt, settings: { ...b.settings, revealed: b.settings.silent ? false : b.settings.revealed }, columns: b.columns } });
