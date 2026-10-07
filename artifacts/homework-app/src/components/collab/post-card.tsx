@@ -109,7 +109,7 @@ export function PostCard({ b, p, run, onReview, onEdit, canWrite, disabled }: {
             {p.status !== "approved" && <button className={btnGhost} disabled={disabled} onClick={async () => { if (await run({ type: "post.pin", postId: p.id })) setMore(false); }}><Pin className="w-4 h-4" /> {p.pinned ? "إلغاء التثبيت" : "تثبيت"}</button>}
             {p.own && canWrite && <button className={btnGhost} disabled={disabled} onClick={() => { setMore(false); onEdit(); }}><Pencil className="w-4 h-4" /> تعديل</button>}
           </div>
-          <label className="block mt-3"><span className="flex items-center gap-1 text-xs font-bold text-muted-foreground mb-1"><ArrowLeftRight className="w-3.5 h-3.5" /> نقل إلى عمود</span>
+          <label className="block mt-3"><span className="flex items-center gap-1 text-xs font-bold text-muted-foreground mb-1"><ArrowLeftRight className="w-3.5 h-3.5" /> نقل إلى قسم</span>
             <select className={inputCls} disabled={disabled} value={p.columnId} onChange={async (e) => { if (await run({ type: "post.move", postId: p.id, columnId: e.target.value })) setMore(false); }}>{b.columns.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}</select>
           </label>
           <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-3">

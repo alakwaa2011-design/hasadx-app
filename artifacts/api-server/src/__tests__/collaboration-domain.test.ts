@@ -207,11 +207,11 @@ describe("collaboration board ownership, privacy and classroom rules", () => {
     const d = setup(), p = add(d);
     const before = structuredClone(d);
     const columns = [{ id: "other", title: "ليس الوجهة" }, { id: "new", title: "أفكار جديدة" }];
-    expect(() => applyBoardAction(d, owner, { type: "board.update", title: "changed", columns })).toThrow("العمود يحتوي");
+    expect(() => applyBoardAction(d, owner, { type: "board.update", title: "changed", columns })).toThrow("القسم يحتوي");
     expect(d).toEqual(before);
     applyBoardAction(d, owner, { type: "board.update", columns, columnTransfers: [{ fromColumnId: "ideas", toColumnId: "new" }] });
     expect(p.columnId).toBe("new");
-    expect(() => applyBoardAction(d, owner, { type: "board.update", columns: [] })).toThrow("عمود");
+    expect(() => applyBoardAction(d, owner, { type: "board.update", columns: [] })).toThrow("قسم");
   });
   it("rejects invalid transfer destinations and duplicate sources without partial changes", () => {
     const d = setup(); add(d);

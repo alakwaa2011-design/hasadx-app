@@ -206,7 +206,7 @@ export function BoardWorkspace({ id }: { id: string }) {
             <input className={`${inputCls} ps-9`} placeholder="ابحث في المشاركات" value={search} onChange={(e) => setSearch(e.target.value)} data-testid="input-search" />
           </div>
           <select className={`${inputCls} !w-auto`} value={colF} onChange={(e) => setColF(e.target.value)}>
-            <option value="all">كل الأعمدة</option>{b.columns.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            <option value="all">كل الأقسام</option>{b.columns.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
           </select>
           <select className={`${inputCls} !w-auto`} value={tagF} onChange={(e) => setTagF(e.target.value)}>
             <option value="all">كل الوسوم</option>{tags.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -243,7 +243,7 @@ export function BoardWorkspace({ id }: { id: string }) {
                   <h3 className="text-sm font-black mb-2 flex items-center gap-2" style={{ color: GREEN }}>{c.title}<span className="text-[11px] font-bold text-muted-foreground">{list.length}</span></h3>
                   <div className="space-y-3">
                     {list.map((p) => <PostCard key={p.id} b={b} p={p} run={run} onReview={review} disabled={locked} onEdit={() => setComposer({ post: p })} canWrite={canWrite} />)}
-                    {list.length === 0 && <div className="text-xs text-muted-foreground border border-dashed border-border rounded-xl p-4 text-center">لا مشاركات في هذا العمود</div>}
+                    {list.length === 0 && <div className="text-xs text-muted-foreground border border-dashed border-border rounded-xl p-4 text-center">لا مشاركات في هذا القسم</div>}
                   </div>
                 </section>
               );
@@ -335,21 +335,21 @@ function SettingsPanel({ b, error, busyAction, onClose, run }: { b: Collaboratio
   };
   const valid = title.trim() && prompt.trim() && columns.every((c) => c.title.trim());
   if (deleting) return (
-    <Modal title="حذف عمود يحتوي مشاركات" onClose={() => setDeleting(null)}>
+    <Modal title="حذف قسم يحتوي مشاركات" onClose={() => setDeleting(null)}>
       <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 mb-4">
-        العمود «{columns.find(c => c.id === deleting)?.title}» يحتوي {count(deleting)} مشاركة.
-        لن تُحذف المشاركات. اختر العمود الذي ستُنقل إليه قبل تأكيد حذف العمود.
+        القسم «{columns.find(c => c.id === deleting)?.title}» يحتوي {count(deleting)} مشاركة.
+        لن تُحذف المشاركات. اختر القسم الذي ستُنقل إليه قبل تأكيد حذف القسم.
       </p>
       <Field label="نقل المشاركات إلى">
         <select className={inputCls} value={destination} onChange={e => setDestination(e.target.value)} data-testid="select-column-transfer">
-          <option value="">اختر العمود الوجهة</option>
-          {columns.filter(c => c.id !== deleting).map(c => <option key={c.id} value={c.id}>{c.title || "عمود بلا عنوان"}</option>)}
+          <option value="">اختر القسم الوجهة</option>
+          {columns.filter(c => c.id !== deleting).map(c => <option key={c.id} value={c.id}>{c.title || "قسم بلا عنوان"}</option>)}
         </select>
       </Field>
       <p className="text-xs text-muted-foreground mb-4">تُطبّق عملية النقل والحذف معًا عند حفظ الإعدادات. إلغاء الإعدادات يترك اللوحة كما هي.</p>
       <div className="flex flex-wrap gap-2">
         <button className={btnGhost} onClick={() => setDeleting(null)}>إلغاء</button>
-        <button className={btnPrimary} style={{ background: GREEN }} disabled={!destination} onClick={() => remove(deleting, destination)} data-testid="button-confirm-column-transfer">تأكيد النقل وحذف العمود</button>
+        <button className={btnPrimary} style={{ background: GREEN }} disabled={!destination} onClick={() => remove(deleting, destination)} data-testid="button-confirm-column-transfer">تأكيد النقل وحذف القسم</button>
       </div>
     </Modal>
   );

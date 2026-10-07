@@ -85,7 +85,7 @@ export function Composer({ id, b, post, onClose, run }: {
     if (!navigator.onLine) { setMsg("أنت غير متصل. لم تُرسل المشاركة. اتصل بالإنترنت ثم اضغط «إعادة المحاولة»."); return; }
     if (d.referenceUrl.trim() && !safeLink(d.referenceUrl.trim())) { setMsg("الرابط يجب أن يبدأ بـ https://"); return; }
     if (!d.text.trim() && !d.imageId) { setMsg("اكتب نصاً أو أضف صورة"); return; }
-    if (!b.columns.some(c => c.id === d.columnId)) { setMsg("تغيّرت أعمدة اللوحة. اختر عموداً متاحاً قبل الإرسال."); return; }
+    if (!b.columns.some(c => c.id === d.columnId)) { setMsg("تغيّرت أقسام اللوحة. اختر قسمًا متاحًا قبل الإرسال."); return; }
     update({});
     sending.current = true;
     setBusy(true);
@@ -126,7 +126,7 @@ export function Composer({ id, b, post, onClose, run }: {
         <button type="button" aria-expanded={adv} aria-controls="composer-advanced" onClick={() => setAdv(!adv)} className="inline-flex items-center gap-1 text-sm font-bold min-h-[44px]" style={{ color: GREEN }} data-testid="button-composer-options"><ChevronDown className={`w-4 h-4 transition-transform ${adv ? "rotate-180" : ""}`} /> خيارات إضافية</button>
         {!adv && (d.tags || d.referenceUrl) && <p className="text-[11px] text-muted-foreground mb-2">تتضمن المسودة وسوماً أو رابطاً محفوظاً في الخيارات الإضافية.</p>}
         <div id="composer-advanced" hidden={!adv} className="mt-1">
-        {b.columns.length > 1 && <Field label="العمود"><select className={inputCls} value={d.columnId} onChange={e => update({ columnId: e.target.value })}>{!b.columns.some(c => c.id === d.columnId) && <option value={d.columnId} disabled>اختر عموداً متاحاً</option>}{b.columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></Field>}
+        {b.columns.length > 1 && <Field label="القسم"><select className={inputCls} value={d.columnId} onChange={e => update({ columnId: e.target.value })}>{!b.columns.some(c => c.id === d.columnId) && <option value={d.columnId} disabled>اختر قسمًا متاحًا</option>}{b.columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></Field>}
         <div className="mb-3"><span className="block text-xs font-bold text-muted-foreground mb-1">لون البطاقة</span>
           <div className="flex gap-2">{Object.entries(COLORS).map(([k, v]) => <button key={k} type="button" aria-label={v.label} onClick={() => update({ color: k })} className="w-8 h-8 rounded-full min-h-0" style={{ background: v.bg, border: `3px solid ${d.color === k ? v.bar : "transparent"}` }} />)}</div>
         </div>

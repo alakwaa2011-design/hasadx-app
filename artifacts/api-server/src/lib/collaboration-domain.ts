@@ -42,7 +42,7 @@ export function createBoardData(input: {
 }
 export function validateColumns(columns: CollaborationColumn[]) {
   if (!columns.length || columns.length > 8 || columns.some(c => !c.id || c.id.length > 60 || !c.title.trim())
-    || new Set(columns.map(c => c.id)).size !== columns.length) throw new BoardError("اختر من عمود واحد إلى ثمانية أعمدة بأسماء مختلفة.");
+    || new Set(columns.map(c => c.id)).size !== columns.length) throw new BoardError("اختر من قسم واحد إلى ثمانية أقسام بأسماء مختلفة.");
   return columns.map(c => ({ id: c.id, title: c.title.trim() }));
 }
 export function boardIsOpen(data: BoardData, now = Date.now()) {
@@ -86,7 +86,7 @@ function postFields(data: BoardData, actor: Actor, action: CollaborationAction, 
   }
   if (!text && !imageId) throw new BoardError("أضف نصًا أو صورة إلى البطاقة.");
   const columnId = action.columnId ?? existing?.columnId ?? data.columns[0].id;
-  if (!data.columns.some(c => c.id === columnId)) throw new BoardError("العمود غير موجود.");
+  if (!data.columns.some(c => c.id === columnId)) throw new BoardError("القسم غير موجود.");
   return { text, imageId, columnId, color: action.color ?? existing?.color ?? "mint" as const,
     referenceUrl: action.referenceUrl === undefined ? existing?.referenceUrl ?? null : linkOf(action.referenceUrl),
     tags: (action.tags ?? existing?.tags ?? []).map(t => t.trim().replace(/^#+/, "")).filter(Boolean).slice(0, 5) };
@@ -180,7 +180,7 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
     case "post.pin": teacherOnly(actor); requirePost().pinned = !post!.pinned; break;
     case "post.move": {
       teacherOnly(actor);
-      if (!data.columns.some(c => c.id === action.columnId)) throw new BoardError("العمود غير موجود.");
+      if (!data.columns.some(c => c.id === action.columnId)) throw new BoardError("القسم غير موجود.");
       requirePost().columnId = action.columnId!; break;
     }
     case "reaction.toggle": {
@@ -222,12 +222,12 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
         if (!action.columns || !data.columns.some(c => c.id === fromColumnId)
           || columns.some(c => c.id === fromColumnId)
           || !columns.some(c => c.id === toColumnId) || transfers.has(fromColumnId)) {
-          throw new BoardError("خطة نقل المشاركات غير صالحة؛ اختر عمودًا متبقيًا لكل عمود محذوف.");
+          throw new BoardError("خطة نقل المشاركات غير صالحة؛ اختر قسمًا متبقيًا لكل قسم محذوف.");
         }
         transfers.set(fromColumnId, toColumnId);
       }
       if (data.posts.some(p => !columns.some(c => c.id === p.columnId) && !transfers.has(p.columnId))) {
-        throw new BoardError("العمود يحتوي مشاركات. اختر عمودًا لنقلها إليه قبل تأكيد الحذف.", 409);
+        throw new BoardError("القسم يحتوي مشاركات. اختر قسمًا لنقلها إليه قبل تأكيد الحذف.", 409);
       }
       if (action.title !== undefined && !action.title.trim()) throw new BoardError("العنوان مطلوب.");
       if (action.prompt !== undefined && !action.prompt.trim()) throw new BoardError("سؤال اللوحة مطلوب.");

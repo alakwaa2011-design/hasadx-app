@@ -179,7 +179,7 @@ function csvCell(v: string) {
 }
 export function exportCsv(b: CollaborationView) {
   const col = (id: string) => b.columns.find((c) => c.id === id)?.title ?? "";
-  const rows = [["العمود", "الكاتب", "النص", "الوسوم", "الرابط", "الحالة", "التفاعلات", "التعليقات"]];
+  const rows = [["القسم", "الكاتب", "النص", "الوسوم", "الرابط", "الحالة", "التفاعلات", "التعليقات"]];
   for (const p of b.posts) {
     rows.push([
       col(p.columnId),

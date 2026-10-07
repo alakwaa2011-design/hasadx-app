@@ -50,3 +50,9 @@ The collaboration catalog icon must communicate students sharing ideas/cards, ne
 **Why:** The user explicitly rejected a school/building symbol for this tool and requested a simple, distinctive icon consistent with neighboring games and Hasaad colors.
 
 **How to apply:** Preserve this distinction when revising the tool's visual identity; unrelated classroom-game icons are outside that scope.
+
+Describe board organization to teachers and students as «أقسام اللوحة» and «إضافة قسم», not technical columns or student groups.
+
+**Why:** The user found «الأعمدة» unclear and approved the simpler terminology after its organizing purpose was explained.
+
+**How to apply:** Keep visible labels, instructions, and errors consistent; retain existing column identifiers and behavior internally.

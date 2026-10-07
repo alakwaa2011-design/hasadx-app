@@ -96,22 +96,22 @@ export function SettingsEditor({ settings, onSettings, columns, onColumns, onDel
           <input type="number" min={1} max={10} className={inputCls} value={s.voteBudget} onChange={(e) => up({ voteBudget: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })} />
         </Field>
       </Section>
-      <h3 className="text-sm font-extrabold mb-1" style={{ color: GREEN }}>الأعمدة</h3>
-      <div className="text-xs font-bold text-muted-foreground mb-1">الأعمدة (حتى 8)</div>
+      <h3 className="text-sm font-extrabold mb-1" style={{ color: GREEN }}>أقسام اللوحة</h3>
+      <div className="text-xs font-bold text-muted-foreground mb-1">الأقسام (حتى 8)</div>
       <div className="space-y-1.5">
         {columns.map((c, i) => (
           <div key={c.id} className="flex items-center gap-1.5">
-            <input className={inputCls} maxLength={60} value={c.title} placeholder="عنوان العمود" onChange={(e) => onColumns(columns.map((x) => (x.id === c.id ? { ...x, title: e.target.value } : x)))} />
+            <input className={inputCls} maxLength={60} value={c.title} placeholder="عنوان القسم" onChange={(e) => onColumns(columns.map((x) => (x.id === c.id ? { ...x, title: e.target.value } : x)))} />
             <button type="button" aria-label="أعلى" className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, -1)}><ArrowUp className="w-4 h-4" /></button>
             <button type="button" aria-label="أسفل" className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, 1)}><ArrowDown className="w-4 h-4" /></button>
-            <button type="button" aria-label="حذف العمود" disabled={columns.length <= 1} className="p-2 rounded-lg hover:bg-muted text-destructive disabled:opacity-30" onClick={() => onDeleteColumn ? onDeleteColumn(c.id) : onColumns(columns.filter((x) => x.id !== c.id))}><Trash2 className="w-4 h-4" /></button>
+            <button type="button" aria-label="حذف القسم" disabled={columns.length <= 1} className="p-2 rounded-lg hover:bg-muted text-destructive disabled:opacity-30" onClick={() => onDeleteColumn ? onDeleteColumn(c.id) : onColumns(columns.filter((x) => x.id !== c.id))}><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
       <button type="button" disabled={columns.length >= 8} className={`${btnGhost} mt-2`} onClick={() => onColumns([...columns, { id: newId().slice(0, 8), title: "" }])}>
-        <Plus className="w-4 h-4" /> إضافة عمود
+        <Plus className="w-4 h-4" /> إضافة قسم
       </button>
-      <p className="text-[11px] text-muted-foreground mt-2">عند حذف عمود يحتوي مشاركات، تختار عمودًا لنقلها إليه. تُطبّق التغييرات عند حفظ الإعدادات فقط.</p>
+      <p className="text-[11px] text-muted-foreground mt-2">عند حذف قسم يحتوي مشاركات، تختار قسمًا لنقلها إليه. تُطبّق التغييرات عند حفظ الإعدادات فقط.</p>
     </div>
   );
 }
