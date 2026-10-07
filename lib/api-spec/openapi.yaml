@@ -3320,6 +3320,15 @@ components:
         status: { type: string, enum: [draft, open, closed, archived] }
         settings: { $ref: "#/components/schemas/CollaborationSettings" }
         columns: { type: array, maxItems: 8, items: { $ref: "#/components/schemas/CollaborationColumn" } }
+        columnTransfers:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            required: [fromColumnId, toColumnId]
+            properties:
+              fromColumnId: { type: string, minLength: 1, maxLength: 60 }
+              toColumnId: { type: string, minLength: 1, maxLength: 60 }
         timerSeconds: { type: integer, minimum: 0, maximum: 3600 }
         timerCommand: { type: string, enum: [start, pause, resume, extend, stop] }
     CollaborationImageInput:

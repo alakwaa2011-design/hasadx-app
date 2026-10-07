@@ -262,6 +262,19 @@ export const CollaborationActionStatus = {
   archived: 'archived',
 } as const;
 
+export type CollaborationActionColumnTransfersItem = {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  fromColumnId: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  toColumnId: string;
+};
+
 export type CollaborationActionTimerCommand = typeof CollaborationActionTimerCommand[keyof typeof CollaborationActionTimerCommand];
 
 
@@ -308,6 +321,8 @@ export interface CollaborationAction {
   settings?: CollaborationSettings;
   /** @maxItems 8 */
   columns?: CollaborationColumn[];
+  /** @maxItems 8 */
+  columnTransfers?: CollaborationActionColumnTransfersItem[];
   /**
      * @minimum 0
      * @maximum 3600

@@ -82,6 +82,7 @@ export * from './buildPresentationResponse';
 export * from './cancelBuildResponse';
 export * from './collaborationAction';
 export * from './collaborationActionColor';
+export * from './collaborationActionColumnTransfersItem';
 export * from './collaborationActionKind';
 export * from './collaborationActionReviewStatus';
 export * from './collaborationActionStatus';

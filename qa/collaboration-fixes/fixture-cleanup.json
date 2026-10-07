@@ -1,0 +1,14 @@
+{
+  "teacherId": 2985,
+  "boardsDeleted": 11,
+  "mediaObjects": 2,
+  "mediaDeleted": [
+    {
+      "deleted": true
+    },
+    {
+      "deleted": true
+    }
+  ],
+  "remainingBoards": 0
+}

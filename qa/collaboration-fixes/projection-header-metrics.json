@@ -1,0 +1,348 @@
+{
+  "boardId": "d64e4e39-bcbb-41c4-928c-95676ad1dd0e",
+  "running": {
+    "320": {
+      "viewport": {
+        "width": 320,
+        "height": 844,
+        "documentScrollWidth": 320
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 320,
+        "bottom": 201.5,
+        "width": 320,
+        "height": 201.5
+      },
+      "exit": {
+        "x": 16,
+        "y": 16,
+        "left": 16,
+        "top": 16,
+        "right": 70.828125,
+        "bottom": 60,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 16,
+        "y": 152.5,
+        "left": 16,
+        "top": 152.5,
+        "right": 116.78125,
+        "bottom": 184.5,
+        "width": 100.78125,
+        "height": 32
+      },
+      "timer": {
+        "x": 210.28125,
+        "y": 140.25,
+        "left": 210.28125,
+        "top": 140.25,
+        "right": 304,
+        "bottom": 180.25,
+        "width": 93.71875,
+        "height": 40
+      },
+      "headerScrollWidth": 320,
+      "headerClientWidth": 320,
+      "displayScrollWidth": 320,
+      "displayClientWidth": 320
+    },
+    "390": {
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "documentScrollWidth": 390
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 390,
+        "bottom": 201.5,
+        "width": 390,
+        "height": 201.5
+      },
+      "exit": {
+        "x": 16,
+        "y": 16,
+        "left": 16,
+        "top": 16,
+        "right": 70.828125,
+        "bottom": 60,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 16,
+        "y": 152.5,
+        "left": 16,
+        "top": 152.5,
+        "right": 116.78125,
+        "bottom": 184.5,
+        "width": 100.78125,
+        "height": 32
+      },
+      "timer": {
+        "x": 280.28125,
+        "y": 140.25,
+        "left": 280.28125,
+        "top": 140.25,
+        "right": 374,
+        "bottom": 180.25,
+        "width": 93.71875,
+        "height": 40
+      },
+      "headerScrollWidth": 390,
+      "headerClientWidth": 390,
+      "displayScrollWidth": 390,
+      "displayClientWidth": 390
+    },
+    "1440": {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "documentScrollWidth": 1440
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 1440,
+        "bottom": 105,
+        "width": 1440,
+        "height": 105
+      },
+      "exit": {
+        "x": 24,
+        "y": 30,
+        "left": 24,
+        "top": 30,
+        "right": 78.828125,
+        "bottom": 74,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 94.828125,
+        "y": 40.25,
+        "left": 94.828125,
+        "top": 40.25,
+        "right": 246,
+        "bottom": 80.25,
+        "width": 151.171875,
+        "height": 40
+      },
+      "timer": {
+        "x": 262,
+        "y": 22,
+        "left": 262,
+        "top": 22,
+        "right": 418.1875,
+        "bottom": 82,
+        "width": 156.1875,
+        "height": 60
+      },
+      "headerScrollWidth": 1440,
+      "headerClientWidth": 1440,
+      "displayScrollWidth": 1440,
+      "displayClientWidth": 1440
+    }
+  },
+  "paused": {
+    "320": {
+      "viewport": {
+        "width": 320,
+        "height": 844,
+        "documentScrollWidth": 320
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 320,
+        "bottom": 213,
+        "width": 320,
+        "height": 213
+      },
+      "exit": {
+        "x": 16,
+        "y": 16,
+        "left": 16,
+        "top": 16,
+        "right": 70.828125,
+        "bottom": 60,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 16,
+        "y": 158.25,
+        "left": 16,
+        "top": 158.25,
+        "right": 116.78125,
+        "bottom": 190.25,
+        "width": 100.78125,
+        "height": 32
+      },
+      "timer": {
+        "x": 210.28125,
+        "y": 136,
+        "left": 210.28125,
+        "top": 136,
+        "right": 304,
+        "bottom": 176,
+        "width": 93.71875,
+        "height": 40
+      },
+      "headerScrollWidth": 320,
+      "headerClientWidth": 320,
+      "displayScrollWidth": 320,
+      "displayClientWidth": 320
+    },
+    "390": {
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "documentScrollWidth": 390
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 390,
+        "bottom": 213,
+        "width": 390,
+        "height": 213
+      },
+      "exit": {
+        "x": 16,
+        "y": 16,
+        "left": 16,
+        "top": 16,
+        "right": 70.828125,
+        "bottom": 60,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 16,
+        "y": 158.25,
+        "left": 16,
+        "top": 158.25,
+        "right": 116.78125,
+        "bottom": 190.25,
+        "width": 100.78125,
+        "height": 32
+      },
+      "timer": {
+        "x": 280.28125,
+        "y": 136,
+        "left": 280.28125,
+        "top": 136,
+        "right": 374,
+        "bottom": 176,
+        "width": 93.71875,
+        "height": 40
+      },
+      "headerScrollWidth": 390,
+      "headerClientWidth": 390,
+      "displayScrollWidth": 390,
+      "displayClientWidth": 390
+    }
+  },
+  "noTimer": {
+    "320": {
+      "viewport": {
+        "width": 320,
+        "height": 844,
+        "documentScrollWidth": 320
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 320,
+        "bottom": 201.5,
+        "width": 320,
+        "height": 201.5
+      },
+      "exit": {
+        "x": 16,
+        "y": 16,
+        "left": 16,
+        "top": 16,
+        "right": 70.828125,
+        "bottom": 60,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 203.21875,
+        "y": 152.5,
+        "left": 203.21875,
+        "top": 152.5,
+        "right": 304,
+        "bottom": 184.5,
+        "width": 100.78125,
+        "height": 32
+      },
+      "timer": null,
+      "headerScrollWidth": 320,
+      "headerClientWidth": 320,
+      "displayScrollWidth": 320,
+      "displayClientWidth": 320
+    },
+    "390": {
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "documentScrollWidth": 390
+      },
+      "header": {
+        "x": 0,
+        "y": 0,
+        "left": 0,
+        "top": 0,
+        "right": 390,
+        "bottom": 201.5,
+        "width": 390,
+        "height": 201.5
+      },
+      "exit": {
+        "x": 16,
+        "y": 16,
+        "left": 16,
+        "top": 16,
+        "right": 70.828125,
+        "bottom": 60,
+        "width": 54.828125,
+        "height": 44
+      },
+      "pin": {
+        "x": 273.21875,
+        "y": 152.5,
+        "left": 273.21875,
+        "top": 152.5,
+        "right": 374,
+        "bottom": 184.5,
+        "width": 100.78125,
+        "height": 32
+      },
+      "timer": null,
+      "headerScrollWidth": 390,
+      "headerClientWidth": 390,
+      "displayScrollWidth": 390,
+      "displayClientWidth": 390
+    }
+  }
+}

@@ -20,6 +20,7 @@ import { Composer } from "./composer";
 import { PostCard } from "./post-card";
 import { ReviewPanel } from "./review-panel";
 import { collaborationRequest } from "@/lib/collab-request";
+import { BoardPrint } from "./board-print";
 
 export function BoardWorkspace({ id }: { id: string }) {
   const q = useBoard(id);
@@ -130,7 +131,7 @@ export function BoardWorkspace({ id }: { id: string }) {
 
   return (
     <div className="collab-root" dir="rtl">
-      <style>{`@media print{.no-print{display:none!important}.collab-root{background:#fff}.collab-card{break-inside:avoid}header,nav,footer{display:none!important}}`}</style>
+      <BoardPrint b={b} posts={posts} />
       {!online && <div role="status" className="bg-amber-100 text-amber-900 text-xs font-bold px-4 py-2 flex items-center gap-2 no-print"><WifiOff className="w-3.5 h-3.5 shrink-0" /> أنت غير متصل. المعروض آخر نسخة محمّلة؛ الإرسال متوقف. أعد المحاولة بعد عودة الاتصال، ولا توجد مزامنة تلقائية للمشاركات.</div>}
       {q.isRefetchError && online && <div className="bg-rose-100 text-rose-900 text-xs font-bold px-4 py-1.5 no-print">تعذر تحديث اللوحة مؤقتاً، نعيد المحاولة تلقائياً.</div>}
 
@@ -252,7 +253,7 @@ export function BoardWorkspace({ id }: { id: string }) {
       </div>
 
       {composer && <Composer key={`${id}:${b.selfId}:${composer.post?.id ?? "new"}`} id={id} b={b} post={composer.post} onClose={() => setComposer(null)} run={run} />}
-      {panel === "settings" && <SettingsPanel b={b} busyAction={locked} onClose={() => setPanel(null)} run={run} />}
+      {panel === "settings" && <SettingsPanel b={b} error={err} busyAction={locked} onClose={() => setPanel(null)} run={run} />}
       {panel === "people" && <People b={b} onClose={() => setPanel(null)} run={run} />}
       {panel === "timer" && <TimerPanel b={b} paused={paused} clock={clock} busy={locked} onClose={() => setPanel(null)} cmd={timerCmd} />}
       {panel === "review" && owner && <ReviewPanel b={b} pending={pending} busy={locked} error={err} onReview={review} onRetry={uncertainReview ? () => review(uncertainReview.ids, uncertainReview.status) : undefined} onClose={() => setPanel(null)} />}
@@ -313,24 +314,60 @@ function Empty({ canWrite, onNew }: { canWrite: boolean; onNew: () => void }) {
   );
 }
 
-function SettingsPanel({ b, busyAction, onClose, run }: { b: CollaborationView; busyAction: boolean; onClose: () => void; run: (a: CollaborationAction) => Promise<boolean> }) {
+function SettingsPanel({ b, error, busyAction, onClose, run }: { b: CollaborationView; error: string | null; busyAction: boolean; onClose: () => void; run: (a: CollaborationAction) => Promise<boolean> }) {
   const [title, setTitle] = useState(b.title);
   const [prompt, setPrompt] = useState(b.prompt);
   const [settings, setSettings] = useState<CollaborationSettings>(b.settings);
   const [columns, setColumns] = useState<CollaborationColumn[]>(b.columns);
+  const [transfers, setTransfers] = useState<Record<string, string>>({});
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [destination, setDestination] = useState("");
   const [busy, setBusy] = useState(false);
+  const count = (id: string) => b.posts.filter(p => (transfers[p.columnId] ?? p.columnId) === id).length;
+  const remove = (id: string, target?: string) => {
+    if (target) setTransfers(previous => {
+      const next = Object.fromEntries(Object.entries(previous).map(([from, to]) => [from, to === id ? target : to]));
+      if (b.columns.some(c => c.id === id)) next[id] = target;
+      return next;
+    });
+    setColumns(previous => previous.filter(c => c.id !== id));
+    setDeleting(null);
+  };
   const valid = title.trim() && prompt.trim() && columns.every((c) => c.title.trim());
+  if (deleting) return (
+    <Modal title="حذف عمود يحتوي مشاركات" onClose={() => setDeleting(null)}>
+      <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 mb-4">
+        العمود «{columns.find(c => c.id === deleting)?.title}» يحتوي {count(deleting)} مشاركة.
+        لن تُحذف المشاركات. اختر العمود الذي ستُنقل إليه قبل تأكيد حذف العمود.
+      </p>
+      <Field label="نقل المشاركات إلى">
+        <select className={inputCls} value={destination} onChange={e => setDestination(e.target.value)} data-testid="select-column-transfer">
+          <option value="">اختر العمود الوجهة</option>
+          {columns.filter(c => c.id !== deleting).map(c => <option key={c.id} value={c.id}>{c.title || "عمود بلا عنوان"}</option>)}
+        </select>
+      </Field>
+      <p className="text-xs text-muted-foreground mb-4">تُطبّق عملية النقل والحذف معًا عند حفظ الإعدادات. إلغاء الإعدادات يترك اللوحة كما هي.</p>
+      <div className="flex flex-wrap gap-2">
+        <button className={btnGhost} onClick={() => setDeleting(null)}>إلغاء</button>
+        <button className={btnPrimary} style={{ background: GREEN }} disabled={!destination} onClick={() => remove(deleting, destination)} data-testid="button-confirm-column-transfer">تأكيد النقل وحذف العمود</button>
+      </div>
+    </Modal>
+  );
   return (
     <Modal title="إعدادات اللوحة" onClose={onClose} wide>
       <h3 className="text-sm font-extrabold mb-2" style={{ color: GREEN }}>أساسيات اللوحة</h3>
       <Field label="العنوان"><input className={inputCls} maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
       <Field label="السؤال أو التوجيه"><textarea className={inputCls} rows={3} maxLength={1000} value={prompt} onChange={(e) => setPrompt(e.target.value)} /></Field>
-      <SettingsEditor settings={settings} onSettings={setSettings} columns={columns} onColumns={setColumns} />
+      <SettingsEditor settings={settings} onSettings={setSettings} columns={columns} onColumns={setColumns} onDeleteColumn={id => {
+        if (count(id) > 0) { setDestination(""); setDeleting(id); }
+        else remove(id);
+      }} />
+      {error && <p role="alert" className="text-sm text-rose-700 mt-3">{error}</p>}
       <div className="sticky bottom-0 -mx-4 -mb-4 mt-4 px-4 py-3 bg-background border-t border-border flex justify-end gap-2" data-testid="settings-actions">
         <button className={`${btnGhost} min-h-[44px] flex-1 sm:flex-none`} onClick={onClose}>إلغاء</button>
         <button className={`${btnPrimary} min-h-[44px] flex-1 sm:flex-none`} style={{ background: GREEN }} disabled={!valid || busy || busyAction} onClick={async () => {
           setBusy(true);
-          const ok = await run({ type: "board.update", title: title.trim(), prompt: prompt.trim(), settings, columns: columns.map((c) => ({ ...c, title: c.title.trim() })) });
+          const ok = await run({ type: "board.update", title: title.trim(), prompt: prompt.trim(), settings, columns: columns.map((c) => ({ ...c, title: c.title.trim() })), columnTransfers: Object.entries(transfers).map(([fromColumnId, toColumnId]) => ({ fromColumnId, toColumnId })) });
           setBusy(false);
           if (ok) onClose();
         }}>{busy && <Loader2 className="w-4 h-4 animate-spin" />} حفظ الإعدادات</button>
@@ -408,12 +445,14 @@ function Display({ b, spot, left, paused, onExit }: { b: CollaborationView; spot
   if (concealed) spot = undefined;
   const sc = spot ? COLORS[spot.color] ?? COLORS.mint : null;
   return (
-    <div className="fixed inset-0 z-[90] overflow-auto text-white" style={{ background: "#12301f" }} dir="rtl">
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-white/10 sticky top-0" style={{ background: "#12301f" }}>
-        <div className="flex-1"><div className="text-2xl sm:text-4xl font-black" style={{ color: GOLD }}>{b.title}</div><div className="text-sm sm:text-lg text-white/80 mt-1">{b.prompt}</div></div>
-        {left !== null && (paused || left > 0) && <div className="text-center"><div className="text-4xl sm:text-6xl font-black tabular-nums" data-testid="text-display-timer">{fmtTime(left)}</div>{paused && <div className="text-sm text-white/70">متوقف مؤقتاً</div>}</div>}
-        <div className="text-center"><div className="text-[11px] text-white/60">الرمز</div><div className="text-2xl sm:text-4xl font-black tracking-[0.2em]">{b.pin}</div></div>
-        <button onClick={onExit} className="rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm font-bold">خروج</button>
+    <div className="fixed inset-0 z-[90] overflow-auto text-white" style={{ background: "#12301f" }} dir="rtl" data-testid="collab-display">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:flex sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-b border-white/10 sticky top-0 z-10" style={{ background: "#12301f" }} data-testid="collab-display-header">
+        <div className="min-w-0 sm:flex-1"><div className="text-2xl sm:text-4xl font-black break-words" style={{ color: GOLD }}>{b.title}</div><div className="text-sm sm:text-lg text-white/80 mt-1 break-words">{b.prompt}</div></div>
+        <button onClick={onExit} className="sm:order-last self-start sm:self-auto rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 min-h-[44px] text-sm font-bold shrink-0" data-testid="button-display-exit">خروج</button>
+        <div className="col-span-2 min-w-0 flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-4">
+          {left !== null && (paused || left > 0) && <div className="text-center"><div className="text-4xl sm:text-6xl font-black tabular-nums" data-testid="text-display-timer">{fmtTime(left)}</div>{paused && <div className="text-sm text-white/70">متوقف مؤقتاً</div>}</div>}
+          <div className="text-center shrink-0"><div className="text-[11px] text-white/60">الرمز</div><div className="text-2xl sm:text-4xl font-black tracking-[0.2em]" dir="ltr" data-testid="text-display-pin">{b.pin}</div></div>
+        </div>
       </div>
       {spot && sc ? (
         <div className="p-6 flex justify-center"><div className="max-w-3xl w-full rounded-3xl p-8 text-[#12301f]" style={{ background: sc.bg }}>

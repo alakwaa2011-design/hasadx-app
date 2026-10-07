@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CollaborationActionColor } from './collaborationActionColor';
+import type { CollaborationActionColumnTransfersItem } from './collaborationActionColumnTransfersItem';
 import type { CollaborationActionKind } from './collaborationActionKind';
 import type { CollaborationActionReviewStatus } from './collaborationActionReviewStatus';
 import type { CollaborationActionStatus } from './collaborationActionStatus';
@@ -48,6 +49,8 @@ export interface CollaborationAction {
     settings?: CollaborationSettings;
     /** @maxItems 8 */
     columns?: CollaborationColumn[];
+    /** @maxItems 8 */
+    columnTransfers?: CollaborationActionColumnTransfersItem[];
     /**
        * @minimum 0
        * @maximum 3600

@@ -1,0 +1,29 @@
+{
+  "offline": {
+    "widths": [
+      390,
+      320
+    ],
+    "draftClientId": "14383d24-2fda-4b1b-9070-32a0fd07e9ee",
+    "persistedAt390": true,
+    "restoredAfterCloseAndReopen": true,
+    "deniedPostsWhileOffline": 0,
+    "notAutoSentAfterReconnect": true,
+    "explicitSendCount": 1,
+    "serverPostCount": 1,
+    "offlineMetrics": {
+      "width": 320,
+      "scrollWidth": 320
+    }
+  },
+  "receipt": {
+    "firstResponseDropped": true,
+    "droppedResponseStatus": 200,
+    "clientIds": [
+      "fca3f8a6-2b33-4d87-8985-2fc440dd508e",
+      "fca3f8a6-2b33-4d87-8985-2fc440dd508e"
+    ],
+    "sameClientId": true,
+    "postCount": 1
+  }
+}

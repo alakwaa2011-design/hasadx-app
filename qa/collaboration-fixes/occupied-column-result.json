@@ -1,0 +1,49 @@
+{
+  "main": {
+    "before": [
+      {
+        "id": "c5e93ee8-2e70-422c-b9b4-c6c36fa5c599",
+        "text": "مشاركة مع صورة وتعليق وتفاعل",
+        "status": "approved",
+        "hidden": true
+      },
+      {
+        "id": "8dc64086-cec2-420d-83f2-cd6d343d87ff",
+        "text": "مشاركة معلقة تنتظر المراجعة",
+        "status": "pending",
+        "hidden": false
+      }
+    ],
+    "after": [
+      {
+        "id": "c5e93ee8-2e70-422c-b9b4-c6c36fa5c599",
+        "text": "مشاركة مع صورة وتعليق وتفاعل",
+        "status": "approved",
+        "hidden": true,
+        "columnId": "chosen-dest"
+      },
+      {
+        "id": "8dc64086-cec2-420d-83f2-cd6d343d87ff",
+        "text": "مشاركة معلقة تنتظر المراجعة",
+        "status": "pending",
+        "hidden": false,
+        "columnId": "chosen-dest"
+      }
+    ],
+    "columns": [
+      "first-dest",
+      "chosen-dest"
+    ]
+  },
+  "missingMappingStatus": 409,
+  "racePosts": [
+    {
+      "text": "مشاركة قائمة",
+      "columnId": "occupied"
+    },
+    {
+      "text": "وصلت بعد فتح الإعدادات",
+      "columnId": "race-empty"
+    }
+  ]
+}

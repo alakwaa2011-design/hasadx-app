@@ -1,0 +1,210 @@
+{
+  "statuses": {
+    "draft": {
+      "id": "25015f64-b2dc-4fe5-815b-f7af8ed50c0a",
+      "title": "لوحة حالة المسودة",
+      "status": "draft"
+    },
+    "closed": {
+      "id": "6a1dd952-d571-4557-85c9-4d3ba27897a8",
+      "title": "لوحة حالة الإغلاق",
+      "status": "closed"
+    },
+    "archived": {
+      "id": "8c5eb727-9649-4e1a-b56f-6839a4fd7135",
+      "title": "لوحة حالة الأرشفة",
+      "status": "archived"
+    },
+    "open": {
+      "id": "d64e4e39-bcbb-41c4-928c-95676ad1dd0e",
+      "title": "لوحة اختبار نقل المشاركات",
+      "status": "open"
+    }
+  },
+  "library": {
+    "320": {
+      "draftVisible": true,
+      "openClosedArchivedExcluded": true,
+      "statuses": {
+        "draft": "draft",
+        "closed": "closed",
+        "archived": "archived",
+        "open": "open"
+      },
+      "scrollWidth": 320
+    },
+    "390": {
+      "draftVisible": true,
+      "openClosedArchivedExcluded": true,
+      "statuses": {
+        "draft": "draft",
+        "closed": "closed",
+        "archived": "archived",
+        "open": "open"
+      },
+      "scrollWidth": 390
+    },
+    "1440": {
+      "draftVisible": true,
+      "openClosedArchivedExcluded": true,
+      "statuses": {
+        "draft": "draft",
+        "closed": "closed",
+        "archived": "archived",
+        "open": "open"
+      },
+      "scrollWidth": 1440
+    }
+  },
+  "anonymousRejected": {
+    "draft-1440": {
+      "status": "draft",
+      "viewport": 1440,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 1440
+    },
+    "draft-390": {
+      "status": "draft",
+      "viewport": 390,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 390
+    },
+    "draft-320": {
+      "status": "draft",
+      "viewport": 320,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 320
+    },
+    "closed-1440": {
+      "status": "closed",
+      "viewport": 1440,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 1440
+    },
+    "closed-390": {
+      "status": "closed",
+      "viewport": 390,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 390
+    },
+    "closed-320": {
+      "status": "closed",
+      "viewport": 320,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 320
+    },
+    "archived-1440": {
+      "status": "archived",
+      "viewport": 1440,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 1440
+    },
+    "archived-390": {
+      "status": "archived",
+      "viewport": 390,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 390
+    },
+    "archived-320": {
+      "status": "archived",
+      "viewport": 320,
+      "ui": {
+        "statusMessage": true,
+        "nameEntryAbsent": true,
+        "joinButtonAbsent": true
+      },
+      "postStatus": 409,
+      "postMessage": "اللوحة ليست مفتوحة للانضمام الآن.",
+      "membersBefore": 0,
+      "membersAfter": 0,
+      "scrollWidth": 320
+    }
+  },
+  "reopenedJoin": {
+    "boardId": "25015f64-b2dc-4fe5-815b-f7af8ed50c0a",
+    "viewports": {
+      "320": {
+        "joined": true,
+        "correctBoard": "25015f64-b2dc-4fe5-815b-f7af8ed50c0a",
+        "status": "open",
+        "members": 3
+      },
+      "390": {
+        "joined": true,
+        "correctBoard": "25015f64-b2dc-4fe5-815b-f7af8ed50c0a",
+        "status": "open",
+        "members": 2
+      },
+      "1440": {
+        "joined": true,
+        "correctBoard": "25015f64-b2dc-4fe5-815b-f7af8ed50c0a",
+        "status": "open",
+        "members": 1
+      }
+    }
+  }
+}

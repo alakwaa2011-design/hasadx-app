@@ -203,11 +203,40 @@ describe("collaboration board ownership, privacy and classroom rules", () => {
       const d = setup(), p = add(d);
       expect(() => applyBoardAction(d, b, { type, postId: p.id, status: "closed", memberId: a.id })).toThrow("للمعلم");
     });
-  it("moves existing cards safely when a column is removed", () => {
+  it("refuses silent relocation and transfers only to the teacher's selected column", () => {
     const d = setup(), p = add(d);
-    applyBoardAction(d, owner, { type: "board.update", columns: [{ id: "new", title: "أفكار جديدة" }] });
+    const before = structuredClone(d);
+    const columns = [{ id: "other", title: "ليس الوجهة" }, { id: "new", title: "أفكار جديدة" }];
+    expect(() => applyBoardAction(d, owner, { type: "board.update", title: "changed", columns })).toThrow("العمود يحتوي");
+    expect(d).toEqual(before);
+    applyBoardAction(d, owner, { type: "board.update", columns, columnTransfers: [{ fromColumnId: "ideas", toColumnId: "new" }] });
     expect(p.columnId).toBe("new");
     expect(() => applyBoardAction(d, owner, { type: "board.update", columns: [] })).toThrow("عمود");
+  });
+  it("rejects invalid transfer destinations and duplicate sources without partial changes", () => {
+    const d = setup(); add(d);
+    const columns = [{ id: "new", title: "أفكار" }];
+    for (const columnTransfers of [
+      [{ fromColumnId: "ideas", toColumnId: "missing" }],
+      [{ fromColumnId: "missing", toColumnId: "new" }],
+      [{ fromColumnId: "ideas", toColumnId: "new" }, { fromColumnId: "ideas", toColumnId: "new" }],
+    ]) {
+      const before = structuredClone(d);
+      expect(() => applyBoardAction(d, owner, { type: "board.update", columns, columnTransfers })).toThrow("خطة نقل");
+      expect(d).toEqual(before);
+    }
+  });
+  it("allows empty-column removal and preserves unrelated posts and metadata during transfers", () => {
+    const d = setup(true); const p = add(d);
+    d.columns.push({ id: "empty", title: "فارغ" }, { id: "target", title: "الوجهة" });
+    p.hidden = true; p.pinned = true;
+    const before = structuredClone(p);
+    applyBoardAction(d, owner, { type: "board.update", columns: d.columns.filter(c => c.id !== "empty") });
+    expect(p).toEqual(before);
+    const second = add(d, b);
+    applyBoardAction(d, owner, { type: "board.update", columns: [{ id: "target", title: "الوجهة" }], columnTransfers: [{ fromColumnId: "ideas", toColumnId: "target" }] });
+    expect(p).toEqual({ ...before, columnId: "target" });
+    expect(second.columnId).toBe("target");
   });
   it("refuses arbitrary or another student's image identifiers and unsafe links", () => {
     const d = setup(); d.images.pic = { authorId: b.id, path: "/objects/uploads/collaboration/board/image.webp" };

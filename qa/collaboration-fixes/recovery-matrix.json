@@ -1,0 +1,181 @@
+{
+  "existingBoardId": "d64e4e39-bcbb-41c4-928c-95676ad1dd0e",
+  "load": {
+    "delayed": {
+      "skeletonCount": 4,
+      "noPrematureEmptyOrError": true,
+      "requestCount": 1
+    },
+    "resolved": {
+      "title": "لوحة اختبار نقل المشاركات",
+      "skeletonCleared": true
+    },
+    "aborted": {
+      "requestsAborted": 1,
+      "explicitRetry": true,
+      "errorVisible": true
+    },
+    "retry": {
+      "successfulRequests": 1,
+      "boardResolved": true,
+      "noStuckOverlay": true
+    }
+  },
+  "empty": {
+    "boardId": "93efd5c1-d2af-4bf8-95eb-2eb5d591f37e",
+    "cta-1440": {
+      "width": 1440,
+      "scrollWidth": 1440,
+      "cta": {
+        "left": 471.734375,
+        "right": 526.4375
+      }
+    },
+    "participants-1440": {
+      "message": "لم ينضم أحد بعد",
+      "dialog": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "scrollWidth": 1440
+    },
+    "cta-390": {
+      "width": 390,
+      "scrollWidth": 390,
+      "cta": {
+        "left": 0,
+        "right": 0
+      }
+    },
+    "participants-390": {
+      "message": "لم ينضم أحد بعد",
+      "dialog": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390
+    },
+    "cta-320": {
+      "width": 320,
+      "scrollWidth": 320,
+      "cta": {
+        "left": 0,
+        "right": 0
+      }
+    },
+    "participants-320": {
+      "message": "لم ينضم أحد بعد",
+      "dialog": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 844
+      },
+      "scrollWidth": 320
+    },
+    "review-1440": {
+      "emptyText": true,
+      "dialog": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900
+      },
+      "scrollWidth": 1440
+    },
+    "review-390": {
+      "emptyText": true,
+      "dialog": {
+        "x": 0,
+        "y": 0,
+        "width": 390,
+        "height": 844
+      },
+      "scrollWidth": 390
+    },
+    "review-320": {
+      "emptyText": true,
+      "dialog": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 844
+      },
+      "scrollWidth": 320
+    },
+    "column-and-search-1440": {
+      "emptyColumn": true,
+      "noResults": true,
+      "scrollWidth": 1440,
+      "searchBox": {
+        "x": 750.953125,
+        "y": 322.5,
+        "width": 593.046875,
+        "height": 38
+      }
+    },
+    "column-and-search-390": {
+      "emptyColumn": true,
+      "noResults": true,
+      "scrollWidth": 390,
+      "searchBox": {
+        "x": 159,
+        "y": 417.5,
+        "width": 199,
+        "height": 38
+      }
+    },
+    "column-and-search-320": {
+      "emptyColumn": true,
+      "noResults": true,
+      "scrollWidth": 320,
+      "searchBox": {
+        "x": 32,
+        "y": 479.5,
+        "width": 256,
+        "height": 38
+      }
+    },
+    "library-filter-1440": {
+      "message": "لا لوحات في هذه الحالة.",
+      "distinctFromEmptyLibrary": true,
+      "scrollWidth": 1440
+    },
+    "library-filter-390": {
+      "message": "لا لوحات في هذه الحالة.",
+      "distinctFromEmptyLibrary": true,
+      "scrollWidth": 390
+    },
+    "library-filter-320": {
+      "message": "لا لوحات في هذه الحالة.",
+      "distinctFromEmptyLibrary": true,
+      "scrollWidth": 320
+    }
+  },
+  "transfers": {
+    "390": {
+      "boardId": "c4e0b8a1-b4d6-4381-a38d-4465fe89fd9f",
+      "sourceDeleted": true,
+      "postMovedTo": "selected",
+      "scrollWidth": 390
+    },
+    "1440": {
+      "boardId": "d5cad360-6cc4-46e9-b0b6-811858dc68d6",
+      "sourceDeleted": true,
+      "postMovedTo": "selected",
+      "scrollWidth": 1440
+    },
+    "fixtures": {
+      "desktop": {
+        "boardId": "d5cad360-6cc4-46e9-b0b6-811858dc68d6"
+      },
+      "mobile": {
+        "boardId": "c4e0b8a1-b4d6-4381-a38d-4465fe89fd9f"
+      }
+    }
+  }
+}

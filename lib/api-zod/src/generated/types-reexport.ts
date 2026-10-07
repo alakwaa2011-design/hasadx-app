@@ -75,6 +75,7 @@ export type * from "./types/buildPresentationResponse";
 export type * from "./types/cancelBuildResponse";
 export type * from "./types/collaborationAction";
 export type * from "./types/collaborationActionColor";
+export type * from "./types/collaborationActionColumnTransfersItem";
 export type * from "./types/collaborationActionKind";
 export type * from "./types/collaborationActionReviewStatus";
 export type * from "./types/collaborationActionStatus";

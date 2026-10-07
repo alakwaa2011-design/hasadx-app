@@ -922,6 +922,9 @@ export declare const updateCollaborationBoardBodySettingsMaxPostsMax = 10;
 export declare const updateCollaborationBoardBodySettingsVoteBudgetMax = 10;
 export declare const updateCollaborationBoardBodyColumnsItemTitleMax = 60;
 export declare const updateCollaborationBoardBodyColumnsMax = 8;
+export declare const updateCollaborationBoardBodyColumnTransfersItemFromColumnIdMax = 60;
+export declare const updateCollaborationBoardBodyColumnTransfersItemToColumnIdMax = 60;
+export declare const updateCollaborationBoardBodyColumnTransfersMax = 8;
 export declare const updateCollaborationBoardBodyTimerSecondsMin = 0;
 export declare const updateCollaborationBoardBodyTimerSecondsMax = 3600;
 export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
@@ -984,6 +987,16 @@ export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
         id: string;
         title: string;
     }>, "many">>;
+    columnTransfers: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodObject<{
+        fromColumnId: zodV3.ZodString;
+        toColumnId: zodV3.ZodString;
+    }, "strip", zodV3.ZodTypeAny, {
+        fromColumnId: string;
+        toColumnId: string;
+    }, {
+        fromColumnId: string;
+        toColumnId: string;
+    }>, "many">>;
     timerSeconds: zodV3.ZodOptional<zodV3.ZodNumber>;
     timerCommand: zodV3.ZodOptional<zodV3.ZodEnum<["start", "pause", "resume", "extend", "stop"]>>;
 }, "strip", zodV3.ZodTypeAny, {
@@ -1020,6 +1033,10 @@ export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
     postId?: string | undefined;
     commentId?: string | undefined;
     memberId?: string | undefined;
+    columnTransfers?: {
+        fromColumnId: string;
+        toColumnId: string;
+    }[] | undefined;
     timerSeconds?: number | undefined;
     timerCommand?: "start" | "pause" | "resume" | "extend" | "stop" | undefined;
 }, {
@@ -1056,6 +1073,10 @@ export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
     postId?: string | undefined;
     commentId?: string | undefined;
     memberId?: string | undefined;
+    columnTransfers?: {
+        fromColumnId: string;
+        toColumnId: string;
+    }[] | undefined;
     timerSeconds?: number | undefined;
     timerCommand?: "start" | "pause" | "resume" | "extend" | "stop" | undefined;
 }>;

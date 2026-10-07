@@ -305,6 +305,12 @@ export const updateCollaborationBoardBodyColumnsItemTitleMax = 60;
 
 export const updateCollaborationBoardBodyColumnsMax = 8;
 
+export const updateCollaborationBoardBodyColumnTransfersItemFromColumnIdMax = 60;
+
+export const updateCollaborationBoardBodyColumnTransfersItemToColumnIdMax = 60;
+
+export const updateCollaborationBoardBodyColumnTransfersMax = 8;
+
 export const updateCollaborationBoardBodyTimerSecondsMin = 0;
 export const updateCollaborationBoardBodyTimerSecondsMax = 3600;
 
@@ -344,6 +350,10 @@ export const UpdateCollaborationBoardBody = zod.object({
   "id": zod.string(),
   "title": zod.string().max(updateCollaborationBoardBodyColumnsItemTitleMax)
 })).max(updateCollaborationBoardBodyColumnsMax).optional(),
+  "columnTransfers": zod.array(zod.object({
+  "fromColumnId": zod.string().min(1).max(updateCollaborationBoardBodyColumnTransfersItemFromColumnIdMax),
+  "toColumnId": zod.string().min(1).max(updateCollaborationBoardBodyColumnTransfersItemToColumnIdMax)
+})).max(updateCollaborationBoardBodyColumnTransfersMax).optional(),
   "timerSeconds": zod.int().min(updateCollaborationBoardBodyTimerSecondsMin).max(updateCollaborationBoardBodyTimerSecondsMax).optional(),
   "timerCommand": zod.enum(['start', 'pause', 'resume', 'extend', 'stop']).optional()
 })

@@ -1,0 +1,22 @@
+{
+  "draft": {
+    "id": "25015f64-b2dc-4fe5-815b-f7af8ed50c0a",
+    "title": "لوحة حالة المسودة",
+    "status": "draft"
+  },
+  "closed": {
+    "id": "6a1dd952-d571-4557-85c9-4d3ba27897a8",
+    "title": "لوحة حالة الإغلاق",
+    "status": "closed"
+  },
+  "archived": {
+    "id": "8c5eb727-9649-4e1a-b56f-6839a4fd7135",
+    "title": "لوحة حالة الأرشفة",
+    "status": "archived"
+  },
+  "open": {
+    "id": "d64e4e39-bcbb-41c4-928c-95676ad1dd0e",
+    "title": "لوحة اختبار نقل المشاركات",
+    "status": "open"
+  }
+}

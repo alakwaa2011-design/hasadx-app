@@ -1,0 +1,226 @@
+{
+  "boardId": "d64e4e39-bcbb-41c4-928c-95676ad1dd0e",
+  "longPostId": "c9c6f124-1783-470d-b607-44dc13c1e459",
+  "textLength": 900,
+  "responsive": {
+    "320": {
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "root": {
+        "left": 0,
+        "right": 320,
+        "top": 0,
+        "bottom": 1614.5625,
+        "width": 320,
+        "height": 1614.5625
+      },
+      "rootScrollWidth": 320,
+      "rootClientWidth": 320,
+      "images": [
+        {
+          "rect": {
+            "left": 23.890625,
+            "right": 303.890625,
+            "top": 283.859375,
+            "bottom": 463.859375,
+            "width": 280,
+            "height": 180
+          },
+          "naturalWidth": 280,
+          "naturalHeight": 180
+        },
+        {
+          "rect": {
+            "left": 23.890625,
+            "right": 303.890625,
+            "top": 1320.03125,
+            "bottom": 1500.03125,
+            "width": 280,
+            "height": 180
+          },
+          "naturalWidth": 280,
+          "naturalHeight": 180
+        }
+      ],
+      "postTextLength": [
+        900,
+        15,
+        39,
+        27,
+        28,
+        4
+      ],
+      "articleCount": 3,
+      "bodyChildren": [
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "collab-print-only",
+          "display": "block"
+        }
+      ]
+    },
+    "390": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "root": {
+        "left": 0,
+        "right": 390,
+        "top": 0,
+        "bottom": 1474.578125,
+        "width": 390,
+        "height": 1474.578125
+      },
+      "rootScrollWidth": 390,
+      "rootClientWidth": 390,
+      "images": [
+        {
+          "rect": {
+            "left": 93.890625,
+            "right": 373.890625,
+            "top": 215.875,
+            "bottom": 395.875,
+            "width": 280,
+            "height": 180
+          },
+          "naturalWidth": 280,
+          "naturalHeight": 180
+        },
+        {
+          "rect": {
+            "left": 93.890625,
+            "right": 373.890625,
+            "top": 1180.046875,
+            "bottom": 1360.046875,
+            "width": 280,
+            "height": 180
+          },
+          "naturalWidth": 280,
+          "naturalHeight": 180
+        }
+      ],
+      "postTextLength": [
+        900,
+        15,
+        39,
+        27,
+        28,
+        4
+      ],
+      "articleCount": 3,
+      "bodyChildren": [
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "collab-print-only",
+          "display": "block"
+        }
+      ]
+    },
+    "1440": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "root": {
+        "left": 0,
+        "right": 1440,
+        "top": 0,
+        "bottom": 1066.578125,
+        "width": 1440,
+        "height": 1066.578125
+      },
+      "rootScrollWidth": 1440,
+      "rootClientWidth": 1440,
+      "images": [
+        {
+          "rect": {
+            "left": 1143.890625,
+            "right": 1423.890625,
+            "top": 215.875,
+            "bottom": 395.875,
+            "width": 280,
+            "height": 180
+          },
+          "naturalWidth": 280,
+          "naturalHeight": 180
+        },
+        {
+          "rect": {
+            "left": 1143.890625,
+            "right": 1423.890625,
+            "top": 772.046875,
+            "bottom": 952.046875,
+            "width": 280,
+            "height": 180
+          },
+          "naturalWidth": 280,
+          "naturalHeight": 180
+        }
+      ],
+      "postTextLength": [
+        900,
+        15,
+        39,
+        27,
+        28,
+        4
+      ],
+      "articleCount": 3,
+      "bodyChildren": [
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "",
+          "display": "none"
+        },
+        {
+          "class": "collab-print-only",
+          "display": "block"
+        }
+      ]
+    }
+  }
+}

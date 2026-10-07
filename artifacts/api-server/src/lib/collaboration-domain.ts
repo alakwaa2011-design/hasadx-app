@@ -212,7 +212,25 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
       p.comments = p.comments.filter(c => c.id !== action.commentId);
       break;
     }
-    case "board.update":
+    case "board.update": {
+      // Validate the entire transfer plan before changing anything. The caller
+      // holds the row lock, so posts arriving after the editor opened are covered.
+      const columns = action.columns ? validateColumns(action.columns) : data.columns;
+      const transfers = new Map<string, string>();
+      for (const transfer of action.columnTransfers ?? []) {
+        const { fromColumnId, toColumnId } = transfer;
+        if (!action.columns || !data.columns.some(c => c.id === fromColumnId)
+          || columns.some(c => c.id === fromColumnId)
+          || !columns.some(c => c.id === toColumnId) || transfers.has(fromColumnId)) {
+          throw new BoardError("خطة نقل المشاركات غير صالحة؛ اختر عمودًا متبقيًا لكل عمود محذوف.");
+        }
+        transfers.set(fromColumnId, toColumnId);
+      }
+      if (data.posts.some(p => !columns.some(c => c.id === p.columnId) && !transfers.has(p.columnId))) {
+        throw new BoardError("العمود يحتوي مشاركات. اختر عمودًا لنقلها إليه قبل تأكيد الحذف.", 409);
+      }
+      if (action.title !== undefined && !action.title.trim()) throw new BoardError("العنوان مطلوب.");
+      if (action.prompt !== undefined && !action.prompt.trim()) throw new BoardError("سؤال اللوحة مطلوب.");
       if (action.title !== undefined) { if (!action.title.trim()) throw new BoardError("العنوان مطلوب."); data.title = action.title.trim(); }
       if (action.prompt !== undefined) { if (!action.prompt.trim()) throw new BoardError("سؤال اللوحة مطلوب."); data.prompt = action.prompt.trim(); }
       if (action.settings) {
@@ -221,10 +239,11 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
         data.settings = { ...action.settings };
       }
       if (action.columns) {
-        data.columns = validateColumns(action.columns);
-        for (const p of data.posts) if (!data.columns.some(c => c.id === p.columnId)) p.columnId = data.columns[0].id;
+        data.columns = columns;
+        for (const p of data.posts) if (transfers.has(p.columnId)) p.columnId = transfers.get(p.columnId)!;
       }
       break;
+    }
     case "board.status":
       if (!action.status) throw new BoardError("حالة اللوحة مطلوبة.");
       data.status = action.status;

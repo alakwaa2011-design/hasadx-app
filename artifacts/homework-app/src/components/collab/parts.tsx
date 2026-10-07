@@ -62,9 +62,10 @@ function Section({ title, note, cols, children }: { title: string; note?: string
   );
 }
 
-export function SettingsEditor({ settings, onSettings, columns, onColumns }: {
+export function SettingsEditor({ settings, onSettings, columns, onColumns, onDeleteColumn }: {
   settings: CollaborationSettings; onSettings: (s: CollaborationSettings) => void;
   columns: CollaborationColumn[]; onColumns: (c: CollaborationColumn[]) => void;
+  onDeleteColumn?: (id: string) => void;
 }) {
   const s = settings;
   const up = (p: Partial<CollaborationSettings>) => onSettings({ ...s, ...p });
@@ -103,14 +104,14 @@ export function SettingsEditor({ settings, onSettings, columns, onColumns }: {
             <input className={inputCls} maxLength={60} value={c.title} placeholder="عنوان العمود" onChange={(e) => onColumns(columns.map((x) => (x.id === c.id ? { ...x, title: e.target.value } : x)))} />
             <button type="button" aria-label="أعلى" className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, -1)}><ArrowUp className="w-4 h-4" /></button>
             <button type="button" aria-label="أسفل" className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, 1)}><ArrowDown className="w-4 h-4" /></button>
-            <button type="button" aria-label="حذف العمود" disabled={columns.length <= 1} className="p-2 rounded-lg hover:bg-muted text-destructive disabled:opacity-30" onClick={() => onColumns(columns.filter((x) => x.id !== c.id))}><Trash2 className="w-4 h-4" /></button>
+            <button type="button" aria-label="حذف العمود" disabled={columns.length <= 1} className="p-2 rounded-lg hover:bg-muted text-destructive disabled:opacity-30" onClick={() => onDeleteColumn ? onDeleteColumn(c.id) : onColumns(columns.filter((x) => x.id !== c.id))}><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
       <button type="button" disabled={columns.length >= 8} className={`${btnGhost} mt-2`} onClick={() => onColumns([...columns, { id: newId().slice(0, 8), title: "" }])}>
         <Plus className="w-4 h-4" /> إضافة عمود
       </button>
-      <p className="text-[11px] text-muted-foreground mt-2">حذف عمود يجب أن يتم بعد نقل مشاركاته؛ الخادم يرفض الحذف إن كان العمود مستخدماً.</p>
+      <p className="text-[11px] text-muted-foreground mt-2">عند حذف عمود يحتوي مشاركات، تختار عمودًا لنقلها إليه. تُطبّق التغييرات عند حفظ الإعدادات فقط.</p>
     </div>
   );
 }

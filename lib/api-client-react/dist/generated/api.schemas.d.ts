@@ -220,6 +220,18 @@ export declare const CollaborationActionStatus: {
     readonly closed: "closed";
     readonly archived: "archived";
 };
+export type CollaborationActionColumnTransfersItem = {
+    /**
+       * @minLength 1
+       * @maxLength 60
+       */
+    fromColumnId: string;
+    /**
+       * @minLength 1
+       * @maxLength 60
+       */
+    toColumnId: string;
+};
 export type CollaborationActionTimerCommand = typeof CollaborationActionTimerCommand[keyof typeof CollaborationActionTimerCommand];
 export declare const CollaborationActionTimerCommand: {
     readonly start: "start";
@@ -263,6 +275,8 @@ export interface CollaborationAction {
     settings?: CollaborationSettings;
     /** @maxItems 8 */
     columns?: CollaborationColumn[];
+    /** @maxItems 8 */
+    columnTransfers?: CollaborationActionColumnTransfersItem[];
     /**
        * @minimum 0
        * @maximum 3600

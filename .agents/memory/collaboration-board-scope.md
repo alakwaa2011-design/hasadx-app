@@ -38,3 +38,9 @@ Prioritize speed and reduced complexity during the lesson without changing the b
 **Why:** The user explicitly requested classroom-focused improvements after approving the draft protection and honest offline behavior, and required those safeguards to remain unchanged.
 
 **How to apply:** Judge further UX changes by whether they make the teacher/student classroom journey simpler, not by how many controls or features they expose.
+
+Deleting an occupied column requires a clear warning and an explicit teacher-selected destination for its posts. Never silently choose the first remaining column.
+
+**Why:** The user rejected silent recategorization during final QA: preserving post text is not enough if its classroom grouping changes without the teacher's knowledge.
+
+**How to apply:** Treat destination selection and column removal as one saved change. Cancellation must leave both content and grouping unchanged, and posts arriving during editing must not bypass that consent.
