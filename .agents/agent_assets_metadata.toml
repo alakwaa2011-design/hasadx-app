@@ -2623,3 +2623,115 @@ mtime_ms = 1791184501722
 storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/0af584da-4d37-412f-a006-ecca4c0d84c6/d4866013-c60e-473e-accc-d0cddfdd2cac"
 storage_version_token = "1791184568885084"
 content_type = "video/mp4"
+
+[[outputs]]
+id = "BdOiNBkn2dBtIUc8azyTq"
+uri = "file://qa/collaboration-final/screenshots/teacher-main-desktop-clean.png"
+type = "image"
+title = "المعلم — Desktop"
+description = "الواجهة الرئيسية الحالية دون نوافذ مفتوحة؛ بيانات اختبار معزولة."
+logical_id = "19f0ce8e-a9f8-41fb-a0bc-5427a173caaf"
+content_hash = "sha256:ff59d8e3ad44803b1aa561906d609004a6059d074cfa7ca05a2ca472d319c6c6"
+size = 112577
+mtime_ms = 1791354452185
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/19f0ce8e-a9f8-41fb-a0bc-5427a173caaf/80c18008-c57d-40fb-ba4d-908dc5764238"
+storage_version_token = "1791354725635810"
+content_type = "image/png"
+
+[[outputs]]
+id = "q7wl6I9lKPA3FdXTtXEZM"
+uri = "file://qa/collaboration-final/screenshots/student-layan-main-desktop-clean.png"
+type = "image"
+title = "الطالب — Desktop"
+description = "عرض الطالب الحالي ومشاركات اللوحة."
+logical_id = "b43707a8-871b-4ad3-b9c3-d085a8dd5b98"
+content_hash = "sha256:75d6d2300b2a2b5b87d9a45aea1f27fcc6b6130ddf415b7d5b971b83ce5d822c"
+size = 88743
+mtime_ms = 1791354452253
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/b43707a8-871b-4ad3-b9c3-d085a8dd5b98/1847f63c-d959-4c23-a490-cebd7500a12f"
+storage_version_token = "1791354727845091"
+content_type = "image/png"
+
+[[outputs]]
+id = "1URdeL8YGTiDHUBGXZZP8"
+uri = "file://qa/collaboration-final/screenshots/teacher-main-390-clean.png"
+type = "image"
+title = "المعلم — Mobile 390"
+description = "الأزرار والمرشحات والبطاقات على هاتف بعرض 390 بكسل."
+logical_id = "5510e1c3-fab1-45ef-9105-851ac04b324b"
+content_hash = "sha256:5da4c6b381c66cf435ee7d9a2627f7b4f00aaba207d8622fda8589e5016331e7"
+size = 66680
+mtime_ms = 1791354452341
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/5510e1c3-fab1-45ef-9105-851ac04b324b/fcb5f81c-aa60-416b-a232-8a569cbbaa4e"
+storage_version_token = "1791354729761348"
+content_type = "image/png"
+
+[[outputs]]
+id = "ntVM_b8cnJdFoN3Cf0pZd"
+uri = "file://qa/collaboration-final/screenshots/student-layan-main-390-clean.png"
+type = "image"
+title = "الطالب — Mobile 390"
+description = "المشاركة والتفاعلات والبطاقات على هاتف بعرض 390 بكسل."
+logical_id = "c1e47995-64ea-430c-9915-8becf37ad16e"
+content_hash = "sha256:4cd236c74307ee15bbb63c489752bcac0e5102bee05d463afb094862b668e426"
+size = 57067
+mtime_ms = 1791354107313
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/c1e47995-64ea-430c-9915-8becf37ad16e/b31e11b2-b165-48db-bd68-7aa6f4867fa3"
+storage_version_token = "1791354731480484"
+content_type = "image/png"
+
+[[outputs]]
+id = "_0wvE8Fhm_t2Aaup57i92"
+uri = "file://qa/collaboration-final/screenshots/teacher-main-320-clean.png"
+type = "image"
+title = "المعلم — Mobile 320"
+description = "الواجهة الرئيسية على العرض الأصغر المطلوب."
+logical_id = "d988872b-6d39-4858-b439-d6a74118f92b"
+content_hash = "sha256:39f68bfb3bca54f6996eb56ecd5ef1ac284596c32331d25de731abf8cf3a90ea"
+size = 62373
+mtime_ms = 1791354452413
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/d988872b-6d39-4858-b439-d6a74118f92b/d785db00-8bb5-46a9-abf6-169e5ef44257"
+storage_version_token = "1791354733279716"
+content_type = "image/png"
+
+[[outputs]]
+id = "aKLMOAHLcT4RpZxZ7RsOQ"
+uri = "file://qa/collaboration-final/screenshots/student-layan-320.png"
+type = "image"
+title = "الطالب — Mobile 320"
+description = "عرض الطالب مع مشاركة تحتوي صورة على شاشة 320 بكسل."
+logical_id = "dcb3d0e3-8ce4-45d4-94b5-dda595fef0f5"
+content_hash = "sha256:3b07a376a21a052fefa74b5a42f34584950b37ff4cbf0d4607620418be46db72"
+size = 55369
+mtime_ms = 1791354452577
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/dcb3d0e3-8ce4-45d4-94b5-dda595fef0f5/3bedb658-72f8-4d50-b919-fcce3e2fa3c4"
+storage_version_token = "1791354735182468"
+content_type = "image/png"
+
+[[outputs]]
+id = "T5aqeeO5HTrDPSnNvycMI"
+uri = "file://qa/collaboration-final/screenshots/projection-320.png"
+type = "image"
+title = "دليل المشكلة — عرض الصف على 320 بكسل"
+description = "المؤقت ظاهر، لكن رمز الانضمام مقصوص وزر الخروج خارج الإطار الظاهر."
+logical_id = "c62500c6-c712-47a2-80fd-27cb07d314c4"
+content_hash = "sha256:ec985d48625378a1823ee8024a28b66f78cbbf3f0578534ec16896a1bd3bf3de"
+size = 19347
+mtime_ms = 1791354267677
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/c62500c6-c712-47a2-80fd-27cb07d314c4/db2ee9f4-9248-4723-9752-4113a0bac5e1"
+storage_version_token = "1791356084831291"
+content_type = "image/png"
+
+[[outputs]]
+id = "pAg5BKuV2jlYWhuX9vn_1"
+uri = "file://qa/collaboration-final/screenshots/pdf-page1-preview.png"
+type = "image"
+title = "دليل المشكلة — صفحة PDF النهائية"
+description = "الملف يُنتج المحتوى، لكنه يطبع أيضًا رابط العودة وزر مساعد حصاد."
+logical_id = "8cd2bf28-6d20-4ee7-9478-b9be35df0f53"
+content_hash = "sha256:45b90850cb881a45439f674557f6fa27f37c8536038e477df8031e3736b54788"
+size = 39056
+mtime_ms = 1791354332281
+storage_uri = "gcs://replit-rams-assets-pike/rams/assets/repl:82a0c44d-e45a-424f-b93b-ec4ef24a882a/8cd2bf28-6d20-4ee7-9478-b9be35df0f53/6511e91e-4df0-484c-bfbb-e48f3abd87d1"
+storage_version_token = "1791356086267655"
+content_type = "image/png"

@@ -1,0 +1,11 @@
+{
+  "method": "jsQR 1.4.0 decoded the rendered QR pixels from Chromium screenshot",
+  "source": "qa/collaboration-final/screenshots/share-dialog.png",
+  "image": {
+    "width": 1440,
+    "height": 900
+  },
+  "decoded": "http://127.0.0.1:5102/collaboration/join/491372",
+  "copied": "http://127.0.0.1:5102/collaboration/join/491372",
+  "matchesClipboard": true
+}

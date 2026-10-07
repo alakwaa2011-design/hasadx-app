@@ -1,0 +1,12 @@
+{
+  "path": "pdfs/pdf-with-image-long-text.pdf",
+  "pages": 1,
+  "longPostChars": 900,
+  "embeddedGuestRaster": true,
+  "extractedTextChars": 1972,
+  "postBodyStartIncluded": true,
+  "postBodyEndIncluded": true,
+  "visualPreview": "screenshots/pdf-long-page-1.png",
+  "observedClipped": false,
+  "visualObservation": "Full 280x180 illustration, wrapped 900-character Arabic post, and its tags are visible on the single A4 page; pdftotext contains both beginning and ending phrases."
+}

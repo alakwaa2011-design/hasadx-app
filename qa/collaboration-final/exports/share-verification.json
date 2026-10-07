@@ -1,0 +1,9 @@
+{
+  "pin": "491372",
+  "copied": "http://127.0.0.1:5102/collaboration/join/491372",
+  "qrDecode": {
+    "method": "jsQR 1.4.0 decoded pixels from screenshots/share-dialog.png",
+    "decoded": "http://127.0.0.1:5102/collaboration/join/491372",
+    "matchesClipboard": true
+  }
+}

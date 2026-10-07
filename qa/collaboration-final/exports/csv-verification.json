@@ -1,0 +1,18 @@
+{
+  "path": "/home/runner/workspace/qa/collaboration-final/exports/collaboration.csv",
+  "bytes": 403,
+  "bom": true,
+  "records": 2,
+  "header": [
+    "العمود",
+    "الكاتب",
+    "النص",
+    "الوسوم",
+    "الرابط",
+    "الحالة",
+    "التفاعلات",
+    "التعليقات"
+  ],
+  "formulaField": "'=SUM(1,2) عبارة \"مقتبسة\", مع فاصلة.",
+  "realContent": true
+}

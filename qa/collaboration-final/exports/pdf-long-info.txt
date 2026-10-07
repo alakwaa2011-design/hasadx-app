@@ -1,0 +1,19 @@
+Title:           منصة حصاد | أنشئ وشارك وتفاعل في تجربة تعليمية متكاملة
+Creator:         Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36
+Producer:        Skia/PDF m140
+CreationDate:    Wed Oct  7 06:29:30 2026 UTC
+ModDate:         Wed Oct  7 06:29:30 2026 UTC
+Custom Metadata: no
+Metadata Stream: no
+Tagged:          no
+UserProperties:  no
+Suspects:        no
+Form:            none
+JavaScript:      no
+Pages:           1
+Encrypted:       no
+Page size:       595.92 x 842.88 pts (A4)
+Page rot:        0
+File size:       153192 bytes
+Optimized:       no
+PDF version:     1.4

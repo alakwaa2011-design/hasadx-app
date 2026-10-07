@@ -1,0 +1,13 @@
+{
+  "saveAccepted": true,
+  "columns": [
+    {
+      "id": "questions",
+      "title": "أسئلة"
+    }
+  ],
+  "beforeColumn": "ideas",
+  "afterColumn": "questions",
+  "postText": "نزرع شتلات في الحديقة.",
+  "visibleError": []
+}

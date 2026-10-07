@@ -1,0 +1,10 @@
+{
+  "method": "jsQR 1.4.0 over the actual Chromium share-modal screenshot",
+  "source": "screenshots/share-image-board.png",
+  "decoded": "http://127.0.0.1:5102/collaboration/join/827366",
+  "copied": "http://127.0.0.1:5102/collaboration/join/827366",
+  "guestOpenedCopiedLink": true,
+  "guestBoardTitle": "خطة طويلة لحماية بيئتنا",
+  "guestName": "ليان",
+  "matches": true
+}
