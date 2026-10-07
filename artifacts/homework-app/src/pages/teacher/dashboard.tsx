@@ -2676,18 +2676,6 @@ function CompetitiveTab({
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
     {
-      icon: <ClassCollaborationIcon size={56} />,
-      title: lang === "ar" ? "لوحة الصف التعاونية" : "Class Collaboration Board",
-      desc:
-        lang === "ar"
-          ? "لوحة مشاركة حية — يضيف الطلاب أفكارهم وصورهم عبر الرمز أو الرابط، مع مراجعة المشاركات والتصويت وعرضها للفصل."
-          : "A live board for student ideas and images via PIN or link, with moderation, voting, and classroom display.",
-      color: "from-emerald-700 to-teal-700",
-      type: "collaboration",
-      available: true,
-      pill: lang === "ar" ? "تعاون صفي" : "Class collaboration",
-    },
-    {
       icon: <WameethIcon height={44} />,
       title:
         t.competitiveGames?.knowledgeRaceTitle ||
@@ -2795,6 +2783,18 @@ function CompetitiveTab({
       type: "hack",
       available: true,
       pill: t.dashboard.millionGameTag,
+    },
+    {
+      icon: <ClassCollaborationIcon size={56} />,
+      title: lang === "ar" ? "لوحة الصف التعاونية" : "Class Collaboration Board",
+      desc:
+        lang === "ar"
+          ? "لوحة مشاركة حية — يضيف الطلاب أفكارهم وصورهم عبر الرمز أو الرابط، مع مراجعة المشاركات والتصويت وعرضها للفصل."
+          : "A live board for student ideas and images via PIN or link, with moderation, voting, and classroom display.",
+      color: "from-emerald-700 to-teal-700",
+      type: "collaboration",
+      available: true,
+      pill: lang === "ar" ? "تعاون صفي" : "Class collaboration",
     },
     {
       icon: <VideoIcon size={52} />,

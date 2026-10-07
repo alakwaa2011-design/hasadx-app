@@ -23,6 +23,12 @@ describe("الأيقونات الموحدة للألعاب", () => {
     expect(dashboard).toContain('"فتح اللوحة ←"');
     expect(dashboard).toContain('setLocation("/teacher/collaboration")');
     expect(games).toContain('to: "/teacher/collaboration"');
+    const liveGames = dashboard.slice(dashboard.indexOf("const liveGames = ["), dashboard.indexOf("const soloGamesAll"));
+    const types = Array.from(liveGames.matchAll(/type: "([^"]+)"/g), match => match[1]);
+    expect(types[0]).toBe("knowledge_race");
+    const boardIndex = types.indexOf("collaboration");
+    expect(types[boardIndex - 1]).toBe("hack");
+    expect(types[boardIndex + 1]).toBe("video_lesson");
   });
 
   it("يرسم أيقونتي إكس أو والمسابقة الذاتية كمكوّنات SVG صالحة", () => {
