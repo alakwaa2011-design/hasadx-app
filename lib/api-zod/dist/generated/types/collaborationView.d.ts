@@ -20,6 +20,12 @@ export type CollaborationView = CollaborationSummary & ({
     voteUsed: number;
     /** @nullable */
     timerEndsAt: string | null;
+    /**
+       * @minimum 0
+       * @maximum 3600
+       * @nullable
+       */
+    timerRemainingSeconds?: number | null;
     /** @nullable */
     spotlightId: string | null;
 });

@@ -72,6 +72,9 @@ export const createCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
 
 export const createCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
 
+export const createCollaborationBoardResponseTwoTimerRemainingSecondsMin = 0;
+export const createCollaborationBoardResponseTwoTimerRemainingSecondsMax = 3600;
+
 
 
 export const CreateCollaborationBoardResponse = zod.object({
@@ -112,7 +115,7 @@ export const CreateCollaborationBoardResponse = zod.object({
   "authorName": zod.string(),
   "own": zod.boolean(),
   "teacher": zod.boolean(),
-  "status": zod.enum(['pending', 'approved']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
   "hidden": zod.boolean(),
   "pinned": zod.boolean(),
   "imageId": zod.string().nullish(),
@@ -141,6 +144,7 @@ export const CreateCollaborationBoardResponse = zod.object({
 })),
   "voteUsed": zod.int(),
   "timerEndsAt": zod.string().nullable(),
+  "timerRemainingSeconds": zod.int().min(createCollaborationBoardResponseTwoTimerRemainingSecondsMin).max(createCollaborationBoardResponseTwoTimerRemainingSecondsMax).nullish(),
   "spotlightId": zod.string().nullable()
 }))
 
@@ -196,6 +200,9 @@ export const getCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
 
 export const getCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
 
+export const getCollaborationBoardResponseTwoTimerRemainingSecondsMin = 0;
+export const getCollaborationBoardResponseTwoTimerRemainingSecondsMax = 3600;
+
 
 
 export const GetCollaborationBoardResponse = zod.object({
@@ -236,7 +243,7 @@ export const GetCollaborationBoardResponse = zod.object({
   "authorName": zod.string(),
   "own": zod.boolean(),
   "teacher": zod.boolean(),
-  "status": zod.enum(['pending', 'approved']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
   "hidden": zod.boolean(),
   "pinned": zod.boolean(),
   "imageId": zod.string().nullish(),
@@ -265,6 +272,7 @@ export const GetCollaborationBoardResponse = zod.object({
 })),
   "voteUsed": zod.int(),
   "timerEndsAt": zod.string().nullable(),
+  "timerRemainingSeconds": zod.int().min(getCollaborationBoardResponseTwoTimerRemainingSecondsMin).max(getCollaborationBoardResponseTwoTimerRemainingSecondsMax).nullish(),
   "spotlightId": zod.string().nullable()
 }))
 
@@ -276,6 +284,8 @@ export const UpdateCollaborationBoardParams = zod.object({
 export const UpdateCollaborationBoardHeader = zod.object({
   "X-Collaboration-Token": zod.string().optional()
 })
+
+export const updateCollaborationBoardBodyPostIdsMax = 500;
 
 export const updateCollaborationBoardBodyTextMax = 2000;
 
@@ -301,8 +311,11 @@ export const updateCollaborationBoardBodyTimerSecondsMax = 3600;
 
 
 export const UpdateCollaborationBoardBody = zod.object({
-  "type": zod.enum(['post.create', 'post.edit', 'post.delete', 'post.approve', 'post.hide', 'post.pin', 'post.move', 'reaction.toggle', 'comment.create', 'comment.delete', 'board.update', 'board.status', 'board.reveal', 'board.spotlight', 'board.timer', 'member.block']),
+  "type": zod.enum(['post.create', 'post.edit', 'post.delete', 'post.approve', 'post.review', 'post.review.undo', 'post.hide', 'post.pin', 'post.move', 'reaction.toggle', 'comment.create', 'comment.delete', 'board.update', 'board.status', 'board.reveal', 'board.spotlight', 'board.timer', 'member.block']),
   "clientId": zod.uuid().optional(),
+  "postIds": zod.array(zod.string()).min(1).max(updateCollaborationBoardBodyPostIdsMax).optional(),
+  "reviewStatus": zod.enum(['approved', 'rejected']).optional(),
+  "reviewId": zod.uuid().optional(),
   "postId": zod.string().optional(),
   "commentId": zod.string().optional(),
   "memberId": zod.string().optional(),
@@ -331,7 +344,8 @@ export const UpdateCollaborationBoardBody = zod.object({
   "id": zod.string(),
   "title": zod.string().max(updateCollaborationBoardBodyColumnsItemTitleMax)
 })).max(updateCollaborationBoardBodyColumnsMax).optional(),
-  "timerSeconds": zod.int().min(updateCollaborationBoardBodyTimerSecondsMin).max(updateCollaborationBoardBodyTimerSecondsMax).optional()
+  "timerSeconds": zod.int().min(updateCollaborationBoardBodyTimerSecondsMin).max(updateCollaborationBoardBodyTimerSecondsMax).optional(),
+  "timerCommand": zod.enum(['start', 'pause', 'resume', 'extend', 'stop']).optional()
 })
 
 export const updateCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
@@ -339,6 +353,9 @@ export const updateCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
 export const updateCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
 
 export const updateCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+
+export const updateCollaborationBoardResponseTwoTimerRemainingSecondsMin = 0;
+export const updateCollaborationBoardResponseTwoTimerRemainingSecondsMax = 3600;
 
 
 
@@ -380,7 +397,7 @@ export const UpdateCollaborationBoardResponse = zod.object({
   "authorName": zod.string(),
   "own": zod.boolean(),
   "teacher": zod.boolean(),
-  "status": zod.enum(['pending', 'approved']),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
   "hidden": zod.boolean(),
   "pinned": zod.boolean(),
   "imageId": zod.string().nullish(),
@@ -409,6 +426,7 @@ export const UpdateCollaborationBoardResponse = zod.object({
 })),
   "voteUsed": zod.int(),
   "timerEndsAt": zod.string().nullable(),
+  "timerRemainingSeconds": zod.int().min(updateCollaborationBoardResponseTwoTimerRemainingSecondsMin).max(updateCollaborationBoardResponseTwoTimerRemainingSecondsMax).nullish(),
   "spotlightId": zod.string().nullable()
 }))
 

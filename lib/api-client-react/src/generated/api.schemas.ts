@@ -146,6 +146,7 @@ export type CollaborationPostStatus = typeof CollaborationPostStatus[keyof typeo
 export const CollaborationPostStatus = {
   pending: 'pending',
   approved: 'approved',
+  rejected: 'rejected',
 } as const;
 
 export interface CollaborationPost {
@@ -188,6 +189,12 @@ export type CollaborationView = CollaborationSummary & ({
   voteUsed: number;
   /** @nullable */
   timerEndsAt: string | null;
+  /**
+     * @minimum 0
+     * @maximum 3600
+     * @nullable
+     */
+  timerRemainingSeconds?: number | null;
   /** @nullable */
   spotlightId: string | null;
 });
@@ -200,6 +207,8 @@ export const CollaborationActionType = {
   postedit: 'post.edit',
   postdelete: 'post.delete',
   postapprove: 'post.approve',
+  postreview: 'post.review',
+  postreviewundo: 'post.review.undo',
   posthide: 'post.hide',
   postpin: 'post.pin',
   postmove: 'post.move',
@@ -212,6 +221,14 @@ export const CollaborationActionType = {
   boardspotlight: 'board.spotlight',
   boardtimer: 'board.timer',
   memberblock: 'member.block',
+} as const;
+
+export type CollaborationActionReviewStatus = typeof CollaborationActionReviewStatus[keyof typeof CollaborationActionReviewStatus];
+
+
+export const CollaborationActionReviewStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
 } as const;
 
 export type CollaborationActionColor = typeof CollaborationActionColor[keyof typeof CollaborationActionColor];
@@ -245,9 +262,27 @@ export const CollaborationActionStatus = {
   archived: 'archived',
 } as const;
 
+export type CollaborationActionTimerCommand = typeof CollaborationActionTimerCommand[keyof typeof CollaborationActionTimerCommand];
+
+
+export const CollaborationActionTimerCommand = {
+  start: 'start',
+  pause: 'pause',
+  resume: 'resume',
+  extend: 'extend',
+  stop: 'stop',
+} as const;
+
 export interface CollaborationAction {
   type: CollaborationActionType;
   clientId?: string;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  postIds?: string[];
+  reviewStatus?: CollaborationActionReviewStatus;
+  reviewId?: string;
   postId?: string;
   commentId?: string;
   memberId?: string;
@@ -278,6 +313,7 @@ export interface CollaborationAction {
      * @maximum 3600
      */
   timerSeconds?: number;
+  timerCommand?: CollaborationActionTimerCommand;
 }
 
 export interface CollaborationImageInput {

@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import type { CollaborationColumn, CollaborationSettings } from "@workspace/api-client-react";
 import { newId } from "@/lib/collab";
@@ -40,14 +41,24 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   );
 }
 
-function Toggle({ label, on, set }: { label: string; on: boolean; set: (v: boolean) => void }) {
+function Toggle({ label, on, set, hint }: { label: string; on: boolean; set: (v: boolean) => void; hint?: string }) {
   return (
     <button type="button" role="switch" aria-checked={on} onClick={() => set(!on)} className="flex items-center justify-between gap-3 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-start">
-      <span className="font-semibold">{label}</span>
+      <span><span className="font-semibold block">{label}</span>{hint && <span className="block text-[11px] text-muted-foreground font-normal">{hint}</span>}</span>
       <span className="relative w-9 h-5 rounded-full shrink-0 transition-colors" style={{ background: on ? GREEN : "#cfd6cf" }}>
         <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ insetInlineStart: on ? 18 : 2 }} />
       </span>
     </button>
+  );
+}
+
+function Section({ title, note, cols, children }: { title: string; note?: string; cols?: number; children: ReactNode }) {
+  return (
+    <section className="mb-5">
+      <h3 className="text-sm font-extrabold" style={{ color: GREEN }}>{title}</h3>
+      {note && <p className="text-[11px] text-muted-foreground mb-1.5">{note}</p>}
+      <div className={`grid gap-2 mt-1.5 ${cols === 2 ? "grid-cols-2" : "sm:grid-cols-2"}`}>{children}</div>
+    </section>
   );
 }
 
@@ -66,22 +77,25 @@ export function SettingsEditor({ settings, onSettings, columns, onColumns }: {
   };
   return (
     <div>
-      <div className="grid sm:grid-cols-2 gap-2 mb-3">
-        <Toggle label="مراجعة المشاركات قبل ظهورها" on={s.moderation} set={(v) => up({ moderation: v })} />
+      <Section title="المراجعة والخصوصية" note="تحكم بما يصل إلى الصف وما يبقى عندك أولاً.">
+        <Toggle label="مراجعة المشاركات قبل ظهورها" hint="تصل مشاركات الطلاب إليك أولاً" on={s.moderation} set={(v) => up({ moderation: v })} />
+        <Toggle label="وضع الصمت (المعرض المخفي)" hint="يرى كل طالب مشاركاته فقط حتى تكشف المعرض" on={s.silent} set={(v) => up({ silent: v })} />
+        <Toggle label="إظهار أسماء الطلاب" on={s.showNames} set={(v) => up({ showNames: v })} />
+      </Section>
+      <Section title="ما يستطيع الطلاب فعله">
         <Toggle label="السماح بالتعليقات" on={s.allowComments} set={(v) => up({ allowComments: v })} />
         <Toggle label="السماح بالصور" on={s.allowImages} set={(v) => up({ allowImages: v })} />
         <Toggle label="السماح بالتفاعلات" on={s.allowReactions} set={(v) => up({ allowReactions: v })} />
-        <Toggle label="إظهار أسماء الطلاب" on={s.showNames} set={(v) => up({ showNames: v })} />
-        <Toggle label="وضع الصمت (المعرض المخفي)" on={s.silent} set={(v) => up({ silent: v })} />
-      </div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      </Section>
+      <Section title="الحدود" cols={2}>
         <Field label="أقصى مشاركات لكل طالب (1-10)">
           <input type="number" min={1} max={10} className={inputCls} value={s.maxPosts} onChange={(e) => up({ maxPosts: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })} />
         </Field>
         <Field label="رصيد التصويت لكل طالب (1-10)">
           <input type="number" min={1} max={10} className={inputCls} value={s.voteBudget} onChange={(e) => up({ voteBudget: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })} />
         </Field>
-      </div>
+      </Section>
+      <h3 className="text-sm font-extrabold mb-1" style={{ color: GREEN }}>الأعمدة</h3>
       <div className="text-xs font-bold text-muted-foreground mb-1">الأعمدة (حتى 8)</div>
       <div className="space-y-1.5">
         {columns.map((c, i) => (
@@ -121,3 +135,36 @@ export const TEMPLATES: { id: string; name: string; hint: string; prompt: string
   { id: "reflect", name: "تأمل وتقييم ذاتي", hint: "مراجعة التعلم", prompt: "ما الذي أتقنته؟ وما الذي أحتاج لتحسينه؟", columns: ["أتقنت", "أحتاج تدريباً", "خطوتي التالية"], settings: { showNames: false, maxPosts: 3 } },
   { id: "free", name: "لوحة فارغة", hint: "ابدأ من الصفر", prompt: "شاركنا بما لديك.", columns: ["المشاركات"], settings: {} },
 ];
+
+export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current?.focus();
+    const h = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); }
+      if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); closeRef.current?.focus(); }
+    };
+    document.addEventListener("keydown", h, true);
+    return () => document.removeEventListener("keydown", h, true);
+  }, [onClose]);
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 no-print" role="dialog" aria-modal="true" aria-label="الصورة كاملة" data-testid="dialog-image-lightbox">
+      <div className="absolute inset-0 bg-[#0c2117]/85" onClick={onClose} />
+      <img src={src} alt={alt} className="relative max-w-full max-h-[88dvh] object-contain rounded-lg bg-white/5" />
+      <button ref={closeRef} type="button" onClick={onClose} aria-label="إغلاق الصورة" className="absolute top-3 end-3 min-h-[44px] min-w-[44px] rounded-full bg-white text-[#12301f] flex items-center justify-center"><X className="w-5 h-5" /></button>
+    </div>, document.body
+  );
+}
+
+export function ImageThumb({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  return (
+    <>
+      <button ref={trigger} type="button" onClick={() => setOpen(true)} aria-label="عرض الصورة كاملة" aria-haspopup="dialog" className="block w-full rounded-lg bg-white/50 cursor-zoom-in" data-testid="button-open-image">
+        <img src={src} alt={alt} loading="lazy" className={`w-full object-contain ${className}`} />
+      </button>
+      {open && <ImageLightbox src={src} alt={alt} onClose={() => { setOpen(false); trigger.current?.focus(); }} />}
+    </>
+  );
+}

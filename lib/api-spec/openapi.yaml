@@ -3260,7 +3260,7 @@ components:
         authorName: { type: string }
         own: { type: boolean }
         teacher: { type: boolean }
-        status: { type: string, enum: [pending, approved] }
+        status: { type: string, enum: [pending, approved, rejected] }
         hidden: { type: boolean }
         pinned: { type: boolean }
         imageId: { type: [string, "null"] }
@@ -3292,6 +3292,7 @@ components:
             members: { type: array, items: { $ref: "#/components/schemas/CollaborationMember" } }
             voteUsed: { type: integer }
             timerEndsAt: { type: [string, "null"] }
+            timerRemainingSeconds: { type: [integer, "null"], minimum: 0, maximum: 3600 }
             spotlightId: { type: [string, "null"] }
     CollaborationAction:
       type: object
@@ -3299,8 +3300,11 @@ components:
       properties:
         type:
           type: string
-          enum: [post.create, post.edit, post.delete, post.approve, post.hide, post.pin, post.move, reaction.toggle, comment.create, comment.delete, board.update, board.status, board.reveal, board.spotlight, board.timer, member.block]
+          enum: [post.create, post.edit, post.delete, post.approve, post.review, post.review.undo, post.hide, post.pin, post.move, reaction.toggle, comment.create, comment.delete, board.update, board.status, board.reveal, board.spotlight, board.timer, member.block]
         clientId: { type: string, format: uuid }
+        postIds: { type: array, minItems: 1, maxItems: 500, uniqueItems: true, items: { type: string } }
+        reviewStatus: { type: string, enum: [approved, rejected] }
+        reviewId: { type: string, format: uuid }
         postId: { type: string }
         commentId: { type: string }
         memberId: { type: string }
@@ -3317,6 +3321,7 @@ components:
         settings: { $ref: "#/components/schemas/CollaborationSettings" }
         columns: { type: array, maxItems: 8, items: { $ref: "#/components/schemas/CollaborationColumn" } }
         timerSeconds: { type: integer, minimum: 0, maximum: 3600 }
+        timerCommand: { type: string, enum: [start, pause, resume, extend, stop] }
     CollaborationImageInput:
       type: object
       required: [file]

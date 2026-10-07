@@ -17,3 +17,4 @@ description: Index of browser test fixture, runtime, and assertion lessons.
 - [Authenticated preview captures](authenticated-preview-captures.md)
 - [Source freeze before persistence checks](browser-source-freeze.md)
 - [Print-capture lifecycle](browser-print-lifecycle.md)
+- [Modal control reachability](browser-modal-force-click.md)

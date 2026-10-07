@@ -123,6 +123,7 @@ export type CollaborationPostStatus = typeof CollaborationPostStatus[keyof typeo
 export declare const CollaborationPostStatus: {
     readonly pending: "pending";
     readonly approved: "approved";
+    readonly rejected: "rejected";
 };
 export interface CollaborationPost {
     id: string;
@@ -162,6 +163,12 @@ export type CollaborationView = CollaborationSummary & ({
     voteUsed: number;
     /** @nullable */
     timerEndsAt: string | null;
+    /**
+       * @minimum 0
+       * @maximum 3600
+       * @nullable
+       */
+    timerRemainingSeconds?: number | null;
     /** @nullable */
     spotlightId: string | null;
 });
@@ -171,6 +178,8 @@ export declare const CollaborationActionType: {
     readonly postedit: "post.edit";
     readonly postdelete: "post.delete";
     readonly postapprove: "post.approve";
+    readonly postreview: "post.review";
+    readonly postreviewundo: "post.review.undo";
     readonly posthide: "post.hide";
     readonly postpin: "post.pin";
     readonly postmove: "post.move";
@@ -183,6 +192,11 @@ export declare const CollaborationActionType: {
     readonly boardspotlight: "board.spotlight";
     readonly boardtimer: "board.timer";
     readonly memberblock: "member.block";
+};
+export type CollaborationActionReviewStatus = typeof CollaborationActionReviewStatus[keyof typeof CollaborationActionReviewStatus];
+export declare const CollaborationActionReviewStatus: {
+    readonly approved: "approved";
+    readonly rejected: "rejected";
 };
 export type CollaborationActionColor = typeof CollaborationActionColor[keyof typeof CollaborationActionColor];
 export declare const CollaborationActionColor: {
@@ -206,9 +220,24 @@ export declare const CollaborationActionStatus: {
     readonly closed: "closed";
     readonly archived: "archived";
 };
+export type CollaborationActionTimerCommand = typeof CollaborationActionTimerCommand[keyof typeof CollaborationActionTimerCommand];
+export declare const CollaborationActionTimerCommand: {
+    readonly start: "start";
+    readonly pause: "pause";
+    readonly resume: "resume";
+    readonly extend: "extend";
+    readonly stop: "stop";
+};
 export interface CollaborationAction {
     type: CollaborationActionType;
     clientId?: string;
+    /**
+       * @minItems 1
+       * @maxItems 500
+       */
+    postIds?: string[];
+    reviewStatus?: CollaborationActionReviewStatus;
+    reviewId?: string;
     postId?: string;
     commentId?: string;
     memberId?: string;
@@ -239,6 +268,7 @@ export interface CollaborationAction {
        * @maximum 3600
        */
     timerSeconds?: number;
+    timerCommand?: CollaborationActionTimerCommand;
 }
 export interface CollaborationImageInput {
     file: Blob;

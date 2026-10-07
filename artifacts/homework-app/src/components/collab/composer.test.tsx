@@ -67,4 +67,19 @@ describe("composer draft lifecycle", () => {
     expect(run).not.toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem(draftKey(b.id, b.selfId))!).text).toBe("مسودة دون اتصال");
   });
+  it("keeps advanced fields behind options and labels moderated student submit", () => {
+    const b = { ...board(), settings: { allowImages: true, moderation: true } } as CollaborationView;
+    render(<Harness b={b} run={async () => true} />);
+    expect(screen.getByTestId("button-submit-post").textContent).toContain("إرسال للمعلم");
+    expect(screen.getByTestId("button-composer-options").getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByPlaceholderText("https://").closest("#composer-advanced")?.hasAttribute("hidden")).toBe(true);
+    fireEvent.click(screen.getByTestId("button-composer-options"));
+    expect(screen.getByTestId("button-composer-options").getAttribute("aria-expanded")).toBe("true");
+  });
+  it("uses plain send label when not moderated", () => {
+    const b = { ...board(), settings: { allowImages: true, moderation: false } } as CollaborationView;
+    render(<Harness b={b} run={async () => true} />);
+    expect(screen.getByTestId("button-submit-post").textContent).toContain("إرسال");
+    expect(screen.getByTestId("button-submit-post").textContent).not.toContain("للمعلم");
+  });
 });

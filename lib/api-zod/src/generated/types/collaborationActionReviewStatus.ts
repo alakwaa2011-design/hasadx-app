@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type CollaborationPostStatus = typeof CollaborationPostStatus[keyof typeof CollaborationPostStatus];
+export type CollaborationActionReviewStatus = typeof CollaborationActionReviewStatus[keyof typeof CollaborationActionReviewStatus];
 
 
-export const CollaborationPostStatus = {
-  pending: 'pending',
+export const CollaborationActionReviewStatus = {
   approved: 'approved',
   rejected: 'rejected',
 } as const;

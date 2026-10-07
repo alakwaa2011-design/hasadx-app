@@ -173,6 +173,8 @@ export declare const CreateCollaborationBoardBody: zodV3.ZodObject<{
 export declare const createCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
 export declare const createCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
 export declare const createCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+export declare const createCollaborationBoardResponseTwoTimerRemainingSecondsMin = 0;
+export declare const createCollaborationBoardResponseTwoTimerRemainingSecondsMax = 3600;
 export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.ZodObject<{
     id: zodV3.ZodString;
     pin: zodV3.ZodString;
@@ -261,7 +263,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
         authorName: zodV3.ZodString;
         own: zodV3.ZodBoolean;
         teacher: zodV3.ZodBoolean;
-        status: zodV3.ZodEnum<["pending", "approved"]>;
+        status: zodV3.ZodEnum<["pending", "approved", "rejected"]>;
         hidden: zodV3.ZodBoolean;
         pinned: zodV3.ZodBoolean;
         imageId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -303,7 +305,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
         createdAt: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -331,7 +333,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
         referenceUrl?: string | null | undefined;
     }, {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -376,6 +378,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     }>, "many">;
     voteUsed: zodV3.ZodNumber;
     timerEndsAt: zodV3.ZodNullable<zodV3.ZodString>;
+    timerRemainingSeconds: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     spotlightId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
     settings: {
@@ -397,7 +400,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     selfId: string;
     posts: {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -433,6 +436,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     voteUsed: number;
     timerEndsAt: string | null;
     spotlightId: string | null;
+    timerRemainingSeconds?: number | null | undefined;
 }, {
     settings: {
         moderation: boolean;
@@ -453,7 +457,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     selfId: string;
     posts: {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -489,6 +493,7 @@ export declare const CreateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     voteUsed: number;
     timerEndsAt: string | null;
     spotlightId: string | null;
+    timerRemainingSeconds?: number | null | undefined;
 }>>;
 export declare const GetCollaborationJoinInfoParams: zodV3.ZodObject<{
     pin: zodV3.ZodString;
@@ -571,6 +576,8 @@ export declare const GetCollaborationBoardHeader: zodV3.ZodObject<{
 export declare const getCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
 export declare const getCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
 export declare const getCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+export declare const getCollaborationBoardResponseTwoTimerRemainingSecondsMin = 0;
+export declare const getCollaborationBoardResponseTwoTimerRemainingSecondsMax = 3600;
 export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.ZodObject<{
     id: zodV3.ZodString;
     pin: zodV3.ZodString;
@@ -659,7 +666,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
         authorName: zodV3.ZodString;
         own: zodV3.ZodBoolean;
         teacher: zodV3.ZodBoolean;
-        status: zodV3.ZodEnum<["pending", "approved"]>;
+        status: zodV3.ZodEnum<["pending", "approved", "rejected"]>;
         hidden: zodV3.ZodBoolean;
         pinned: zodV3.ZodBoolean;
         imageId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -701,7 +708,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
         createdAt: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -729,7 +736,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
         referenceUrl?: string | null | undefined;
     }, {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -774,6 +781,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
     }>, "many">;
     voteUsed: zodV3.ZodNumber;
     timerEndsAt: zodV3.ZodNullable<zodV3.ZodString>;
+    timerRemainingSeconds: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     spotlightId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
     settings: {
@@ -795,7 +803,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
     selfId: string;
     posts: {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -831,6 +839,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
     voteUsed: number;
     timerEndsAt: string | null;
     spotlightId: string | null;
+    timerRemainingSeconds?: number | null | undefined;
 }, {
     settings: {
         moderation: boolean;
@@ -851,7 +860,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
     selfId: string;
     posts: {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -887,6 +896,7 @@ export declare const GetCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.
     voteUsed: number;
     timerEndsAt: string | null;
     spotlightId: string | null;
+    timerRemainingSeconds?: number | null | undefined;
 }>>;
 export declare const UpdateCollaborationBoardParams: zodV3.ZodObject<{
     id: zodV3.ZodString;
@@ -902,6 +912,7 @@ export declare const UpdateCollaborationBoardHeader: zodV3.ZodObject<{
 }, {
     "X-Collaboration-Token"?: string | undefined;
 }>;
+export declare const updateCollaborationBoardBodyPostIdsMax = 500;
 export declare const updateCollaborationBoardBodyTextMax = 2000;
 export declare const updateCollaborationBoardBodyTagsItemMax = 30;
 export declare const updateCollaborationBoardBodyTagsMax = 5;
@@ -914,8 +925,11 @@ export declare const updateCollaborationBoardBodyColumnsMax = 8;
 export declare const updateCollaborationBoardBodyTimerSecondsMin = 0;
 export declare const updateCollaborationBoardBodyTimerSecondsMax = 3600;
 export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
-    type: zodV3.ZodEnum<["post.create", "post.edit", "post.delete", "post.approve", "post.hide", "post.pin", "post.move", "reaction.toggle", "comment.create", "comment.delete", "board.update", "board.status", "board.reveal", "board.spotlight", "board.timer", "member.block"]>;
+    type: zodV3.ZodEnum<["post.create", "post.edit", "post.delete", "post.approve", "post.review", "post.review.undo", "post.hide", "post.pin", "post.move", "reaction.toggle", "comment.create", "comment.delete", "board.update", "board.status", "board.reveal", "board.spotlight", "board.timer", "member.block"]>;
     clientId: zodV3.ZodOptional<zodV3.ZodString>;
+    postIds: zodV3.ZodOptional<zodV3.ZodArray<zodV3.ZodString, "many">>;
+    reviewStatus: zodV3.ZodOptional<zodV3.ZodEnum<["approved", "rejected"]>>;
+    reviewId: zodV3.ZodOptional<zodV3.ZodString>;
     postId: zodV3.ZodOptional<zodV3.ZodString>;
     commentId: zodV3.ZodOptional<zodV3.ZodString>;
     memberId: zodV3.ZodOptional<zodV3.ZodString>;
@@ -971,8 +985,9 @@ export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
         title: string;
     }>, "many">>;
     timerSeconds: zodV3.ZodOptional<zodV3.ZodNumber>;
+    timerCommand: zodV3.ZodOptional<zodV3.ZodEnum<["start", "pause", "resume", "extend", "stop"]>>;
 }, "strip", zodV3.ZodTypeAny, {
-    type: "post.create" | "post.edit" | "post.delete" | "post.approve" | "post.hide" | "post.pin" | "post.move" | "reaction.toggle" | "comment.create" | "comment.delete" | "board.update" | "board.status" | "board.reveal" | "board.spotlight" | "board.timer" | "member.block";
+    type: "post.create" | "post.edit" | "post.delete" | "post.approve" | "post.review" | "post.review.undo" | "post.hide" | "post.pin" | "post.move" | "reaction.toggle" | "comment.create" | "comment.delete" | "board.update" | "board.status" | "board.reveal" | "board.spotlight" | "board.timer" | "member.block";
     title?: string | undefined;
     prompt?: string | undefined;
     status?: "draft" | "open" | "closed" | "archived" | undefined;
@@ -999,12 +1014,16 @@ export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
     referenceUrl?: string | null | undefined;
     tags?: string[] | undefined;
     kind?: "like" | "idea" | "question" | "vote" | undefined;
+    postIds?: string[] | undefined;
+    reviewStatus?: "approved" | "rejected" | undefined;
+    reviewId?: string | undefined;
     postId?: string | undefined;
     commentId?: string | undefined;
     memberId?: string | undefined;
     timerSeconds?: number | undefined;
+    timerCommand?: "start" | "pause" | "resume" | "extend" | "stop" | undefined;
 }, {
-    type: "post.create" | "post.edit" | "post.delete" | "post.approve" | "post.hide" | "post.pin" | "post.move" | "reaction.toggle" | "comment.create" | "comment.delete" | "board.update" | "board.status" | "board.reveal" | "board.spotlight" | "board.timer" | "member.block";
+    type: "post.create" | "post.edit" | "post.delete" | "post.approve" | "post.review" | "post.review.undo" | "post.hide" | "post.pin" | "post.move" | "reaction.toggle" | "comment.create" | "comment.delete" | "board.update" | "board.status" | "board.reveal" | "board.spotlight" | "board.timer" | "member.block";
     title?: string | undefined;
     prompt?: string | undefined;
     status?: "draft" | "open" | "closed" | "archived" | undefined;
@@ -1031,14 +1050,20 @@ export declare const UpdateCollaborationBoardBody: zodV3.ZodObject<{
     referenceUrl?: string | null | undefined;
     tags?: string[] | undefined;
     kind?: "like" | "idea" | "question" | "vote" | undefined;
+    postIds?: string[] | undefined;
+    reviewStatus?: "approved" | "rejected" | undefined;
+    reviewId?: string | undefined;
     postId?: string | undefined;
     commentId?: string | undefined;
     memberId?: string | undefined;
     timerSeconds?: number | undefined;
+    timerCommand?: "start" | "pause" | "resume" | "extend" | "stop" | undefined;
 }>;
 export declare const updateCollaborationBoardResponseTwoSettingsMaxPostsMax = 10;
 export declare const updateCollaborationBoardResponseTwoSettingsVoteBudgetMax = 10;
 export declare const updateCollaborationBoardResponseTwoColumnsItemTitleMax = 60;
+export declare const updateCollaborationBoardResponseTwoTimerRemainingSecondsMin = 0;
+export declare const updateCollaborationBoardResponseTwoTimerRemainingSecondsMax = 3600;
 export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zodV3.ZodObject<{
     id: zodV3.ZodString;
     pin: zodV3.ZodString;
@@ -1127,7 +1152,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
         authorName: zodV3.ZodString;
         own: zodV3.ZodBoolean;
         teacher: zodV3.ZodBoolean;
-        status: zodV3.ZodEnum<["pending", "approved"]>;
+        status: zodV3.ZodEnum<["pending", "approved", "rejected"]>;
         hidden: zodV3.ZodBoolean;
         pinned: zodV3.ZodBoolean;
         imageId: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodString>>;
@@ -1169,7 +1194,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
         createdAt: zodV3.ZodString;
     }, "strip", zodV3.ZodTypeAny, {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -1197,7 +1222,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
         referenceUrl?: string | null | undefined;
     }, {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -1242,6 +1267,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     }>, "many">;
     voteUsed: zodV3.ZodNumber;
     timerEndsAt: zodV3.ZodNullable<zodV3.ZodString>;
+    timerRemainingSeconds: zodV3.ZodOptional<zodV3.ZodNullable<zodV3.ZodNumber>>;
     spotlightId: zodV3.ZodNullable<zodV3.ZodString>;
 }, "strip", zodV3.ZodTypeAny, {
     settings: {
@@ -1263,7 +1289,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     selfId: string;
     posts: {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -1299,6 +1325,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     voteUsed: number;
     timerEndsAt: string | null;
     spotlightId: string | null;
+    timerRemainingSeconds?: number | null | undefined;
 }, {
     settings: {
         moderation: boolean;
@@ -1319,7 +1346,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     selfId: string;
     posts: {
         id: string;
-        status: "pending" | "approved";
+        status: "pending" | "approved" | "rejected";
         createdAt: string;
         text: string;
         columnId: string;
@@ -1355,6 +1382,7 @@ export declare const UpdateCollaborationBoardResponse: zodV3.ZodIntersection<zod
     voteUsed: number;
     timerEndsAt: string | null;
     spotlightId: string | null;
+    timerRemainingSeconds?: number | null | undefined;
 }>>;
 export declare const UploadCollaborationImageParams: zodV3.ZodObject<{
     id: zodV3.ZodString;
@@ -8160,7 +8188,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8203,7 +8231,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8249,7 +8277,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8299,7 +8327,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8369,7 +8397,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8441,7 +8469,7 @@ export declare const CreatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8581,7 +8609,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8624,7 +8652,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8670,7 +8698,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8720,7 +8748,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8790,7 +8818,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -8862,7 +8890,7 @@ export declare const GetPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9008,7 +9036,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9051,7 +9079,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9097,7 +9125,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9147,7 +9175,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9204,7 +9232,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9264,7 +9292,7 @@ export declare const UpdatePresentationBody: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9385,7 +9413,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9428,7 +9456,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9474,7 +9502,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9524,7 +9552,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9594,7 +9622,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9666,7 +9694,7 @@ export declare const UpdatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9823,7 +9851,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9866,7 +9894,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9912,7 +9940,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -9962,7 +9990,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10032,7 +10060,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10104,7 +10132,7 @@ export declare const PublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10244,7 +10272,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10287,7 +10315,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10333,7 +10361,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10383,7 +10411,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10453,7 +10481,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10525,7 +10553,7 @@ export declare const UnpublishPresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10737,7 +10765,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10780,7 +10808,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10826,7 +10854,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10876,7 +10904,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -10946,7 +10974,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;
@@ -11018,7 +11046,7 @@ export declare const DuplicatePresentationResponse: zodV3.ZodObject<{
             fontFamily?: string | null | undefined;
             fontSize?: number | null | undefined;
             fontWeight?: string | null | undefined;
-            align?: "center" | "start" | "end" | "justify" | null | undefined;
+            align?: "start" | "center" | "end" | "justify" | null | undefined;
             iconName?: string | null | undefined;
             bgColor?: string | null | undefined;
             borderColor?: string | null | undefined;

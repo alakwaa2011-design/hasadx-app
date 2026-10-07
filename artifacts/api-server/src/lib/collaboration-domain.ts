@@ -9,7 +9,8 @@ export interface BoardPost {
   id: string; authorId: string; authorName: string; teacher: boolean; text: string;
   columnId: string; color: "mint" | "sand" | "sky" | "rose" | "lavender";
   imageId: string | null; referenceUrl: string | null; tags: string[];
-  status: "pending" | "approved"; hidden: boolean; pinned: boolean;
+  status: "pending" | "approved" | "rejected"; hidden: boolean; pinned: boolean;
+  reviewId?: string;
   reactions: Record<ReactionKind, string[]>; comments: BoardComment[]; createdAt: string;
 }
 export interface BoardData {
@@ -18,6 +19,8 @@ export interface BoardData {
   members: BoardMember[]; posts: BoardPost[];
   images: Record<string, { path: string; authorId: string }>;
   receipts: string[]; spotlightId: string | null; timerEndsAt: string | null;
+  timerRemainingSeconds?: number | null;
+  reviewHistory?: { id: string; actorId: string; postIds: string[]; status: "approved" | "rejected"; undone: boolean }[];
 }
 export class BoardError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -91,10 +94,12 @@ function postFields(data: BoardData, actor: Actor, action: CollaborationAction, 
 /** Call only while holding this board's database row lock. */
 export function applyBoardAction(data: BoardData, actor: Actor, action: CollaborationAction, now = Date.now()) {
   const isCreation = action.type === "post.create" || action.type === "comment.create";
-  if (isCreation && !action.clientId) throw new BoardError("معرّف المشاركة مطلوب.");
+  const receipted = isCreation || action.type === "post.review" || action.type === "post.review.undo"
+    || (action.type === "board.timer" && !!action.timerCommand);
+  if (receipted && !action.clientId) throw new BoardError("معرّف العملية مطلوب.");
   // The receipt includes the actor: a peer cannot consume another participant's retry.
   const receipt = `${actor.id}:${action.type}:${action.clientId}`;
-  if (isCreation && data.receipts.includes(receipt)) return false;
+  if (receipted && data.receipts.includes(receipt)) return false;
   if (action.type.startsWith("board.") || action.type === "member.block") teacherOnly(actor);
   else assertWriter(data, actor);
   const post = action.postId ? data.posts.find(p => p.id === action.postId) : undefined;
@@ -122,6 +127,7 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
     case "post.edit": {
       const p = ownPost();
       Object.assign(p, postFields(data, actor, action, p));
+      delete p.reviewId;
       if (!actor.owner && data.settings.moderation) p.status = "pending";
       break;
     }
@@ -130,7 +136,46 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
       data.posts = data.posts.filter(p => p.id !== action.postId);
       if (data.spotlightId === action.postId) data.spotlightId = null;
       break;
-    case "post.approve": teacherOnly(actor); requirePost().status = "approved"; break;
+    case "post.approve": {
+      teacherOnly(actor);
+      const p = requirePost();
+      p.status = "approved";
+      delete p.reviewId;
+      break;
+    }
+    case "post.review": {
+      teacherOnly(actor);
+      if (!action.postIds?.length || !action.reviewStatus) throw new BoardError("اختر المشاركات وقرار المراجعة.");
+      const ids = [...new Set(action.postIds)];
+      const batch = ids.map(id => data.posts.find(p => p.id === id));
+      // Validate every target before touching any card, under the board's row lock.
+      if (batch.some(p => !p || p.status !== "pending")) throw new BoardError("تغيّرت إحدى المشاركات؛ حدّث شاشة المراجعة ثم حاول مجدداً.", 409);
+      for (const p of batch as BoardPost[]) {
+        p.status = action.reviewStatus;
+        p.reviewId = action.clientId!;
+        if (data.spotlightId === p.id && p.status !== "approved") data.spotlightId = null;
+      }
+      data.reviewHistory = [...(data.reviewHistory ?? []), {
+        id: action.clientId!, actorId: actor.id, postIds: ids, status: action.reviewStatus, undone: false,
+      }].slice(-100);
+      break;
+    }
+    case "post.review.undo": {
+      teacherOnly(actor);
+      const review = data.reviewHistory?.find(r => r.id === action.reviewId && r.actorId === actor.id && !r.undone);
+      if (!review) throw new BoardError("لم يعد هذا القرار متاحاً للتراجع.", 409);
+      const batch = review.postIds.map(id => data.posts.find(p => p.id === id));
+      if (batch.some(p => !p || p.reviewId !== review.id || p.status !== review.status)) {
+        throw new BoardError("تغيّرت إحدى المشاركات بعد القرار؛ لا يمكن التراجع عن المجموعة.", 409);
+      }
+      for (const p of batch as BoardPost[]) {
+        p.status = "pending";
+        delete p.reviewId;
+        if (data.spotlightId === p.id) data.spotlightId = null;
+      }
+      review.undone = true;
+      break;
+    }
     case "post.hide": teacherOnly(actor); requirePost().hidden = !post!.hidden; break;
     case "post.pin": teacherOnly(actor); requirePost().pinned = !post!.pinned; break;
     case "post.move": {
@@ -184,17 +229,46 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
       if (!action.status) throw new BoardError("حالة اللوحة مطلوبة.");
       data.status = action.status;
       // Explicit reopening starts a fresh untimed session rather than an expired timer.
-      if (action.status === "open") data.timerEndsAt = null;
+      if (action.status === "open") { data.timerEndsAt = null; data.timerRemainingSeconds = null; }
       break;
     case "board.reveal": data.settings.revealed = !data.settings.revealed; break;
     case "board.spotlight": {
       if (action.postId && (requirePost().status !== "approved" || post!.hidden)) throw new BoardError("اعتمد البطاقة وأظهرها أولًا.");
       data.spotlightId = action.postId ?? null; break;
     }
-    case "board.timer":
-      if (action.timerSeconds === undefined) throw new BoardError("مدة المؤقت مطلوبة.");
-      data.timerEndsAt = action.timerSeconds ? new Date(now + action.timerSeconds * 1000).toISOString() : null;
+    case "board.timer": {
+      const remaining = data.timerRemainingSeconds ?? (data.timerEndsAt
+        ? Math.max(0, Math.ceil((new Date(data.timerEndsAt).getTime() - now) / 1000)) : 0);
+      switch (action.timerCommand ?? "start") {
+        case "start":
+          if (action.timerSeconds === undefined) throw new BoardError("مدة المؤقت مطلوبة.");
+          data.timerEndsAt = action.timerSeconds ? new Date(now + action.timerSeconds * 1000).toISOString() : null;
+          data.timerRemainingSeconds = null;
+          break;
+        case "pause":
+          if (!data.timerEndsAt || remaining <= 0) throw new BoardError("لا يوجد مؤقت جارٍ لإيقافه مؤقتاً.", 409);
+          data.timerRemainingSeconds = remaining;
+          data.timerEndsAt = null;
+          break;
+        case "resume":
+          if (!data.timerRemainingSeconds) throw new BoardError("المؤقت ليس متوقفاً مؤقتاً.", 409);
+          data.timerEndsAt = new Date(now + data.timerRemainingSeconds * 1000).toISOString();
+          data.timerRemainingSeconds = null;
+          break;
+        case "extend": {
+          if (remaining <= 0) throw new BoardError("انتهى المؤقت؛ ابدأ مؤقتاً جديداً.", 409);
+          const extended = Math.min(3600, remaining + 60);
+          if (data.timerRemainingSeconds != null) data.timerRemainingSeconds = extended;
+          else data.timerEndsAt = new Date(now + extended * 1000).toISOString();
+          break;
+        }
+        case "stop":
+          data.timerEndsAt = null;
+          data.timerRemainingSeconds = null;
+          break;
+      }
       break;
+    }
     case "member.block": {
       const member = data.members.find(m => m.id === action.memberId);
       if (!member) throw new BoardError("المشارك غير موجود.");
@@ -203,7 +277,7 @@ export function applyBoardAction(data: BoardData, actor: Actor, action: Collabor
     }
     default: throw new BoardError("إجراء غير معروف.");
   }
-  if (isCreation) data.receipts.push(receipt);
+  if (receipted) data.receipts.push(receipt);
   data.revision++;
   return true;
 }

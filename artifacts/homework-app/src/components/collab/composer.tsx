@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Check, Image as ImageIcon, Loader2, Trash2, WifiOff, X } from "lucide-react";
+import { Check, ChevronDown, Image as ImageIcon, Loader2, Trash2, WifiOff, X } from "lucide-react";
 import {
   useUploadCollaborationImage, uploadCollaborationImage,
   type CollaborationAction, type CollaborationPost, type CollaborationView,
@@ -41,6 +41,8 @@ export function Composer({ id, b, post, onClose, run }: {
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [adv, setAdv] = useState(false);
+  const label = post ? "حفظ" : !b.owner && b.settings.moderation ? "إرسال للمعلم" : "إرسال";
   const fileRef = useRef<HTMLInputElement>(null);
   const up = useUploadCollaborationImage({
     mutation: {
@@ -116,23 +118,27 @@ export function Composer({ id, b, post, onClose, run }: {
       {!online && <div role="status" className="flex items-start gap-2 rounded-lg bg-amber-100 text-amber-900 p-3 text-sm mb-3" data-testid="text-composer-offline"><WifiOff className="w-4 h-4 shrink-0 mt-0.5" />أنت غير متصل. لن تُرسل المشاركة تلقائياً؛ أعد المحاولة بعد عودة الاتصال.</div>}
       <fieldset disabled={working} className="disabled:opacity-70">
         <Field label="فكرتك"><textarea className={inputCls} rows={4} maxLength={2000} value={d.text} onChange={e => update({ text: e.target.value })} autoFocus data-testid="input-post-text" /></Field>
+        {(b.settings.allowImages || b.owner) && <div className="mb-3">
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => pick(e.target.files?.[0])} />
+          {d.imageId && <div className="relative mb-2">{preview ? <img src={preview} alt="معاينة الصورة المرفقة" className="max-h-40 rounded-lg" /> : <p className="text-sm p-3 bg-muted rounded-lg">صورة مرفقة بالمشاركة</p>}<button type="button" aria-label="إزالة الصورة" className="absolute top-1 start-1 bg-white rounded-full p-1 min-h-0" onClick={() => update({ imageId: null, thumbnail: null })}><X className="w-3.5 h-3.5" /></button></div>}
+          <button type="button" className={btnGhost} disabled={!online} onClick={() => fileRef.current?.click()}>{up.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />} {d.imageId ? "تغيير الصورة" : "إضافة صورة"}</button>
+        </div>}
+        <button type="button" aria-expanded={adv} aria-controls="composer-advanced" onClick={() => setAdv(!adv)} className="inline-flex items-center gap-1 text-sm font-bold min-h-[44px]" style={{ color: GREEN }} data-testid="button-composer-options"><ChevronDown className={`w-4 h-4 transition-transform ${adv ? "rotate-180" : ""}`} /> خيارات إضافية</button>
+        {!adv && (d.tags || d.referenceUrl) && <p className="text-[11px] text-muted-foreground mb-2">تتضمن المسودة وسوماً أو رابطاً محفوظاً في الخيارات الإضافية.</p>}
+        <div id="composer-advanced" hidden={!adv} className="mt-1">
         {b.columns.length > 1 && <Field label="العمود"><select className={inputCls} value={d.columnId} onChange={e => update({ columnId: e.target.value })}>{!b.columns.some(c => c.id === d.columnId) && <option value={d.columnId} disabled>اختر عموداً متاحاً</option>}{b.columns.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}</select></Field>}
         <div className="mb-3"><span className="block text-xs font-bold text-muted-foreground mb-1">لون البطاقة</span>
           <div className="flex gap-2">{Object.entries(COLORS).map(([k, v]) => <button key={k} type="button" aria-label={v.label} onClick={() => update({ color: k })} className="w-8 h-8 rounded-full min-h-0" style={{ background: v.bg, border: `3px solid ${d.color === k ? v.bar : "transparent"}` }} />)}</div>
         </div>
         <Field label="وسوم (حتى 5، تفصل بينها فاصلة)"><input className={inputCls} value={d.tags} onChange={e => update({ tags: e.target.value })} /></Field>
         <Field label="رابط مرجعي (https فقط)"><input className={inputCls} dir="ltr" value={d.referenceUrl} onChange={e => update({ referenceUrl: e.target.value })} placeholder="https://" /></Field>
-        {(b.settings.allowImages || b.owner) && <div className="mb-3">
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => pick(e.target.files?.[0])} />
-          {d.imageId && <div className="relative mb-2">{preview ? <img src={preview} alt="معاينة الصورة المرفقة" className="max-h-40 rounded-lg" /> : <p className="text-sm p-3 bg-muted rounded-lg">صورة مرفقة بالمشاركة</p>}<button type="button" aria-label="إزالة الصورة" className="absolute top-1 start-1 bg-white rounded-full p-1 min-h-0" onClick={() => update({ imageId: null, thumbnail: null })}><X className="w-3.5 h-3.5" /></button></div>}
-          <button type="button" className={btnGhost} disabled={!online} onClick={() => fileRef.current?.click()}>{up.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />} {d.imageId ? "تغيير الصورة" : "إضافة صورة"}</button>
-        </div>}
+        </div>
       </fieldset>
       {msg && <div role="alert" className="text-sm text-rose-700 mb-3">{msg}</div>}
       <div className="flex gap-2 flex-wrap items-center justify-end">
         {touched && <button className="text-xs text-rose-700 inline-flex items-center gap-1 me-auto py-2" disabled={working} onClick={discard} data-testid="button-discard-draft"><Trash2 className="w-3.5 h-3.5" /> حذف المسودة</button>}
         <button className={btnGhost} disabled={working} onClick={close}>إغلاق</button>
-        <button className={btnPrimary} style={{ background: GREEN }} disabled={working || !online} onClick={submit} data-testid="button-submit-post">{working ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {working ? "جارٍ الإرسال…" : msg ? "إعادة المحاولة" : post ? "حفظ" : "نشر"}</button>
+        <button className={btnPrimary} style={{ background: GREEN }} disabled={working || !online} onClick={submit} data-testid="button-submit-post">{working ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {working ? "جارٍ الإرسال…" : msg ? "إعادة المحاولة" : label}</button>
       </div>
     </Modal>
   );

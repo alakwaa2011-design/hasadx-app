@@ -145,6 +145,7 @@ export function useCountdown(endsAt: string | null | undefined) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!endsAt) return;
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
   }, [endsAt]);
@@ -186,7 +187,7 @@ export function exportCsv(b: CollaborationView) {
       p.text,
       p.tags.join("، "),
       p.referenceUrl ?? "",
-      p.hidden ? "مخفي" : p.status === "pending" ? "بانتظار الموافقة" : "معتمد",
+      p.hidden ? "مخفي" : p.status === "pending" ? "بانتظار الموافقة" : p.status === "rejected" ? "مرفوض" : "معتمد",
       p.reactions.filter((r) => r.count).map((r) => `${r.kind}:${r.count}`).join(" "),
       p.comments.map((c) => `${c.authorName}: ${c.text}`).join(" | "),
     ]);

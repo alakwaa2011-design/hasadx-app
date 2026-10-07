@@ -7,7 +7,9 @@
  */
 import type { CollaborationActionColor } from './collaborationActionColor';
 import type { CollaborationActionKind } from './collaborationActionKind';
+import type { CollaborationActionReviewStatus } from './collaborationActionReviewStatus';
 import type { CollaborationActionStatus } from './collaborationActionStatus';
+import type { CollaborationActionTimerCommand } from './collaborationActionTimerCommand';
 import type { CollaborationActionType } from './collaborationActionType';
 import type { CollaborationColumn } from './collaborationColumn';
 import type { CollaborationSettings } from './collaborationSettings';
@@ -15,6 +17,13 @@ import type { CollaborationSettings } from './collaborationSettings';
 export interface CollaborationAction {
   type: CollaborationActionType;
   clientId?: string;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  postIds?: string[];
+  reviewStatus?: CollaborationActionReviewStatus;
+  reviewId?: string;
   postId?: string;
   commentId?: string;
   memberId?: string;
@@ -45,4 +54,5 @@ export interface CollaborationAction {
      * @maximum 3600
      */
   timerSeconds?: number;
+  timerCommand?: CollaborationActionTimerCommand;
 }

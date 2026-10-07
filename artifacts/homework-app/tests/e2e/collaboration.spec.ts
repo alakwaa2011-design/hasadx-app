@@ -130,11 +130,11 @@ test("focused collaboration moderation, reaction, silent reveal, display and clo
     await settings.getByRole("button", { name: "حفظ الإعدادات" }).click();
     await expect(page.getByTestId("button-board-more")).toBeVisible();
     await guestB.reload();
-    await expect(guestB.getByText("وضع الصمت: ترى مشاركاتك فقط حتى يكشف المعلم المعرض.")).toBeVisible();
+    await expect(guestB.getByTestId("text-hidden-gallery")).toContainText("مشاركات الصف مخفية الآن");
     await expect(guestB.getByText(postText, { exact: true })).toHaveCount(0);
 
     await page.getByTestId("button-display").click();
-    await expect(page.getByText("بانتظار المشاركات...")).toBeVisible();
+    await expect(page.getByText("المعرض مخفي عن الطلاب في وضع الصمت. لا نعرض المشاركات على الشاشة حتى يكشف المعلم المعرض.")).toBeVisible();
     await expect(page.getByText(postText, { exact: true })).toHaveCount(0);
     await page.screenshot({ path: "test-results/collaboration-focused-teacher-concealed-display.png", fullPage: true });
     await page.getByRole("button", { name: "خروج" }).click();

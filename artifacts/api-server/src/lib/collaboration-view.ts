@@ -46,6 +46,7 @@ export function boardView(row: BoardRecord, actor: Actor): CollaborationView {
     ...boardSummary(row), owner: actor.owner, selfId: actor.id, settings: { ...data.settings },
     postCount: visiblePosts.length, pendingCount: visiblePosts.filter(p => p.status === "pending").length,
     columns: data.columns, voteUsed: votesUsed(data, actor), timerEndsAt: data.timerEndsAt,
+    timerRemainingSeconds: data.timerRemainingSeconds ?? null,
     spotlightId: visiblePosts.some(p => p.id === data.spotlightId && p.status === "approved" && !p.hidden)
       && (!data.settings.silent || data.settings.revealed) ? data.spotlightId : null,
     members: actor.owner ? data.members.map(m => ({ id: m.id, name: m.name, blocked: m.blocked,

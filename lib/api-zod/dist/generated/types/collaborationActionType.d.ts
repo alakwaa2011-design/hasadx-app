@@ -11,6 +11,8 @@ export declare const CollaborationActionType: {
     readonly postedit: "post.edit";
     readonly postdelete: "post.delete";
     readonly postapprove: "post.approve";
+    readonly postreview: "post.review";
+    readonly postreviewundo: "post.review.undo";
     readonly posthide: "post.hide";
     readonly postpin: "post.pin";
     readonly postmove: "post.move";

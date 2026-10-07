@@ -32,3 +32,9 @@ Keep the teacher's classroom toolbar focused on inviting students, classroom dis
 **Why:** The user approved this hierarchy to reduce classroom and mobile clutter without removing existing functions.
 
 **How to apply:** New secondary board tools should not expand the primary toolbar by default.
+
+Prioritize speed and reduced complexity during the lesson without changing the board's identity or adding side features. Student composition should begin with idea, image, and send; secondary customization is opt-in.
+
+**Why:** The user explicitly requested classroom-focused improvements after approving the draft protection and honest offline behavior, and required those safeguards to remain unchanged.
+
+**How to apply:** Judge further UX changes by whether they make the teacher/student classroom journey simpler, not by how many controls or features they expose.

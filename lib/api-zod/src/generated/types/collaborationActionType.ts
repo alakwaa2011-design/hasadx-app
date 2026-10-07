@@ -14,6 +14,8 @@ export const CollaborationActionType = {
   postedit: 'post.edit',
   postdelete: 'post.delete',
   postapprove: 'post.approve',
+  postreview: 'post.review',
+  postreviewundo: 'post.review.undo',
   posthide: 'post.hide',
   postpin: 'post.pin',
   postmove: 'post.move',

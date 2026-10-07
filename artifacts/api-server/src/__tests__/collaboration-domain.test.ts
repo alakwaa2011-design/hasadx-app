@@ -17,6 +17,80 @@ function add(d: ReturnType<typeof setup>, actor = a, text = "فكرة") {
   return d.posts.at(-1)!;
 }
 describe("collaboration board ownership, privacy and classroom rules", () => {
+  it("reviews a batch atomically, keeps rejected cards private, and undoes without deleting content", () => {
+    const d = setup(true), p = add(d), p2 = add(d, b);
+    const review = { type: "post.review" as const, clientId: randomUUID(), postIds: [p.id, p2.id], reviewStatus: "rejected" as const };
+    applyBoardAction(d, owner, review);
+    expect(d.posts).toHaveLength(2);
+    expect(p.status).toBe("rejected");
+    expect(canSeePost(d, a, p)).toBe(true);
+    expect(canSeePost(d, b, p)).toBe(false);
+    const rev = d.revision;
+    expect(applyBoardAction(d, owner, review)).toBe(false);
+    expect(d.revision).toBe(rev);
+    const undo = { type: "post.review.undo" as const, reviewId: review.clientId, clientId: randomUUID() };
+    applyBoardAction(d, owner, undo);
+    expect(d.posts.every(p => p.status === "pending")).toBe(true);
+    expect(applyBoardAction(d, owner, undo)).toBe(false);
+  });
+  it("approves a batch once and returns the whole batch to review on undo", () => {
+    const d = setup(true), p = add(d), p2 = add(d, b);
+    const id = randomUUID();
+    applyBoardAction(d, owner, { type: "post.review", clientId: id, postIds: [p.id, p2.id], reviewStatus: "approved" });
+    expect(canSeePost(d, b, p)).toBe(true);
+    applyBoardAction(d, owner, { type: "board.spotlight", postId: p.id });
+    applyBoardAction(d, owner, { type: "post.review.undo", reviewId: id, clientId: randomUUID() });
+    expect(d.spotlightId).toBeNull();
+    expect(canSeePost(d, b, p)).toBe(false);
+  });
+  it("does not partially approve a stale batch or let a student review", () => {
+    const d = setup(true), p = add(d), p2 = add(d, b);
+    applyBoardAction(d, owner, { type: "post.approve", postId: p2.id });
+    const action = { type: "post.review" as const, clientId: randomUUID(), postIds: [p.id, p2.id], reviewStatus: "approved" as const };
+    expect(() => applyBoardAction(d, owner, action)).toThrow("تغيّرت");
+    expect(p.status).toBe("pending");
+    expect(() => applyBoardAction(d, a, { ...action, postIds: [p.id] })).toThrow("للمعلم");
+  });
+  it.each(["edit", "delete", "approve"] as const)("refuses unsafe batch undo after a later %s", change => {
+    const d = setup(true), p = add(d), p2 = add(d, b), id = randomUUID();
+    applyBoardAction(d, owner, { type: "post.review", clientId: id, postIds: [p.id, p2.id], reviewStatus: "approved" });
+    if (change === "edit") applyBoardAction(d, a, { type: "post.edit", postId: p.id, text: "تعديل لاحق" });
+    if (change === "delete") applyBoardAction(d, owner, { type: "post.delete", postId: p.id });
+    if (change === "approve") applyBoardAction(d, owner, { type: "post.approve", postId: p.id });
+    expect(() => applyBoardAction(d, owner, { type: "post.review.undo", reviewId: id, clientId: randomUUID() })).toThrow("تغيّرت");
+    expect(p2.status).toBe("approved");
+  });
+  it("remoderates a student's corrected rejected card", () => {
+    const d = setup(true), p = add(d);
+    applyBoardAction(d, owner, { type: "post.review", clientId: randomUUID(), postIds: [p.id], reviewStatus: "rejected" });
+    applyBoardAction(d, a, { type: "post.edit", postId: p.id, text: "تصحيح" });
+    expect(p.status).toBe("pending"); expect(p.reviewId).toBeUndefined();
+  });
+  it("pauses, extends once, and resumes the same server-owned timer", () => {
+    const d = setup(), now = 10_000;
+    applyBoardAction(d, owner, { type: "board.timer", timerCommand: "start", timerSeconds: 180, clientId: randomUUID() }, now);
+    applyBoardAction(d, owner, { type: "board.timer", timerCommand: "pause", clientId: randomUUID() }, now + 20_000);
+    expect(d.timerEndsAt).toBeNull(); expect(d.timerRemainingSeconds).toBe(160);
+    expect(boardIsOpen(d, now + 9_000_000)).toBe(true);
+    const extend = { type: "board.timer" as const, timerCommand: "extend" as const, clientId: randomUUID() };
+    applyBoardAction(d, owner, extend, now + 30_000);
+    applyBoardAction(d, owner, extend, now + 31_000);
+    expect(d.timerRemainingSeconds).toBe(220);
+    applyBoardAction(d, owner, { type: "board.timer", timerCommand: "resume", clientId: randomUUID() }, now + 50_000);
+    expect(d.timerRemainingSeconds).toBeNull();
+    expect(d.timerEndsAt).toBe(new Date(now + 50_000 + 220_000).toISOString());
+    expect(boardIsOpen(d, now + 50_000 + 220_000)).toBe(false);
+  });
+  it("does not revive an expired timer with extend and bounds the timer to one hour", () => {
+    const d = setup(), now = 10_000;
+    applyBoardAction(d, owner, { type: "board.timer", timerSeconds: 3600 }, now);
+    applyBoardAction(d, owner, { type: "board.timer", timerCommand: "extend", clientId: randomUUID() }, now + 10_000);
+    expect(new Date(d.timerEndsAt!).getTime() - (now + 10_000)).toBe(3_600_000);
+    expect(() => applyBoardAction(d, owner, { type: "board.timer", timerCommand: "extend", clientId: randomUUID() }, now + 4_000_000)).toThrow("انتهى");
+    expect(() => applyBoardAction(d, a, { type: "board.timer", timerCommand: "pause", clientId: randomUUID() }, now + 10_000)).toThrow("للمعلم");
+    applyBoardAction(d, owner, { type: "board.timer", timerCommand: "stop", clientId: randomUUID() }, now);
+    expect(d.timerEndsAt).toBeNull(); expect(d.timerRemainingSeconds).toBeNull();
+  });
   it("starts as a private moderated draft", () => {
     const d = createBoardData({ title: " لوحة ", prompt: " سؤال " });
     expect(d.status).toBe("draft"); expect(d.settings.moderation).toBe(true);

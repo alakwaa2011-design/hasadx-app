@@ -9,5 +9,6 @@ export type CollaborationPostStatus = typeof CollaborationPostStatus[keyof typeo
 export declare const CollaborationPostStatus: {
     readonly pending: "pending";
     readonly approved: "approved";
+    readonly rejected: "rejected";
 };
 //# sourceMappingURL=collaborationPostStatus.d.ts.map
