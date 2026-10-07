@@ -24,6 +24,7 @@ import {
   EscapeVaultIcon,
 } from "@/components/game-icons";
 import { XoName } from "@/components/game/xo-display";
+import { ClassCollaborationIcon } from "@/components/collab/class-collaboration-icon";
 
 import { createPortal } from "react-dom";
 import {
@@ -2675,8 +2676,8 @@ function CompetitiveTab({
   /** مسابقات مع طلاب الصف — أسئلة من واجباتك أو بنك الأسئلة */
   const liveGames = [
     {
-      icon: <School className="w-7 h-7" />,
-      title: lang === "ar" ? "لوحة التعاون" : "Collaboration Board",
+      icon: <ClassCollaborationIcon size={56} />,
+      title: lang === "ar" ? "لوحة الصف التعاونية" : "Class Collaboration Board",
       desc:
         lang === "ar"
           ? "لوحة مشاركة حية — يضيف الطلاب أفكارهم وصورهم عبر الرمز أو الرابط، مع مراجعة المشاركات والتصويت وعرضها للفصل."
@@ -2992,7 +2993,11 @@ function CompetitiveTab({
               </div>
               <div className="flex items-center justify-between pt-2 border-t border-border/50">
                 <span className="text-[11px] font-bold text-primary group-hover:underline">
-                  {game.type === "knowledge_race"
+                  {game.type === "collaboration"
+                    ? lang === "ar"
+                      ? "فتح اللوحة ←"
+                      : "Open board →"
+                    : game.type === "knowledge_race"
                     ? lang === "ar"
                       ? "اختر واجباً وابدأ ←"
                       : "Pick assignment & start →"

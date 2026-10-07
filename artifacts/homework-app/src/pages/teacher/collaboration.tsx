@@ -22,7 +22,7 @@ export function TeacherCollaborationList() {
         <div className="flex flex-wrap items-end gap-3 mb-5">
           <div className="flex-1 min-w-[220px]">
             <div className="text-xs font-extrabold mb-1" style={{ color: GOLD }}>مساحة الصف التعاونية</div>
-            <h1 className="text-2xl font-black" style={{ color: GREEN }}>لوحات التعاون</h1>
+            <h1 className="text-2xl font-black" style={{ color: GREEN }}>لوحات الصف التعاونية</h1>
             <p className="text-sm text-muted-foreground">كل فكرة من طالب تصبح مساهمة نافعة للصف كله.</p>
           </div>
           <button className={btnPrimary} style={{ background: GREEN }} onClick={() => setOpen(true)} data-testid="button-create-board"><Plus className="w-4 h-4" /> لوحة جديدة</button>

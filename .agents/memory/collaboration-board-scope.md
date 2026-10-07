@@ -44,3 +44,9 @@ Deleting an occupied column requires a clear warning and an explicit teacher-sel
 **Why:** The user rejected silent recategorization during final QA: preserving post text is not enough if its classroom grouping changes without the teacher's knowledge.
 
 **How to apply:** Treat destination selection and column removal as one saved change. Cancellation must leave both content and grouping unchanged, and posts arriving during editing must not bypass that consent.
+
+The collaboration catalog icon must communicate students sharing ideas/cards, never a school or building.
+
+**Why:** The user explicitly rejected a school/building symbol for this tool and requested a simple, distinctive icon consistent with neighboring games and Hasaad colors.
+
+**How to apply:** Preserve this distinction when revising the tool's visual identity; unrelated classroom-game icons are outside that scope.

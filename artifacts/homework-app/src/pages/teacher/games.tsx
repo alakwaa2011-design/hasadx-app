@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useI18n } from "@/lib/i18n";
+import { ClassCollaborationIcon } from "@/components/collab/class-collaboration-icon";
 import {
   Zap,
   Swords,
@@ -130,9 +131,9 @@ export default function TeacherGamesPage() {
       accent: "from-emerald-600 to-amber-500",
       items: [
         {
-          icon: <School />,
-          titleAr: "لوحة التعاون",
-          titleEn: "Collaboration Board",
+          icon: <ClassCollaborationIcon size={28} />,
+          titleAr: "لوحة الصف التعاونية",
+          titleEn: "Class Collaboration Board",
           to: "/teacher/collaboration",
           iconBg: "bg-emerald-500/10",
           iconColor: "text-emerald-700",
