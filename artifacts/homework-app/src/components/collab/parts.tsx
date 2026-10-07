@@ -3,11 +3,13 @@ import { createPortal } from "react-dom";
 import { X, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import type { CollaborationColumn, CollaborationSettings } from "@workspace/api-client-react";
 import { newId } from "@/lib/collab";
+import { useCollabText } from "./collaboration-i18n";
 
 export const GREEN = "#225739";
 export const GOLD = "#C9A050";
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  const t = useCollabText();
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", h);
@@ -19,7 +21,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
       <div className={`relative w-full ${wide ? "sm:max-w-2xl" : "sm:max-w-md"} max-h-[92dvh] overflow-y-auto bg-background rounded-t-2xl sm:rounded-2xl border border-border shadow-xl`}>
         <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-background border-b border-border">
           <h2 className="text-base font-extrabold">{title}</h2>
-          <button onClick={onClose} aria-label="إغلاق" className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} aria-label={t("إغلاق")} className="p-1.5 rounded-lg hover:bg-muted"><X className="w-4 h-4" /></button>
         </div>
         <div className="p-4">{children}</div>
       </div>
@@ -67,6 +69,7 @@ export function SettingsEditor({ settings, onSettings, columns, onColumns, onDel
   columns: CollaborationColumn[]; onColumns: (c: CollaborationColumn[]) => void;
   onDeleteColumn?: (id: string) => void;
 }) {
+  const t = useCollabText();
   const s = settings;
   const up = (p: Partial<CollaborationSettings>) => onSettings({ ...s, ...p });
   const move = (i: number, d: number) => {
@@ -78,40 +81,40 @@ export function SettingsEditor({ settings, onSettings, columns, onColumns, onDel
   };
   return (
     <div>
-      <Section title="المراجعة والخصوصية" note="تحكم بما يصل إلى الصف وما يبقى عندك أولاً.">
-        <Toggle label="مراجعة المشاركات قبل ظهورها" hint="تصل مشاركات الطلاب إليك أولاً" on={s.moderation} set={(v) => up({ moderation: v })} />
-        <Toggle label="وضع الصمت (المعرض المخفي)" hint="يرى كل طالب مشاركاته فقط حتى تكشف المعرض" on={s.silent} set={(v) => up({ silent: v })} />
-        <Toggle label="إظهار أسماء الطلاب" on={s.showNames} set={(v) => up({ showNames: v })} />
+      <Section title={t("المراجعة والخصوصية")} note={t("تحكم بما يصل إلى الصف وما يبقى عندك أولاً.")}>
+        <Toggle label={t("مراجعة المشاركات قبل ظهورها")} hint={t("تصل مشاركات الطلاب إليك أولاً")} on={s.moderation} set={(v) => up({ moderation: v })} />
+        <Toggle label={t("وضع الصمت (المعرض المخفي)")} hint={t("يرى كل طالب مشاركاته فقط حتى تكشف المعرض")} on={s.silent} set={(v) => up({ silent: v })} />
+        <Toggle label={t("إظهار أسماء الطلاب")} on={s.showNames} set={(v) => up({ showNames: v })} />
       </Section>
-      <Section title="ما يستطيع الطلاب فعله">
-        <Toggle label="السماح بالتعليقات" on={s.allowComments} set={(v) => up({ allowComments: v })} />
-        <Toggle label="السماح بالصور" on={s.allowImages} set={(v) => up({ allowImages: v })} />
-        <Toggle label="السماح بالتفاعلات" on={s.allowReactions} set={(v) => up({ allowReactions: v })} />
+      <Section title={t("ما يستطيع الطلاب فعله")}>
+        <Toggle label={t("السماح بالتعليقات")} on={s.allowComments} set={(v) => up({ allowComments: v })} />
+        <Toggle label={t("السماح بالصور")} on={s.allowImages} set={(v) => up({ allowImages: v })} />
+        <Toggle label={t("السماح بالتفاعلات")} on={s.allowReactions} set={(v) => up({ allowReactions: v })} />
       </Section>
-      <Section title="الحدود" cols={2}>
-        <Field label="أقصى مشاركات لكل طالب (1-10)">
+      <Section title={t("الحدود")} cols={2}>
+        <Field label={t("أقصى مشاركات لكل طالب (1-10)")}>
           <input type="number" min={1} max={10} className={inputCls} value={s.maxPosts} onChange={(e) => up({ maxPosts: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })} />
         </Field>
-        <Field label="رصيد التصويت لكل طالب (1-10)">
+        <Field label={t("رصيد التصويت لكل طالب (1-10)")}>
           <input type="number" min={1} max={10} className={inputCls} value={s.voteBudget} onChange={(e) => up({ voteBudget: Math.min(10, Math.max(1, Number(e.target.value) || 1)) })} />
         </Field>
       </Section>
-      <h3 className="text-sm font-extrabold mb-1" style={{ color: GREEN }}>أقسام اللوحة</h3>
-      <div className="text-xs font-bold text-muted-foreground mb-1">الأقسام (حتى 8)</div>
+      <h3 className="text-sm font-extrabold mb-1" style={{ color: GREEN }}>{t("أقسام اللوحة")}</h3>
+      <div className="text-xs font-bold text-muted-foreground mb-1">{t("الأقسام (حتى 8)")}</div>
       <div className="space-y-1.5">
         {columns.map((c, i) => (
           <div key={c.id} className="flex items-center gap-1.5">
-            <input className={inputCls} maxLength={60} value={c.title} placeholder="عنوان القسم" onChange={(e) => onColumns(columns.map((x) => (x.id === c.id ? { ...x, title: e.target.value } : x)))} />
-            <button type="button" aria-label="أعلى" className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, -1)}><ArrowUp className="w-4 h-4" /></button>
-            <button type="button" aria-label="أسفل" className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, 1)}><ArrowDown className="w-4 h-4" /></button>
-            <button type="button" aria-label="حذف القسم" disabled={columns.length <= 1} className="p-2 rounded-lg hover:bg-muted text-destructive disabled:opacity-30" onClick={() => onDeleteColumn ? onDeleteColumn(c.id) : onColumns(columns.filter((x) => x.id !== c.id))}><Trash2 className="w-4 h-4" /></button>
+            <input className={inputCls} maxLength={60} value={c.title} placeholder={t("عنوان القسم")} onChange={(e) => onColumns(columns.map((x) => (x.id === c.id ? { ...x, title: e.target.value } : x)))} />
+            <button type="button" aria-label={t("أعلى")} className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, -1)}><ArrowUp className="w-4 h-4" /></button>
+            <button type="button" aria-label={t("أسفل")} className="p-2 rounded-lg hover:bg-muted" onClick={() => move(i, 1)}><ArrowDown className="w-4 h-4" /></button>
+            <button type="button" aria-label={t("حذف القسم")} disabled={columns.length <= 1} className="p-2 rounded-lg hover:bg-muted text-destructive disabled:opacity-30" onClick={() => onDeleteColumn ? onDeleteColumn(c.id) : onColumns(columns.filter((x) => x.id !== c.id))}><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
       <button type="button" disabled={columns.length >= 8} className={`${btnGhost} mt-2`} onClick={() => onColumns([...columns, { id: newId().slice(0, 8), title: "" }])}>
-        <Plus className="w-4 h-4" /> إضافة قسم
+        <Plus className="w-4 h-4" /> {t("إضافة قسم")}
       </button>
-      <p className="text-[11px] text-muted-foreground mt-2">عند حذف قسم يحتوي مشاركات، تختار قسمًا لنقلها إليه. تُطبّق التغييرات عند حفظ الإعدادات فقط.</p>
+      <p className="text-[11px] text-muted-foreground mt-2">{t("عند حذف قسم يحتوي مشاركات، تختار قسمًا لنقلها إليه. تُطبّق التغييرات عند حفظ الإعدادات فقط.")}</p>
     </div>
   );
 }
@@ -121,11 +124,12 @@ export function Skeleton({ className = "" }: { className?: string }) {
 }
 
 export function StatusPill({ status }: { status: string }) {
+  const t = useCollabText();
   const m: Record<string, [string, string]> = {
     open: ["مفتوحة", "#2f684d"], closed: ["مغلقة", "#8a5a1c"], draft: ["مسودة", "#667"], archived: ["مؤرشفة", "#777"],
   };
-  const [t, c] = m[status] ?? [status, "#667"];
-  return <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full" style={{ background: c + "1f", color: c }}>{t}</span>;
+  const [label, c] = m[status] ?? [status, "#667"];
+  return <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full" style={{ background: c + "1f", color: c }}>{t(label)}</span>;
 }
 
 export const TEMPLATES: { id: string; name: string; hint: string; prompt: string; columns: string[]; settings: Partial<CollaborationSettings> }[] = [
@@ -138,6 +142,7 @@ export const TEMPLATES: { id: string; name: string; hint: string; prompt: string
 ];
 
 export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  const t = useCollabText();
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     closeRef.current?.focus();
@@ -149,20 +154,21 @@ export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string;
     return () => document.removeEventListener("keydown", h, true);
   }, [onClose]);
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 no-print" role="dialog" aria-modal="true" aria-label="الصورة كاملة" data-testid="dialog-image-lightbox">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 no-print" role="dialog" aria-modal="true" aria-label={t("الصورة كاملة")} data-testid="dialog-image-lightbox">
       <div className="absolute inset-0 bg-[#0c2117]/85" onClick={onClose} />
       <img src={src} alt={alt} className="relative max-w-full max-h-[88dvh] object-contain rounded-lg bg-white/5" />
-      <button ref={closeRef} type="button" onClick={onClose} aria-label="إغلاق الصورة" className="absolute top-3 end-3 min-h-[44px] min-w-[44px] rounded-full bg-white text-[#12301f] flex items-center justify-center"><X className="w-5 h-5" /></button>
+      <button ref={closeRef} type="button" onClick={onClose} aria-label={t("إغلاق الصورة")} className="absolute top-3 end-3 min-h-[44px] min-w-[44px] rounded-full bg-white text-[#12301f] flex items-center justify-center"><X className="w-5 h-5" /></button>
     </div>, document.body
   );
 }
 
 export function ImageThumb({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+  const t = useCollabText();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   return (
     <>
-      <button ref={trigger} type="button" onClick={() => setOpen(true)} aria-label="عرض الصورة كاملة" aria-haspopup="dialog" className="block w-full rounded-lg bg-white/50 cursor-zoom-in" data-testid="button-open-image">
+      <button ref={trigger} type="button" onClick={() => setOpen(true)} aria-label={t("عرض الصورة كاملة")} aria-haspopup="dialog" className="block w-full rounded-lg bg-white/50 cursor-zoom-in" data-testid="button-open-image">
         <img src={src} alt={alt} loading="lazy" className={`w-full object-contain ${className}`} />
       </button>
       {open && <ImageLightbox src={src} alt={alt} onClose={() => { setOpen(false); trigger.current?.focus(); }} />}
