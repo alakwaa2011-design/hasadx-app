@@ -2,6 +2,7 @@
  * SocialLinksBar — يُظهر أيقونات وسائل التواصل المفعّلة من platform_settings.
  * يُستخدم في الفوتر وشريط التنقل.
  */
+import { cloneElement, isValidElement } from "react";
 import { type SocialLink } from "@/lib/theme-provider";
 
 const PLATFORM_META: Record<string, {
@@ -61,10 +62,12 @@ interface Props {
   links: SocialLink[];
   /** "icon" = أيقونة مربّعة فقط (للهيدر). "full" = أيقونة + اسم @handle (للفوتر). */
   variant?: "icon" | "full";
+  /** "gold" = مربعات ذهبية كبيرة بأيقونة داكنة (تذييل الصفحة الرئيسية). */
+  tone?: "brand" | "gold";
   className?: string;
 }
 
-export function SocialLinksBar({ links, variant = "icon", className = "" }: Props) {
+export function SocialLinksBar({ links, variant = "icon", tone = "brand", className = "" }: Props) {
   const visible = links
     .filter(l => l.enabled && l.url.trim())
     .sort((a, b) => a.order - b.order);
@@ -72,7 +75,7 @@ export function SocialLinksBar({ links, variant = "icon", className = "" }: Prop
   if (visible.length === 0) return null;
 
   return (
-    <div className={`flex items-center gap-2 flex-wrap ${className}`}>
+    <div className={`flex items-center ${tone === "gold" ? "gap-4" : "gap-2"} flex-wrap ${className}`}>
       {visible.map(link => {
         const meta = PLATFORM_META[link.id] ?? {
           label: link.id,
@@ -96,12 +99,20 @@ export function SocialLinksBar({ links, variant = "icon", className = "" }: Prop
             title={meta.label}
             className={`group flex items-center gap-1.5 transition-all duration-200 hover:scale-110 ${variant === "full" ? "text-xs text-muted-foreground hover:text-foreground" : ""}`}
           >
-            <span
-              className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
-              style={{ ...iconBg, color: isDark ? "#000" : "#fff" }}
-            >
-              {meta.icon}
-            </span>
+            {tone === "gold" ? (
+              <span className="flex items-center justify-center w-[52px] h-[52px] rounded-xl shrink-0" style={{ background: "#f2b01e" }}>
+                {isValidElement(meta.icon) && meta.icon.type === "svg"
+                  ? cloneElement(meta.icon as React.ReactElement<{ fill?: string; width?: number; height?: number }>, { fill: "#fff", width: 30, height: 30 })
+                  : meta.icon}
+              </span>
+            ) : (
+              <span
+                className="flex items-center justify-center w-7 h-7 rounded-lg shrink-0"
+                style={{ ...iconBg, color: isDark ? "#000" : "#fff" }}
+              >
+                {meta.icon}
+              </span>
+            )}
             {variant === "full" && (
               <span className="hidden sm:inline font-medium">
                 {link.url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
