@@ -1,12 +1,16 @@
 import { createPortal } from "react-dom";
 import type { CollaborationPost, CollaborationView } from "@workspace/api-client-react";
 import { mediaUrl } from "@/lib/collab";
+import { useI18n } from "@/lib/i18n";
+import { useCollabText } from "./collaboration-i18n";
 
 /** A print-only body sibling: app navigation, portals and assistants cannot leak
  * into the PDF, and screen layout/controls remain unchanged. */
 export function BoardPrint({ b, posts }: { b: CollaborationView; posts: CollaborationPost[] }) {
+  const { dir } = useI18n();
+  const t = useCollabText();
   return createPortal(
-    <div className="collab-print-only" dir="rtl">
+    <div className="collab-print-only" dir={dir}>
       <style>{`
         .collab-print-only { display: none; }
         @media print {
@@ -28,9 +32,9 @@ export function BoardPrint({ b, posts }: { b: CollaborationView; posts: Collabor
         return <section key={column.id}>
           <h2>{column.title} ({list.length})</h2>
           {list.map(post => <article key={post.id}>
-            {post.imageUrl && <img src={mediaUrl(post.imageUrl)} alt="صورة المشاركة" />}
+            {post.imageUrl && <img src={mediaUrl(post.imageUrl)} alt={t("صورة المشاركة")} />}
             <p>{post.text}</p>
-            {b.settings.showNames && <small>{post.teacher ? "المعلم" : post.authorName}</small>}
+            {b.settings.showNames && <small>{post.teacher ? t("المعلم") : post.authorName === "مشارك" ? t("مشارك") : post.authorName}</small>}
             {post.tags.length > 0 && <p><small>{post.tags.map(tag => `#${tag}`).join(" ")}</small></p>}
             {post.referenceUrl && <p><small>{post.referenceUrl}</small></p>}
           </article>)}

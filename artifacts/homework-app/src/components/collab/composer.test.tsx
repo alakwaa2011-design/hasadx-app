@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { CollaborationView } from "@workspace/api-client-react";
 import { Composer } from "./composer";
 import { draftKey } from "@/lib/collab-draft";
+import { I18nProvider } from "@/lib/i18n";
 
 vi.mock("@workspace/api-client-react", () => ({
   useUploadCollaborationImage: () => ({ isPending: false, mutateAsync: vi.fn() }),
@@ -25,8 +26,10 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 
 function Harness({ b, run }: { b: CollaborationView; run: () => Promise<boolean> }) {
   const [open, setOpen] = useState(true);
-  return open ? <Composer id={b.id} b={b} onClose={() => setOpen(false)} run={run} />
-    : <button onClick={() => setOpen(true)}>فتح المشاركة</button>;
+  return <I18nProvider>
+    {open ? <Composer id={b.id} b={b} onClose={() => setOpen(false)} run={run} />
+      : <button onClick={() => setOpen(true)}>فتح المشاركة</button>}
+  </I18nProvider>;
 }
 
 describe("composer draft lifecycle", () => {
@@ -81,5 +84,14 @@ describe("composer draft lifecycle", () => {
     render(<Harness b={b} run={async () => true} />);
     expect(screen.getByTestId("button-submit-post").textContent).toContain("إرسال");
     expect(screen.getByTestId("button-submit-post").textContent).not.toContain("للمعلم");
+  });
+  it("shows English composer controls without translating the student's draft", () => {
+    localStorage.setItem("hw_lang", "en");
+    const b = { ...board(), settings: { allowImages: true, moderation: true } } as CollaborationView;
+    render(<Harness b={b} run={async () => true} />);
+    expect(screen.getByText("Your idea")).toBeTruthy();
+    expect(screen.getByTestId("button-submit-post").textContent).toContain("Send to teacher");
+    fireEvent.change(screen.getByTestId("input-post-text"), { target: { value: "أفكر باللغة العربية" } });
+    expect((screen.getByTestId("input-post-text") as HTMLTextAreaElement).value).toBe("أفكر باللغة العربية");
   });
 });

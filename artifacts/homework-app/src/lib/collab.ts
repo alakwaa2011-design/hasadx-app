@@ -177,17 +177,20 @@ function csvCell(v: string) {
   if (/^\s*[=+\-@]/.test(s) || /^[\t\r]/.test(s)) s = "'" + s;
   return `"${s.replace(/"/g, '""')}"`;
 }
-export function exportCsv(b: CollaborationView) {
+export function exportCsv(b: CollaborationView, lang: "ar" | "en" = "ar") {
   const col = (id: string) => b.columns.find((c) => c.id === id)?.title ?? "";
-  const rows = [["القسم", "الكاتب", "النص", "الوسوم", "الرابط", "الحالة", "التفاعلات", "التعليقات"]];
+  const english = lang === "en";
+  const rows = [english
+    ? ["Section", "Author", "Text", "Tags", "Link", "Status", "Reactions", "Comments"]
+    : ["القسم", "الكاتب", "النص", "الوسوم", "الرابط", "الحالة", "التفاعلات", "التعليقات"]];
   for (const p of b.posts) {
     rows.push([
       col(p.columnId),
-      p.teacher ? "المعلم" : p.authorName,
+      p.teacher ? (english ? "Teacher" : "المعلم") : p.authorName,
       p.text,
-      p.tags.join("، "),
+      p.tags.join(english ? ", " : "، "),
       p.referenceUrl ?? "",
-      p.hidden ? "مخفي" : p.status === "pending" ? "بانتظار الموافقة" : p.status === "rejected" ? "مرفوض" : "معتمد",
+      p.hidden ? (english ? "Hidden" : "مخفي") : p.status === "pending" ? (english ? "Pending approval" : "بانتظار الموافقة") : p.status === "rejected" ? (english ? "Rejected" : "مرفوض") : (english ? "Approved" : "معتمد"),
       p.reactions.filter((r) => r.count).map((r) => `${r.kind}:${r.count}`).join(" "),
       p.comments.map((c) => `${c.authorName}: ${c.text}`).join(" | "),
     ]);
