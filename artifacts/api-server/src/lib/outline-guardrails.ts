@@ -42,7 +42,10 @@ export function canUseQualityDegradedQuickOutline(
   brief: OutlineBrief,
   report: GuardrailReport,
 ): boolean {
-  return brief.presentationKind === "quick" && report.fatalKind === "quality";
+  /* Quality-only findings (missing teaching roles, shallow slides) never block a teacher
+     from getting a deck: they stay as editable warnings for every presentation kind. */
+  void brief;
+  return report.fatalKind === "quality";
 }
 
 export type SanitizedInteractionHint =
