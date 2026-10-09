@@ -922,7 +922,7 @@ router.post(
             },
           );
           deckLanguage = outline.language;
-          const themeKey = pickServerDefaultTheme();
+          const themeKey = pickDeckTheme({ subject: decodeMulterFilename(imageFiles[0].originalname || "صور").replace(/\.[^.]+$/, "").trim().slice(0, 200) || "صور مستوردة", topic: "" });
 
           /* Fetch web images in parallel for slides without an uploaded
              source image. Each lookup has a 4 s timeout and concurrency
@@ -946,6 +946,7 @@ router.post(
           );
 
           const validSlides: unknown[] = [];
+          const usedSourceImages = new Set<number>();
           for (let i = 0; i < outline.cards.length; i++) {
             /* Image priority:
                1. AI-picked uploaded photo (sourceImageIndex) → forced
@@ -956,7 +957,12 @@ router.post(
                   hint (defaults to "side" for content slides, picked
                   by the materializer per slide kind).
                3. None — slide renders with the deck gradient only. */
-            const srcIdx = outline.sourceImageIndices[i];
+            let srcIdx = outline.sourceImageIndices[i];
+            /* One uploaded page photo is shown on one slide only; repeating it on every slide adds nothing. */
+            if (srcIdx != null) {
+              if (usedSourceImages.has(srcIdx)) srcIdx = null;
+              else usedSourceImages.add(srcIdx);
+            }
             const uploadedUrl =
               srcIdx != null && validImages[srcIdx - 1]
                 ? validImages[srcIdx - 1].url || undefined
@@ -970,7 +976,7 @@ router.post(
               lang: outline.language,
               backgroundImageUrl: bgUrl,
               imagePlacement: placement,
-              preserveImageContent: outline.sourceImageIndices[i] != null,
+              preserveImageContent: srcIdx != null,
             });
             const parsedOne = slideSchema.safeParse(out.slide);
             if (parsedOne.success) validSlides.push(parsedOne.data);
@@ -1002,7 +1008,7 @@ router.post(
             teacherId,
             title: deckTitle,
             language: deckLanguage,
-            theme: pickServerDefaultTheme(),
+            theme: pickDeckTheme({ subject: deckTitle, topic: "" }),
             pattern: "solid",
             coverEmoji: "🖼️",
             slides: finalSlides,

@@ -622,12 +622,13 @@ export default function NewPresentationPage() {
   }, []);
 
   /* Upload a file to the import endpoint and handle the result. */
-  const handleImportFile = useCallback(async (file: File) => {
+  const handleImportFile = useCallback(async (picked: File | File[]) => {
+    const list = Array.isArray(picked) ? picked : [picked];
     setImportPhase("uploading");
     setImportErrorMsg("");
     try {
       const form = new FormData();
-      form.append("file", file);
+      for (const f of list) form.append("file", f);
       const r = await fetch(`${API_BASE}/api/presentations/import-file`, {
         method: "POST",
         credentials: "include",
@@ -1499,8 +1500,8 @@ export default function NewPresentationPage() {
               onDrop={(e) => {
                 e.preventDefault();
                 setImportDragOver(false);
-                const file = e.dataTransfer.files[0];
-                if (file) handleImportFile(file);
+                const dropped = Array.from(e.dataTransfer.files);
+                if (dropped.length > 0) handleImportFile(dropped);
               }}
               className={`flex flex-col items-center justify-center gap-4 border-2 border-dashed rounded-3xl p-10 cursor-pointer transition-all ${
                 importDragOver
@@ -1511,11 +1512,12 @@ export default function NewPresentationPage() {
               <input
                 id="import-file-input"
                 type="file"
+                multiple
                 accept={IMPORT_ACCEPT}
                 className="sr-only"
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImportFile(file);
+                  const chosen = Array.from(e.target.files ?? []);
+                  if (chosen.length > 0) handleImportFile(chosen);
                   e.target.value = "";
                 }}
               />
