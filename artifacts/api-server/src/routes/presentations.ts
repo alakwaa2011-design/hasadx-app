@@ -19,6 +19,8 @@ import { buildPdf } from "../lib/presentation-pdf";
 import { mintExportToken, verifyExportToken } from "../lib/export-token";
 import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentations-tier";
 import { extractFileContent, type ExtractedFile } from "../lib/file-extractor";
+import { extractSourceImages } from "../lib/extract-source-images";
+import { pickDeckTheme } from "../lib/deck-theme";
 import {
   estimateSlideCount,
   fileToOutline,
@@ -701,10 +703,16 @@ class ImportQualityError extends Error {
   }
 }
 
+function isContentCard(card: unknown): boolean {
+  const k = String((card as { kind?: string }).kind ?? "");
+  return k !== "interactive" && k !== "quiz" && k !== "closure";
+}
+
 async function materializeImportedDeck(
   extracted: ExtractedFile,
   title: string,
   req: Request,
+  source?: { buffer: Buffer; kind: string },
 ): Promise<{
   slides: unknown[];
   language: "ar" | "en";
@@ -727,7 +735,24 @@ async function materializeImportedDeck(
       }`,
     );
   }
-  const themeKey = pickServerDefaultTheme();
+  const themeKey = pickDeckTheme({
+    subject: `${title} ${extracted.headings.slice(0, 6).join(" ")}`,
+    topic: extracted.text.slice(0, 400),
+  });
+  /* Pictures already inside the teacher's file come first; they are uploaded once and handed to the
+     explanatory slides in order. Web search fills only the slides that got none. */
+  const ownPictures: string[] = [];
+  if (source) {
+    const found = await extractSourceImages(source.buffer, source.kind);
+    const storage = new ObjectStorageService();
+    for (const img of found) {
+      try {
+        ownPictures.push(await storage.uploadBufferAsPublic({ buffer: img.buffer, contentType: img.contentType, extension: img.extension }));
+      } catch (err) {
+        req.log.warn({ err }, "Import: source image upload failed");
+      }
+    }
+  }
   const docQueries = outline.slides.map(
     (card) => (card as { imageQuery?: string }).imageQuery || "",
   );
@@ -748,7 +773,7 @@ async function materializeImportedDeck(
       themeKey,
       density: outline.density,
       lang: outline.language,
-      backgroundImageUrl: docHits[i]?.url ?? undefined,
+      backgroundImageUrl: (isContentCard(card) ? ownPictures.shift() : undefined) ?? docHits[i]?.url ?? undefined,
       imagePlacement: placement,
     });
     materializationWarnings.push(...out.warnings);
@@ -1045,7 +1070,7 @@ router.post(
         try {
           const extracted = await extractFileContent(file.buffer, "application/pdf", rawName);
           if (!extracted.text.trim()) throw new Error("PDF contains no extractable text");
-          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          const built = await materializeImportedDeck(extracted, titleFromFile, req, { buffer: file.buffer, kind: "pdf" });
           finalSlides = built.slides;
           deckLanguage = built.language;
           deckTheme = built.themeKey;
@@ -1101,7 +1126,7 @@ router.post(
             headings: parsed.map((slide) => slide.title?.trim()).filter((title): title is string => Boolean(title)),
             detectedLanguage: deckLanguage,
           };
-          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          const built = await materializeImportedDeck(extracted, titleFromFile, req, { buffer: file.buffer, kind: "pptx" });
           finalSlides = built.slides;
           deckLanguage = built.language;
           deckTheme = built.themeKey;
@@ -1147,7 +1172,7 @@ router.post(
             headings: parsed.map((slide) => slide.title?.trim()).filter((title): title is string => Boolean(title)),
             detectedLanguage: deckLanguage,
           };
-          const built = await materializeImportedDeck(extracted, titleFromFile, req);
+          const built = await materializeImportedDeck(extracted, titleFromFile, req, { buffer: file.buffer, kind: "docx" });
           finalSlides = built.slides;
           deckLanguage = built.language;
           deckTheme = built.themeKey;
