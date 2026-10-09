@@ -345,7 +345,7 @@ export function materializeV2(o: MaterializeOptions, d: Design): Element[] | nul
     case "timeline": timeline(b, card); break;
     case "closure": closure(b, card); break;
     case "formula": formula(b, card); break;
-    case "stat": stat(b, card); break;
+    case "stat": if (pts(card).slice(0, 3).every((p) => /[\d٠-٩]/.test(p))) stat(b, card); else concept(b, card); break;
     case "quote": quote(b, card); break;
     case "callout": callout(b, card); break;
     default: concept(b, card);

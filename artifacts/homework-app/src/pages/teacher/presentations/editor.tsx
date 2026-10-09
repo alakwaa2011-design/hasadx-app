@@ -92,6 +92,7 @@ import {
 import { HelpCircle, Video } from "lucide-react";
 import { parseVideoUrl } from "@/lib/video-url";
 import { resolveDesignAsset } from "@workspace/slide-templates";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const BRAND_GREEN = "#225739";
 const BRAND_GOLD = "#D9A521";
@@ -2723,7 +2724,7 @@ function SlideThumbnail({
           );
         }
         if (el.kind === "image" && el.url) {
-          return <img key={el.id} src={resolveDesignAsset(el.url)} alt="" style={{ ...style, objectFit: "cover" }} />;
+          return <img key={el.id} src={resolveImageUrl(resolveDesignAsset(el.url)) ?? ""} alt="" style={{ ...style, objectFit: "cover" }} />;
         }
         if (el.kind === "icon") {
           const Icon = getLucideIcon(el.iconName);
@@ -3233,13 +3234,13 @@ function ElementContent({
             height: `${100 / crop.h}%`,
             transform: `translate(${-(crop.x / crop.w) * 100}%, ${-(crop.y / crop.h) * 100}%)`,
           }}>
-            <img src={resolveDesignAsset(el.url)} alt="" draggable={false}
+            <img src={resolveImageUrl(resolveDesignAsset(el.url)) ?? ""} alt="" draggable={false}
               style={{ display: "block", width: "100%", height: "100%", objectFit: "fill",
                 transform: transformStr, filter: filterStr, userSelect: "none" }} />
           </div>
         ) : (
           <img
-            src={resolveDesignAsset(el.url)}
+            src={resolveImageUrl(resolveDesignAsset(el.url)) ?? ""}
             alt=""
             style={{
               width: "100%", height: "100%",
