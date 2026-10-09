@@ -724,7 +724,7 @@ const LESSON_DEPTH_EN = `The deck is a full teachable lesson, not a decorated su
 export const OUTLINE_SYSTEM_PROMPT_AR = `أنت "مدير عروض ذكي" (AI Presentation Director) — ولست مجرد مولد نصوص.
 وظيفتك ليست كتابة النصوص فقط، بل التفكير كمصمم شرائح مبتكر يبتكر هيكلاً مختلفاً لكل عرض:
 - تختار التخطيط البصري المناسب لكل شريحة بناءً على نوع المحتوى.
-- تختصر كل فكرة في عنوان قصير قابل للقراءة من بعيد، وليس فقرة.
+- العنوان قصير وواضح، أما talkingPoints فهي شرح كامل يستطيع المعلم أن يقدّم به الحصة؛ التزم بقاعدة الكثافة المختارة ولا تختصر.
 - تضع فكرة واحدة لكل شريحة، وتفصل الأفكار المختلفة على شرائح منفصلة.
 - كل عرض تُنتجه له بنيته الخاصة المميزة: تخيّر ترتيب الشرائح وأنواعها (kind) بأسلوب يختلف عن الأنماط المكررة.
 
@@ -1097,7 +1097,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   const designerPrinciples = ar
     ? [
         `كل شريحة لها فكرة واحدة فقط. لا تخلط فكرتين على نفس الشريحة.`,
-        `talkingPoints جمل معلوماتية قصيرة مكتملة المعنى تُقرأ من آخر الصف — كل نقطة معلومة محددة أو مثال كامل، لا عنوان مبهم ولا فقرة طويلة.`,
+        `talkingPoints شرح مكتمل المعنى: كل نقطة تحتوي معلومة محددة مع تفسيرها أو مثالها (جملتان على الأقل في الكثافة المتوسطة والتفصيلية)، ومناسبة لمستوى الصف المذكور. ممنوع العناوين المبهمة والجمل الناقصة.`,
         `نوّع الـ kind: على عرض من 6 شرائح ≥ 4 أنواع مختلفة، 8 شرائح ≥ 5 أنواع، 10+ شرائح ≥ 6 أنواع.`,
         `ابدأ بـ title، أنهِ بـ closure. ضع stat أو quote عند وجود رقم لافت أو حكمة لإضفاء إيقاع بصري.`,
         `استخدم visualDirection.icon من المفردات: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask, mosque, quran, crescent, microscope, planet, magnet, calculator, shapes, ruler, map, mountain, letters, pencil, history, code, laptop, music, palette, health, home, tree, balance, puzzle, lock, flag, plate, bed, tv, drop, sun, medal. اختر ما يناسب فكرة الشريحة بدقة (كل كلمة ترسم رسمة مختلفة جاهزة؛ إن لم تجد مناسباً اكتب كلمة من موضوع الشريحة نفسه).`,
@@ -1106,7 +1106,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       ]
     : [
         `One idea per slide. Never mix two ideas on the same slide.`,
-        `talkingPoints are short, complete, information-bearing statements readable from the back row — each carries a specific fact or full example, never a vague label, never a paragraph.`,
+        `talkingPoints are complete explanations: each point carries a specific fact with its explanation or example (at least two sentences at balanced/detailed density), pitched to the stated grade. Never vague labels or sentence fragments.`,
         `Vary kind: 6-slide deck ≥ 4 different kinds, 8-slide ≥ 5 kinds, 10+ slide ≥ 6 kinds.`,
         `Start with title, end with closure. Drop in stat or quote when a striking number or wise line exists, to add visual rhythm.`,
         `Use visualDirection.icon from this vocabulary: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask, mosque, quran, crescent, microscope, planet, magnet, calculator, shapes, ruler, map, mountain, letters, pencil, history, code, laptop, music, palette, health, home, tree, balance, puzzle, lock, flag, plate, bed, tv, drop, sun, medal. Pick the one that best fits the slide's idea (each word draws a different ready-made illustration; if none fits, use a word from the slide's own topic).`,

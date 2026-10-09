@@ -444,7 +444,7 @@ async function runOutlineCompletion(opts: {
        content-complete slides; the old 4000 budget truncated the JSON
        mid-object on decks past ~8 rich slides. */
     max_completion_tokens: isGpt5 ? 16000 : 8000,
-    ...(isGpt5 ? { reasoning_effort: "minimal" as const } : {}),
+    ...(isGpt5 ? { reasoning_effort: "low" as const } : {}),
       messages: [
         { role: "system" as const, content: opts.system },
         ...opts.userMessages.map((content) => ({ role: "user" as const, content })),

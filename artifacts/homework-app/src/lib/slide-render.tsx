@@ -925,6 +925,7 @@ export function SlideRender({
                         filter: filterStr,
                       }}
                       draggable={false}
+                      onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                     />
                   )
                 : null}
