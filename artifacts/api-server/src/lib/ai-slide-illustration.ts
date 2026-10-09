@@ -31,6 +31,7 @@ function promptFor(query: string, themeKey: string): string {
     `Style: ${style}. Colour palette: ${palette}.`,
     "One clear subject, centred, uncluttered, plain light background (or dark board for chalk style).",
     "Absolutely no text, letters, numbers, captions or watermark. No people's faces in close-up.",
+    "Never depict prophets, messengers, angels, companions of the Prophet or any holy figure; show places, objects, light, nature or symbols instead. Avoid human figures altogether.",
   ].join(" ");
 }
 
