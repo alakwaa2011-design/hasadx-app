@@ -640,7 +640,7 @@ export function densityLimits(d: OutlineDensity): DensityLimits {
     case "minimal":
       return { minPoints: 2, maxPoints: 3, maxWordsPerPoint: 6, allowSubtitle: false };
     case "detailed":
-      return { minPoints: 4, maxPoints: 6, maxWordsPerPoint: 48, allowSubtitle: true };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 40, allowSubtitle: true };
     case "balanced":
     default:
       return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 32, allowSubtitle: false };

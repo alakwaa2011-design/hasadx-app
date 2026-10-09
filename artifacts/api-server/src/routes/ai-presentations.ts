@@ -443,7 +443,7 @@ async function runOutlineCompletion(opts: {
     /* 8000 for gpt-4o-mini: the full-lesson contract asks for 10-12
        content-complete slides; the old 4000 budget truncated the JSON
        mid-object on decks past ~8 rich slides. */
-    max_completion_tokens: isGpt5 ? 16000 : 8000,
+    max_completion_tokens: isGpt5 ? 32000 : 16000,
     ...(isGpt5 ? { reasoning_effort: "low" as const } : {}),
       messages: [
         { role: "system" as const, content: opts.system },

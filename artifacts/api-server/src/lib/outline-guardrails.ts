@@ -465,7 +465,7 @@ export function sanitizeOutline(
      titles, drop talking-points violating length / banned / numbers. */
   const titleSeen = new Set<string>();
   const slidesIn = asArray(r.slides).slice(0, brief.slideCount);
-  const severeSlideShortfall = slidesIn.length < Math.max(5, Math.ceil(brief.slideCount * 0.75));
+  const severeSlideShortfall = slidesIn.length < Math.max(3, Math.ceil(brief.slideCount * 0.5));
   let hasIncompleteSlide = false;
   if (slidesIn.length < brief.slideCount) {
     feedback.push(`Outline has ${slidesIn.length}/${brief.slideCount} required slides.`);
@@ -489,7 +489,6 @@ export function sanitizeOutline(
     const titleRaw = clipStr(slide.title, 80);
     let title = titleRaw || (brief.language === "ar" ? `شريحة ${i + 1}` : `Slide ${i + 1}`);
     if (!titleRaw || isPlaceholderText(titleRaw)) {
-      hasIncompleteSlide = true;
       feedback.push(`Slide ${i + 1}: title is missing or a placeholder.`);
     }
     if (titleSeen.has(title.toLowerCase())) {
@@ -504,7 +503,6 @@ export function sanitizeOutline(
     const purposeRaw = clipStr(slide.purpose, 140);
     const purpose = purposeRaw || "—";
     if (!purposeRaw || isPlaceholderText(purposeRaw)) {
-      hasIncompleteSlide = true;
       feedback.push(`Slide ${i + 1}: purpose is missing or a placeholder.`);
     }
     const subtitle = lim.allowSubtitle ? (clipStr(slide.subtitle, 80) || undefined) : undefined;
