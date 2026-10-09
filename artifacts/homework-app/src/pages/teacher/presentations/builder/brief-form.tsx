@@ -404,11 +404,16 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
 
   return (
     <div className="space-y-5" dir={isAr ? "rtl" : "ltr"}>
+      {/* ── Lesson first: topic, then subject & grade ── */}
+      <div className="space-y-1.5">
+        <Label>{tx.topic ?? (isAr ? "موضوع الدرس" : "Lesson topic")}</Label>
+        <Input autoFocus value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={120} />
+      </div>
       {/* ── Required fields ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label>{tx.subject ?? (isAr ? "المادة" : "Subject")} <span className="text-destructive">*</span></Label>
-          <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={100} autoFocus />
+          <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={100} />
         </div>
         <div className="space-y-1.5">
           <Label>{tx.gradeLevel ?? (isAr ? "الصف" : "Grade level")} <span className="text-destructive">*</span></Label>
@@ -416,10 +421,42 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label>{tx.topic ?? (isAr ? "موضوع الدرس" : "Lesson topic")}</Label>
-        <Input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={120} />
-      </div>
+        <div className="space-y-2">
+          <Label>{tx.density ?? (isAr ? "كثافة المحتوى" : "Content density")}</Label>
+          <div className="grid grid-cols-3 gap-2">
+            {(["minimal", "balanced", "detailed"] as const).map((d) => {
+              const active = density === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDensity(d)}
+                  className={`relative rounded-lg border-2 px-3 py-2.5 text-sm font-semibold transition-all text-start ${
+                    active ? "border-current" : "border-muted hover:border-muted-foreground/40"
+                  }`}
+                  style={active ? { borderColor: BRAND_GREEN, color: BRAND_GREEN, background: "#22573912" } : undefined}
+                >
+                  <div>{(tx.densities && tx.densities[d]) ?? d}</div>
+                  <div className="text-[11px] font-normal text-muted-foreground mt-0.5">
+                    {(tx.densityHints && tx.densityHints[d]) ?? ""}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>{tx.notes ?? (isAr ? "ملاحظات إضافية" : "Extra notes")}</Label>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            maxLength={200}
+            rows={2}
+            placeholder={isAr ? "اختياري — مثال: ركّز على الأمثلة الحسية" : "Optional — e.g. emphasise hands-on examples"}
+          />
+          <div className="text-end text-xs text-muted-foreground">{notes.length}/200</div>
+        </div>
       <div className="space-y-1.5">
         <Label>{isAr ? "نص مرجعي للعرض (بديل للموضوع)" : "Presentation source text (topic alternative)"}</Label>
         <Textarea value={sourceText} onChange={(e) => setSourceText(e.target.value)} maxLength={MAX_SOURCE_TEXT_LENGTH} rows={6}
@@ -547,31 +584,6 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
           </div>
 
           <div className="space-y-2">
-            <Label>{tx.density ?? (isAr ? "كثافة المحتوى" : "Content density")}</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["minimal", "balanced", "detailed"] as const).map((d) => {
-                const active = density === d;
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDensity(d)}
-                    className={`relative rounded-lg border-2 px-3 py-2.5 text-sm font-semibold transition-all text-start ${
-                      active ? "border-current" : "border-muted hover:border-muted-foreground/40"
-                    }`}
-                    style={active ? { borderColor: BRAND_GREEN, color: BRAND_GREEN, background: "#22573912" } : undefined}
-                  >
-                    <div>{(tx.densities && tx.densities[d]) ?? d}</div>
-                    <div className="text-[11px] font-normal text-muted-foreground mt-0.5">
-                      {(tx.densityHints && tx.densityHints[d]) ?? ""}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2">
             <Label>{tx.toggles ?? (isAr ? "اقتراحات تفاعل (لن تُدرج تلقائياً)" : "Interaction hints (never auto-inserted)")}</Label>
             <div className="grid grid-cols-2 gap-2">
               <ToggleRow label={isAr ? "أنشطة" : "Activities"} value={activities} onChange={setActivities} />
@@ -581,17 +593,6 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>{tx.notes ?? (isAr ? "ملاحظات إضافية" : "Extra notes")}</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              maxLength={200}
-              rows={2}
-              placeholder={isAr ? "اختياري — مثال: ركّز على الأمثلة الحسية" : "Optional — e.g. emphasise hands-on examples"}
-            />
-            <div className="text-end text-xs text-muted-foreground">{notes.length}/200</div>
-          </div>
         </div>
       )}
     </div>
