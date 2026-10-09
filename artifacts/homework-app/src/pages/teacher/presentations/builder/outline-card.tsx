@@ -198,7 +198,7 @@ export function OutlineCard({ slide, onChange, onDelete, allowSubtitle, maxPoint
             <Textarea
               value={slide.purpose}
               onChange={(e) => updateField("purpose", e.target.value.slice(0, 140) as OutlineSlideCard["purpose"])}
-              maxLength={140}
+              maxLength={360}
               rows={2}
               placeholder={isAr ? "هدف الشريحة" : "Slide purpose"}
               className="text-xs"
@@ -219,7 +219,7 @@ export function OutlineCard({ slide, onChange, onDelete, allowSubtitle, maxPoint
                     <Input
                       value={p}
                       onChange={(e) => updatePoint(i, e.target.value)}
-                      maxLength={140}
+                      maxLength={360}
                       className="text-xs h-7"
                     />
                     <Button

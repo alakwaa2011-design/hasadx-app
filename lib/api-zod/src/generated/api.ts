@@ -3692,7 +3692,7 @@ export const generatePresentationOutlineResponseOneOutlineSlidesItemSubtitleMax 
 
 export const generatePresentationOutlineResponseOneOutlineSlidesItemPurposeMax = 140;
 
-export const generatePresentationOutlineResponseOneOutlineSlidesItemTalkingPointsItemMax = 140;
+export const generatePresentationOutlineResponseOneOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const generatePresentationOutlineResponseOneOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -3872,7 +3872,7 @@ export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemSubt
 
 export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemPurposeMax = 140;
 
-export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 140;
+export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const enqueuePresentationOutlineResponseResultOneOneOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -4042,7 +4042,7 @@ export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemSubti
 
 export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemPurposeMax = 140;
 
-export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 140;
+export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const getPresentationOutlineJobResponseResultOneOneOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -4212,7 +4212,7 @@ export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItem
 
 export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemPurposeMax = 140;
 
-export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 140;
+export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const getPresentationOutlineJobByKeyResponseResultOneOneOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -4432,7 +4432,7 @@ export const listPresentationDraftsResponseOutlineSlidesItemSubtitleMax = 80;
 
 export const listPresentationDraftsResponseOutlineSlidesItemPurposeMax = 140;
 
-export const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+export const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const listPresentationDraftsResponseOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -4556,7 +4556,7 @@ export const getPresentationDraftResponseOutlineSlidesItemSubtitleMax = 80;
 
 export const getPresentationDraftResponseOutlineSlidesItemPurposeMax = 140;
 
-export const getPresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+export const getPresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const getPresentationDraftResponseOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -4666,7 +4666,7 @@ export const updatePresentationDraftBodyOutlineSlidesItemSubtitleMax = 80;
 
 export const updatePresentationDraftBodyOutlineSlidesItemPurposeMax = 140;
 
-export const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsItemMax = 140;
+export const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const updatePresentationDraftBodyOutlineSlidesItemTalkingPointsMax = 6;
 
@@ -4747,7 +4747,7 @@ export const updatePresentationDraftResponseOutlineSlidesItemSubtitleMax = 80;
 
 export const updatePresentationDraftResponseOutlineSlidesItemPurposeMax = 140;
 
-export const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 140;
+export const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsItemMax = 360;
 
 export const updatePresentationDraftResponseOutlineSlidesItemTalkingPointsMax = 6;
 

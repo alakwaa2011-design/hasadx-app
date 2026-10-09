@@ -640,10 +640,10 @@ export function densityLimits(d: OutlineDensity): DensityLimits {
     case "minimal":
       return { minPoints: 2, maxPoints: 3, maxWordsPerPoint: 6, allowSubtitle: false };
     case "detailed":
-      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 28, allowSubtitle: true };
+      return { minPoints: 4, maxPoints: 6, maxWordsPerPoint: 48, allowSubtitle: true };
     case "balanced":
     default:
-      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 24, allowSubtitle: false };
+      return { minPoints: 4, maxPoints: 5, maxWordsPerPoint: 32, allowSubtitle: false };
   }
 }
 
@@ -677,17 +677,17 @@ const DENSITY_RULES_AR: Record<OutlineDensity, string> = {
   minimal:
     "كثافة قليلة: 2-3 نقاط لكل شريحة، كل نقطة ≤ 6 كلمات. عناوين قصيرة كشعارات. أكثر من شريحة لكل فكرة بدلاً من تكديس النصوص.",
   balanced:
-    "كثافة متوسطة تعليمية: 4-5 نقاط لكل شريحة، كل نقطة جملة شرح مكتملة ≤ 24 كلمة. اشرح ما المفهوم وكيف يعمل ولماذا، ثم اربطه بمثال أو تطبيق؛ لا تستخدم عبارات برقية.",
+    "كثافة متوسطة تعليمية: 4-5 نقاط لكل شريحة، كل نقطة جملة أو جملتان شرح مكتمل ≤ 32 كلمة. اشرح ما المفهوم وكيف يعمل ولماذا، ثم اربطه بمثال أو تطبيق؛ لا تستخدم عبارات برقية.",
   detailed:
-    "كثافة عالية: 4-5 نقاط لكل شريحة، كل نقطة ≤ 28 كلمة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة تفسير كامل أو خطوة حل واضحة مع سببها — لا نصف جملة ولا عنوان بديل.",
+    "كثافة عالية (مناسبة لمحاضرة أو مؤتمر): 4-6 نقاط لكل شريحة، كل نقطة فقرة قصيرة غنية ≤ 48 كلمة تتضمن التعريف والسبب والمثال أو الدليل أو الرقم، ولا تكتفِ بجملة عامة. يُسمح بـ subtitle لشريحة العنوان فقط. كل نقطة تفسير كامل أو خطوة حل واضحة مع سببها — لا نصف جملة ولا عنوان بديل.",
 };
 const DENSITY_RULES_EN: Record<OutlineDensity, string> = {
   minimal:
     "Minimal density: 2-3 points per slide, each ≤ 6 words. Headline-style only. Use more slides instead of cramming text.",
   balanced:
-    "Teaching-focused balanced density: 4-5 points per slide, each a complete explanatory statement ≤ 24 words. Explain what, how, and why, then connect it to an example or application; no telegraphic fragments.",
+    "Teaching-focused balanced density: 4-5 points per slide, each a complete one-to-two-sentence explanation ≤ 32 words. Explain what, how, and why, then connect it to an example or application; no telegraphic fragments.",
   detailed:
-    "Detailed density: 4-5 points per slide, each ≤ 28 words. `subtitle` allowed only on the title slide. Every point is a complete explanation or justified solution step, never a fragment or substitute heading.",
+    "Detailed density (fit for a lecture or conference): 4-6 points per slide, each a rich short paragraph ≤ 48 words with the definition, the reason, and an example, evidence or figure — never a generic one-liner. `subtitle` allowed only on the title slide. Every point is a complete explanation or justified solution step, never a fragment or substitute heading.",
 };
 
 /* Full-lesson depth contract (Aug 2026). The teacher feedback was that
@@ -966,17 +966,17 @@ const DIRECTOR_CONTRACT_AR = `عقدة القرار التصميمي — أرج�
 - designBrief على مستوى العرض: { designFamily, visualMotif }. اختر designFamily واحداً فقط: editorial للغة والأدب، scientific للعلوم، narrative للتاريخ والسير، practical للمهارات والتطبيقات، reflective للقيم والنصوص.
 - لكل شريحة أرجع slideType يصف دورها: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
 - اختر layoutVariant مختلفاً عند اختلاف دور الشريحة: classic, poster, editorial, staggered. لا تكرر المتغير نفسه ثلاث مرات متتالية.
-- imagePlan اختياري، لكن العرض العلمي/الجغرافي/التاريخي من 8 شرائح فأكثر يجب أن يطلب 3-5 صور تعليمية حقيقية موزعة على الشرح والأمثلة، لا على الأنشطة والاختبارات. ضعه عندما تضيف الصورة فهماً لا تستطيع الأشكال والأيقونات تقديمه (ظاهرة، مكان تاريخي، كائن، تجربة). اكتب imageQuery بالإنجليزية من 2-5 كلمات ملموسة فقط مثل "water cycle diagram"؛ لا تضف Arabic labels أو complete أو high resolution. استخدم placement:"background" فقط لعنوان أو عبارة موجزة من نقطتين كحد أقصى؛ أي شريحة شرح من 3 نقاط فأكثر يجب أن تكون placement:"side". الصور ذات المخططات أو التسميات الكثيرة لا توضع خلف النص. الشكل: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
-- لا تطلب صورة زخرفية أو عامة. استخدم fallback دلالياً فقط عندما يكون محتوى الشريحة نفسه صالحاً لبناء خطوات أو مقارنة أو خط زمني أو مثال محلّل. في غير ذلك استخدم imagePlan=null أو fallback:"none"؛ ممنوع ملء الفراغ بمستطيلات أو عقد عامة أو أيقونة بلا معنى.
-- لا تنشئ صوراً بالذكاء الاصطناعي، ولا تضع URL أو base64 في الرد.`;
+- الصور (مهم جداً للجودة): اطلب imagePlan لكل شريحة شرح أو مثال أو غلاف أو تأمّل — لا تقل عن 40% من الشرائح (بحد أقصى 6 صور للعرض)، ولا تطلبها للأنشطة والأسئلة. اكتب imageQuery بالإنجليزية يصف المشهد التعليمي بدقة (3-8 كلمات، مثل "human digestive system organs" أو "water cycle evaporation clouds rain"). mediaType: illustration للمفاهيم والعمليات (يرسمها النظام بأسلوب هوية العرض نفسها)، diagram لما فيه أجزاء مسمّاة أو تسلسل، photo فقط للأماكن والأشخاص والأحداث الحقيقية التي لا يمكن رسمها (يبحث عنها النظام). placement: "side" لأي شريحة فيها 3 نقاط فأكثر، و"background" لغلاف أو عبارة مركزية فقط.
+- لا تطلب صورة زخرفية أو عامة. اختر visualDirection.icon كلمة من موضوع الشريحة نفسه (مثل: stomach، فوتوسنتيز، ميزان) لتُرسم أقرب أيقونة عند غياب الصورة.
+- لا تضع URL أو base64 في الرد؛ النظام وحده يجلب الصور أو يرسمها.`;
 
 const DIRECTOR_CONTRACT_EN = `Design-decision contract — return it in the JSON:
 - deck-level designBrief: { designFamily, visualMotif }. Choose exactly one: editorial for language/literature, scientific for science, narrative for history/biography, practical for skills/application, reflective for values/texts.
 - Each slide has a semantic slideType: title, concept, visualHero, process, comparison, timeline, workedExample, quote, misconception, activity, quiz, summary.
 - Choose layoutVariant by slide role: classic, poster, editorial, staggered. Do not repeat one variant three times in a row.
-- imagePlan is optional, but science/geography/history decks with 8+ slides must request 3-5 real educational images distributed across explanations and examples, never activities or quizzes. Use concrete 2-5 word English imageQuery terms such as "water cycle diagram"; do not add "Arabic labels", "complete", or "high resolution". Add an image only when it teaches something shapes/icons cannot. Use placement:"background" only for a title or concise statement with at most two points; any explanatory slide with 3+ points must use placement:"side". Never place a busy labelled diagram behind text: { reason, imageQuery, mediaType: "photo"|"illustration", placement: "background"|"side", fallback }.
-- Never request generic decorative images. Use a semantic fallback only when the slide content itself supplies real steps, comparison sides, timeline events, or a worked example. Otherwise use imagePlan=null or fallback:"none"; never fill space with generic boxes, nodes, or a meaningless icon.
-- Do not generate AI images and never return a URL or base64 string.`;
+- Images (critical for quality): give imagePlan to every explanation, example, cover and reflection slide — at least 40% of slides (max 6 images per deck), never to activities or quizzes. Write imageQuery in English as a precise 3-8 word description of the teaching scene (e.g. "human digestive system organs", "water cycle evaporation clouds rain"). mediaType: illustration for concepts and processes (the system draws it in the deck's own visual identity), diagram for labelled parts or sequences, photo only for real places, people and events that cannot be drawn (the system searches for it). placement: "side" for any slide with 3+ points, "background" only for a cover or one central statement.
+- Never request generic decorative images. Set visualDirection.icon to a word from the slide's own topic (e.g. stomach, photosynthesis, balance) so the closest icon is drawn when there is no picture.
+- Never put a URL or base64 in the reply; the system alone fetches or draws images.`;
 
 /* ── Quick Mode: mandatory interactive structure injected when
    presentationKind === "quick". Forces the model to distribute

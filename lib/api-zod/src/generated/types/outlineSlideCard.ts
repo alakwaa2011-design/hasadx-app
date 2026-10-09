@@ -25,14 +25,14 @@ export interface OutlineSlideCard {
   subtitle?: string;
   /**
      * @minLength 1
-     * @maxLength 140
+     * @maxLength 360
      */
   purpose: string;
   /**
      * @minItems 1
      * @maxItems 6
      * @items.minLength 1
-     * @items.maxLength 140
+     * @items.maxLength 360
      */
   talkingPoints: string[];
   interactionHint: OutlineSlideCardInteractionHint;

@@ -509,7 +509,7 @@ export function sanitizeOutline(
     const slideHasSource = !!sourceField;
 
     const tpRaw = asArray(slide.talkingPoints)
-      .map((p) => clipStr(p, 140))
+      .map((p) => clipStr(p, 360))
       .filter((p) => p.length > 0 && !isPlaceholderText(p));
     if (asArray(slide.talkingPoints).length !== tpRaw.length) {
       feedback.push(`Slide ${i + 1}: placeholder or empty talking point removed.`);

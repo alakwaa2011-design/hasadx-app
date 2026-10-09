@@ -127,7 +127,7 @@ const outlineCardSchema = z.object({
   title: z.string().min(1).max(80),
   subtitle: z.string().max(80).optional(),
   purpose: z.string().min(1).max(140),
-  talkingPoints: z.array(z.string().min(1).max(140)).min(1).max(6),
+  talkingPoints: z.array(z.string().min(1).max(360)).min(1).max(6),
   interactionHint: z.enum(["poll", "quiz", "discussion", "activity"]).nullable(),
   gameSuggestion: z.any().nullable().optional().transform(() => null),
   gameQuestions: z.array(gameQuestionSchema).max(12).optional(),
@@ -495,7 +495,7 @@ const multiImageSlideSchema = z.object({
       const arr = Array.isArray(v) ? v : v == null ? [] : [v];
       return arr
         .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
-        .map((x) => x.trim().slice(0, 140))
+        .map((x) => x.trim().slice(0, 360))
         .slice(0, 6);
     }),
   interactionHint: z

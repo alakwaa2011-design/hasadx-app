@@ -19,6 +19,7 @@ import {
 } from "@workspace/db";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch } from "../lib/web-image-search";
+import { generateSlideIllustrations } from "../lib/ai-slide-illustration";
 import { slideSchema, slidesSchema } from "./presentations";
 import type { OutlineCard, Density, Lang } from "@workspace/slide-templates";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -154,7 +155,7 @@ export const outlineSlideCardSchema = z.object({
      already marks every other empty-content slide as fatal, so requiring a
      talking point here contradicted that guardrail and rejected valid quick
      outlines after the corrective retry had finished. */
-  talkingPoints: z.array(z.string().min(1).max(140)).max(6),
+  talkingPoints: z.array(z.string().min(1).max(360)).max(6),
   interactionHint: z.enum(["poll", "quiz", "discussion", "activity"]).nullable(),
   /* Phase 3 — optional Hasaad live-game suggestion. Allowed values
      mirror the discriminated `hasad-game` element in `presentations.ts`
@@ -1427,6 +1428,20 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
     } catch (err) {
       req.log.warn({ err }, "Presentation image batch failed; using visual fallbacks");
       imageHits = imageQueries.map(() => null);
+    }
+
+    /* v2 design decks: draw illustrations / diagrams in the deck's own style where the outline asks for them.
+       A generated picture wins over a web search hit for the same slide; failures keep the web hit or the
+       layout's built-in drawing. */
+    if (themeKey.startsWith("d_")) {
+      try {
+        const drawn = await generateSlideIllustrations(outline.slides as OutlineCard[], themeKey);
+        drawn.forEach((url, idx) => {
+          if (url) imageHits[idx] = { url, title: "", source: "ai-illustration" } as (typeof imageHits)[number];
+        });
+      } catch (err) {
+        req.log.warn({ err }, "Slide illustration batch failed; continuing without");
+      }
     }
 
     /* Insert the empty deck UP-FRONT so we can persist slides

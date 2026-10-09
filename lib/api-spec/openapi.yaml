@@ -6644,7 +6644,7 @@ components:
           items:
             type: string
             minLength: 1
-            maxLength: 140
+            maxLength: 360
         interactionHint:
           type: string
           enum: [poll, quiz, discussion, activity]

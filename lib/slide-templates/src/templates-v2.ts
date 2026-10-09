@@ -136,7 +136,7 @@ function objectives(b: B, card: OutlineCard) {
     b.head(x + cw - 84, y + 34, 62, 40, b.digit(i), { size: 30, color: b.onAcc(), align: "center" });
     const key = pickArtKey([t], i);
     b.art(key, x + 24, y + (ch - 110) / 2, 110);
-    b.text(x + 150, y + 24, cw - 250 > 140 ? cw - 250 : cw - 190, ch - 48, clip(t, 90), { fit: [rows === 1 ? 32 : 28, 20], weight: 800 });
+    b.text(x + 150, y + 24, cw - 250 > 140 ? cw - 250 : cw - 190, ch - 48, clip(t, 220), { fit: [rows === 1 ? 32 : 28, 17], weight: 800 });
   });
 }
 
@@ -145,19 +145,34 @@ function concept(b: B, card: OutlineCard) {
   header(b, card, "concept-card");
   const p = pts(card);
   const lede = p[0] ?? card.purpose;
-  const rest = p.slice(1, 4);
+  const rest = p.slice(1, 6);
   const key = pickArtKey([card.visualDirection.icon, card.title, lede], card.index);
+  const chars = p.reduce((n, t) => n + t.length, 0);
+  if (chars > 300 || rest.length > 3) {
+    /* text-heavy explanation (lecture style): picture column + one large reading panel */
+    const colW = 300, x0 = SAFE_R - 40 - (SAFE_W - 40 - colW - 36);
+    const textW = SAFE_W - 40 - colW - 36;
+    const tx = SAFE_R - textW;
+    b.card(tx, 300, textW, 360, b.acc(0));
+    b.head(tx + 28, 312, textW - 56, 96, clip(lede, 240), { fit: [34, 22], weight: 900, color: b.d.heading, mid: false });
+    const bullets = rest.map((t) => "◆  " + clip(t, 300)).join("\n");
+    if (bullets) b.text(tx + 28, 414, textW - 56, 232, bullets, { fit: [26, 16], weight: 600, mid: false });
+    if (!b.photo) b.disc(SAFE_L + 10, 320, colW, b.acc(0));
+    b.visual(key, SAFE_L + 20, 330, colW - 20, { w: colW, h: 330 });
+    void x0;
+    return;
+  }
   const artS = rest.length ? 230 : 300;
   if (!b.photo) b.disc(90, 330, artS + 20, b.acc(0));
   b.visual(key, 100, 340, artS, { w: artS + 10, h: artS + 10 });
   const x0 = 90 + artS + 70, w0 = SAFE_R - x0;
   const lh = rest.length ? 150 : 250;
   b.card(x0, 320, w0, lh, b.acc(0));
-  b.head(x0 + 28, 330, w0 - 56, lh - 20, clip(lede, 120), { fit: [rest.length ? 40 : 46, 26], weight: 800, color: b.d.ink });
-  rest.forEach((t, i) => {
-    const gw = (w0 - 24 * (rest.length - 1)) / rest.length, x = SAFE_R - gw - i * (gw + 24);
+  b.head(x0 + 28, 330, w0 - 56, lh - 20, clip(lede, 260), { fit: [rest.length ? 40 : 46, 20], weight: 800, color: b.d.ink });
+  rest.slice(0, 3).forEach((t, i, arr) => {
+    const gw = (w0 - 24 * (arr.length - 1)) / arr.length, x = SAFE_R - gw - i * (gw + 24);
     b.card(x, 500, gw, 150, b.acc(i + 1));
-    b.text(x + 22, 514, gw - 44, 122, clip(t, 90), { fit: [26, 18], weight: 700 });
+    b.text(x + 22, 514, gw - 44, 122, clip(t, 200), { fit: [26, 16], weight: 700 });
   });
 }
 
@@ -185,7 +200,7 @@ function comparison(b: B, card: OutlineCard) {
     items.forEach((t, j) => {
       const y = top + 90 + j * itemH;
       b.disc(x + cw - 56, y + (itemH - 38) / 2, 38, col.color);
-      b.text(x + 24, y, cw - 100, itemH, clip(t, 80), { fit: [28, 18], weight: 700 });
+      b.text(x + 24, y, cw - 100, itemH, clip(t, 200), { fit: [28, 16], weight: 700 });
     });
   });
 }
@@ -199,7 +214,7 @@ function hero(b: B, card: OutlineCard) {
   b.head(660, 190, 540, 40, eb, { size: 28, color: b.acc(1) });
   b.head(660, 236, 540, 200, clip(card.title, 60), { fit: [70, 38], color: b.d.heading });
   const line = pts(card)[0] ?? card.subtitle ?? "";
-  if (line) { b.pill(660, 456, 90, 8, b.acc(2)); b.text(660, 482, 540, 170, clip(line, 140), { fit: [34, 22], weight: 700 }); }
+  if (line) { b.pill(660, 456, 90, 8, b.acc(2)); b.text(660, 482, 540, 170, clip(line, 300), { fit: [34, 18], weight: 700 }); }
 }
 
 /* ── 6 · steps ── */
@@ -215,7 +230,7 @@ function steps(b: B, card: OutlineCard) {
     b.card(x, top + 30, cw, ch - 30, color);
     b.disc(x + cw / 2 - 36, top - 30, 72, color);
     b.head(x + cw / 2 - 36, top - 16, 72, 46, b.digit(i), { size: 34, color: b.onAcc(), align: "center" });
-    b.text(x + 18, top + 70, cw - 36, ch - 80, clip(t, 90), { fit: [n > 3 ? 24 : 30, 18], weight: 700, align: "center" });
+    b.text(x + 18, top + 70, cw - 36, ch - 80, clip(t, 220), { fit: [n > 3 ? 24 : 30, 16], weight: 700, align: "center" });
   });
 }
 
@@ -234,7 +249,7 @@ function timeline(b: B, card: OutlineCard) {
     b.head(cx - 28, axisY - 20, 56, 40, b.digit(i), { size: 26, color: b.onAcc(), align: "center" });
     const bw = Math.min(250, step * 1.6), y = up ? axisY - 190 : axisY + 50;
     b.card(cx - bw / 2, y, bw, 140, color);
-    b.text(cx - bw / 2 + 16, y + 12, bw - 32, 116, clip(t, 80), { fit: [24, 16], weight: 700, align: "center" });
+    b.text(cx - bw / 2 + 16, y + 12, bw - 32, 116, clip(t, 170), { fit: [24, 15], weight: 700, align: "center" });
   });
 }
 
@@ -251,7 +266,7 @@ function closure(b: B, card: OutlineCard) {
     const y = top + i * (h + gap), color = b.acc(i);
     b.card(x0, y, w0, h, color);
     b.art("check", x0 + w0 - 66, y + (h - 44) / 2, 44);
-    b.text(x0 + 24, y + 6, w0 - 110, h - 12, clip(t, 110), { fit: [28, 18], weight: 800 });
+    b.text(x0 + 24, y + 6, w0 - 110, h - 12, clip(t, 240), { fit: [28, 16], weight: 800 });
   });
 }
 
@@ -266,7 +281,7 @@ function formula(b: B, card: OutlineCard) {
   rest.forEach((t, i) => {
     const gw = (SAFE_W - 80 - 24 * (rest.length - 1)) / rest.length, x = SAFE_R - 40 - gw - i * (gw + 24);
     b.card(x, 530, gw, 120, b.acc(i + 1));
-    b.text(x + 18, 540, gw - 36, 100, clip(t, 80), { fit: [24, 16], weight: 700, align: "center" });
+    b.text(x + 18, 540, gw - 36, 100, clip(t, 170), { fit: [24, 15], weight: 700, align: "center" });
   });
 }
 
@@ -284,7 +299,7 @@ function stat(b: B, card: OutlineCard) {
     b.card(x, top, cw, ch, color);
     b.head(x + 16, top + 30, cw - 32, 140, clip(num, 14), { fit: [112, 48], align: "center", color });
     b.pill(x + cw / 2 - 40, top + 180, 80, 8, color);
-    b.text(x + 24, top + 206, cw - 48, ch - 224, clip(label, 90), { fit: [28, 18], weight: 700, align: "center" });
+    b.text(x + 24, top + 206, cw - 48, ch - 224, clip(label, 200), { fit: [28, 16], weight: 700, align: "center" });
   });
 }
 
@@ -307,9 +322,9 @@ function callout(b: B, card: OutlineCard) {
   if (!b.photo) b.disc(SAFE_L + 60, 366, 230, b.acc(2));
   b.visual(key, SAFE_L + 75, 381, 200, { w: 240, h: 250 });
   const x0 = SAFE_L + 330, w0 = SAFE_R - 60 - x0;
-  b.head(x0, 350, w0, 120, clip(p[0] ?? card.title, 90), { fit: [40, 26], color: b.d.heading });
+  b.head(x0, 350, w0, 120, clip(p[0] ?? card.title, 200), { fit: [40, 22], color: b.d.heading });
   const rest = p.slice(1, 3).join("\n");
-  if (rest) b.text(x0, 480, w0, 150, clip(rest, 200), { fit: [28, 18], weight: 600, color: b.d.ink });
+  if (rest) b.text(x0, 480, w0, 150, clip(rest, 420), { fit: [28, 16], weight: 600, color: b.d.ink });
 }
 
 /** Frame + layout for one outline card, or null when this kind has no v2 layout (interactive keeps legacy elements). */

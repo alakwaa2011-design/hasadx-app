@@ -52,7 +52,7 @@ export function OutlineObjectives({ objectives, onChange }: Props) {
             <Input
               value={obj}
               onChange={(e) => update(i, e.target.value)}
-              maxLength={140}
+              maxLength={360}
               className="flex-1 text-sm"
             />
             <Button
@@ -75,7 +75,7 @@ export function OutlineObjectives({ objectives, onChange }: Props) {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
             placeholder={isAr ? "أضف هدفاً ..." : "Add an objective..."}
-            maxLength={140}
+            maxLength={360}
             className="text-sm"
           />
           <Button onClick={add} variant="outline" size="sm" className="gap-1">
