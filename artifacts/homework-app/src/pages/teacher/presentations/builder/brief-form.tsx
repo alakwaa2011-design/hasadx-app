@@ -154,7 +154,7 @@ const DEFAULT_PREFS: Required<SavedPrefs> = {
   slideCount: 10,
   durationMinutes: 45,
   languageLevel: "medium",
-  density: "balanced",
+  density: "detailed",
   activities: false,
   questions: false,
   poll: false,
