@@ -1,6 +1,7 @@
 import { db, teachersTable, platformSettingsTable, presentationsTable, presentationAssetsTable } from "@workspace/db";
 import { DEFAULT_PRESENTATION_LIMITS, type PresentationLimits } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
+import { isDesignAsset } from "@workspace/slide-templates";
 
 export interface PresentationTier {
   isPro: boolean;
@@ -57,8 +58,9 @@ export async function getPresentationUsage(presentationId: number): Promise<Pres
   const slidesArr = Array.isArray(deck?.slides) ? (deck!.slides as Array<Record<string, unknown>>) : [];
   let images = 0;
   for (const s of slidesArr) {
-    const els = Array.isArray(s.elements) ? (s.elements as Array<{ kind?: string }>) : [];
-    for (const el of els) if (el?.kind === "image") images += 1;
+    const els = Array.isArray(s.elements) ? (s.elements as Array<{ kind?: string; url?: string }>) : [];
+    /* design-asset references (hd://…) are page art, not teacher images — they never count toward the limit */
+    for (const el of els) if (el?.kind === "image" && !isDesignAsset(el.url)) images += 1;
   }
 
   const [agg] = await db

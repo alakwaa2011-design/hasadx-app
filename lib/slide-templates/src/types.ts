@@ -127,6 +127,8 @@ export interface ThemePalette {
       deck-level theme — this is what gives each slide its own
       editorial backdrop instead of every slide reusing the deck. */
   cssGrad?: string;
+  /** Set when the theme key is a v2 design identity (see designs.ts). */
+  design?: string;
 }
 
 export type BaseElement = {
@@ -268,4 +270,6 @@ export interface MaterializeOptions {
   lang: Lang;
   /** Optional unique seed for ids (defaults to card.index). */
   idSeed?: string;
+  /** A real photo for the slide (v2 designs show it where the illustration would be). */
+  imageUrl?: string;
 }

@@ -1236,6 +1236,7 @@ const ALLOWED_THEME_KEYS = [
   "harvest","ocean","sunset","midnight","rose","royal","noor","sage",
   "sand","obsidian","linen","mist","clay","pine","ink",
   "wameedh_night","wameedh_dawn","wameedh_steel","wameedh_amber",
+  "d_textbook","d_lab","d_modern","d_kids","d_academic","d_nature","d_chalk",
 ] as const;
 type ThemeKey = (typeof ALLOWED_THEME_KEYS)[number];
 function isAllowedTheme(s: string): s is ThemeKey {
@@ -1249,27 +1250,27 @@ function hashText(s: string): number {
   }
   return h >>> 0;
 }
-function pickAiDeckTheme(brief: { subject?: string; topic?: string; language?: Lang }): ThemeKey {
+function pickAiDeckTheme(brief: { subject?: string; topic?: string; language?: Lang; gradeLevel?: string }): ThemeKey {
+  /* Choose a v2 design identity by subject and audience (lib/slide-templates/designs.ts). The pools hold
+     several fitting identities; a hash of the topic picks one deterministically so two different lessons
+     in the same subject do not always look identical. */
   const text = `${brief.subject ?? ""} ${brief.topic ?? ""}`.toLowerCase();
-  const pools: ThemeKey[][] = [
-    ["noor", "linen", "sand", "pine", "royal"],
-    ["ocean", "midnight", "mist", "obsidian", "wameedh_steel"],
-    ["sand", "royal", "linen", "pine", "wameedh_amber"],
-    ["clay", "linen", "rose", "mist", "sunset"],
-    ["midnight", "ocean", "obsidian", "mist", "royal"],
-    ["sunset", "rose", "wameedh_dawn", "midnight", "ocean"],
-  ];
-  const religious = /(قرآن|قران|حديث|فقه|إسلام|اسلام|سيرة|توحيد|quran|hadith|fiqh|islam)/i.test(text);
-  const science = /(علوم|فيزياء|كيمياء|أحياء|احياء|science|physics|chemistry|biology)/i.test(text);
-  const history = /(تاريخ|حضارة|سيرة|غزوة|history|civilization|biography)/i.test(text);
-  const language = /(عربي|لغة|نحو|بلاغة|أدب|ادب|english|grammar|literature|language)/i.test(text);
+  const grade = `${(brief as { gradeLevel?: string }).gradeLevel ?? ""}`;
+  const young = /(الأول|الاول|الثاني|الثالث|تمهيدي|روضة|kg|grade ?[1-3]\b|first|second|third)/i.test(grade) && !/(عشر|ثانوي|متوسط|جامع)/.test(grade);
+  const religious = /(قرآن|قران|حديث|فقه|إسلام|اسلام|سيرة|توحيد|تجويد|quran|hadith|fiqh|islam)/i.test(text);
+  const science = /(علوم|فيزياء|كيمياء|أحياء|احياء|تقنية|حاسب|برمجة|science|physics|chemistry|biology|computer|coding)/i.test(text);
+  const nature = /(بيئة|نبات|حيوان|جغرافيا|زراعة|طبيعة|environment|plant|animal|geography)/i.test(text);
+  const history = /(تاريخ|حضارة|غزوة|فلسفة|قانون|history|civilization|law|philosophy)/i.test(text);
+  const language = /(عربي|لغة|نحو|بلاغة|أدب|ادب|إملاء|english|grammar|literature|language)/i.test(text);
   const math = /(رياضيات|جبر|هندسة|حساب|math|algebra|geometry)/i.test(text);
-  const pool = religious ? pools[0]
-    : science ? pools[1]
-      : history ? pools[2]
-        : language ? pools[3]
-          : math ? pools[4]
-            : pools[5];
+  const pool: ThemeKey[] = young ? ["d_kids", "d_nature", "d_modern"]
+    : religious ? ["d_textbook", "d_academic", "d_modern"]
+      : math ? ["d_chalk", "d_lab", "d_modern"]
+        : science ? ["d_lab", "d_chalk", "d_nature"]
+          : nature ? ["d_nature", "d_lab", "d_modern"]
+            : history ? ["d_academic", "d_textbook", "d_modern"]
+              : language ? ["d_textbook", "d_academic", "d_modern", "d_kids"]
+                : ["d_modern", "d_lab", "d_nature", "d_academic", "d_textbook"];
   return pool[hashText(text || "deck") % pool.length];
 }
 /* Mirrors the SLIDE_PATTERNS registry on the frontend. Anything outside

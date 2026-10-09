@@ -788,6 +788,9 @@ importers:
       '@workspace/quran-similarity':
         specifier: workspace:*
         version: link:../../lib/quran-similarity
+      '@workspace/slide-templates':
+        specifier: workspace:*
+        version: link:../../lib/slide-templates
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

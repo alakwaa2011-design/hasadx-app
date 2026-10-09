@@ -6,7 +6,10 @@ export type SlideThemeKey =
   /* New calm/sophisticated palette (May 2026 redesign). */
   | "linen" | "mist" | "clay" | "pine" | "ink"
   /* وميض identity themes (Jun 2026). */
-  | "wameedh_night" | "wameedh_dawn" | "wameedh_steel" | "wameedh_amber";
+  | "wameedh_night" | "wameedh_dawn" | "wameedh_steel" | "wameedh_amber"
+  /* v2 design identities (lib/slide-templates/designs.ts): a full visual language each —
+     page art, cards, colours, fonts — chosen per subject, not just a colour wash. */
+  | "d_textbook" | "d_lab" | "d_modern" | "d_kids" | "d_academic" | "d_nature" | "d_chalk";
 
 export type SlidePatternKey =
   | "solid" | "dots" | "grid" | "lines" | "waves" | "geometric" | "stars" | "glow" | "ai";
@@ -174,6 +177,14 @@ export const SLIDE_THEMES: SlideTheme[] = [
   { key: "wameedh_dawn",  labelAr: "فجر وميض", labelEn: "Wameedh Dawn",   tier: "pro", grad: "from-[#080d1e] via-[#0f1a35] to-[#2a1a08]",  cssGrad: meshWameedhDawn,  accent: "bg-[#d9a521]", accentHex: "#d9a521" },
   { key: "wameedh_steel", labelAr: "فولاذي",   labelEn: "Wameedh Steel",  tier: "pro", grad: "from-[#111b28] via-[#1a2a3e] to-[#243348]",  cssGrad: meshWameedhSteel, accent: "bg-[#8ab4d4]", accentHex: "#8ab4d4" },
   { key: "wameedh_amber", labelAr: "عنبري",    labelEn: "Wameedh Amber",  tier: "pro", grad: "from-[#1a0d02] via-[#2e1a05] to-[#3f2508]",  cssGrad: meshWameedhAmber, accent: "bg-[#d9a521]", accentHex: "#d9a521" },
+  /* v2 design identities — the slide art itself is drawn by lib/slide-templates; cssGrad is the page paper. */
+  { key: "d_textbook", labelAr: "كتاب مدرسي",   labelEn: "Textbook",       tier: "free", grad: "from-[#fffcf4] via-[#fbf2e2] to-[#f4c1bc]", cssGrad: "linear-gradient(180deg,#FFFDF8,#FBF2E2)", accent: "bg-[#8b1e3f]", accentHex: "#8b1e3f", textOnLight: true },
+  { key: "d_lab",      labelAr: "مختبر علمي",   labelEn: "Science lab",    tier: "free", grad: "from-[#f3f8fc] via-[#cfe3ee] to-[#0b7285]", cssGrad: "#F3F8FC", accent: "bg-[#0b7285]", accentHex: "#0b7285", textOnLight: true },
+  { key: "d_modern",   labelAr: "عصري بسيط",    labelEn: "Modern minimal", tier: "free", grad: "from-white via-[#f5f7fb] to-[#2563eb]",     cssGrad: "#FFFFFF", accent: "bg-[#2563eb]", accentHex: "#2563eb", textOnLight: true },
+  { key: "d_kids",     labelAr: "مرح للصغار",   labelEn: "Playful kids",   tier: "free", grad: "from-[#fff8e1] via-[#ffd93d] to-[#ff6b6b]", cssGrad: "#FFF8E1", accent: "bg-[#ff6b6b]", accentHex: "#ff6b6b", textOnLight: true },
+  { key: "d_academic", labelAr: "أكاديمي رسمي", labelEn: "Academic formal",tier: "free", grad: "from-[#fbf8f0] via-[#c9a227] to-[#0b2a55]", cssGrad: "#FBF8F0", accent: "bg-[#0b2a55]", accentHex: "#0b2a55", textOnLight: true },
+  { key: "d_nature",   labelAr: "طبيعة",        labelEn: "Nature",         tier: "free", grad: "from-[#f4f9ee] via-[#8bc34a] to-[#2e7d32]", cssGrad: "linear-gradient(180deg,#F4F9EE,#E6F2DB)", accent: "bg-[#2e7d32]", accentHex: "#2e7d32", textOnLight: true },
+  { key: "d_chalk",    labelAr: "سبورة طباشير", labelEn: "Chalkboard",     tier: "free", grad: "from-[#1f3a34] via-[#2a4a42] to-[#b07c45]", cssGrad: "#1F3A34", accent: "bg-[#ffd166]", accentHex: "#ffd166" },
 ];
 
 export const SLIDE_PATTERNS: SlidePattern[] = [
@@ -449,7 +460,7 @@ export function getTheme(key: string | undefined | null): SlideTheme {
    poster. The picker rotates across these so two decks created in a
    row look different — much more like Pitch / Tome / Gamma. */
 export const TASTEFUL_DEFAULT_THEMES: SlideThemeKey[] = [
-  "wameedh_night", "wameedh_dawn", "wameedh_steel", "wameedh_amber",
+  "d_modern", "d_lab", "d_academic", "d_nature", "d_textbook", "d_kids", "d_chalk",
   "mist", "obsidian", "linen", "ink", "sage", "ocean", "pine", "clay",
 ];
 

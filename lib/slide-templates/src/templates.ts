@@ -4,6 +4,9 @@ import type {
   ThemePalette, Density, Lang, SlideKind,
 } from "./types";
 import { resolveIcon, defaultIconForKind } from "./icons";
+import { designFor } from "./designs";
+import { materializeV2 } from "./templates-v2";
+import { frameRef } from "./assets";
 
 /* ── Canvas constants. Keep in sync with the renderer (CANVAS_W/H in
    homework-app/src/lib/slide-render.tsx). All template coordinates
@@ -1270,7 +1273,11 @@ export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
   const effectiveOpts = card === opts.card ? opts : { ...opts, card };
 
   let elements: Element[];
-  switch (card.kind) {
+  const design = designFor(effectiveOpts.theme.design);
+  const v2 = design ? materializeV2(effectiveOpts, design) : null;
+  if (v2) {
+    elements = v2;
+  } else switch (card.kind) {
     case "title":         elements = tplTitle(effectiveOpts, warnings); break;
     case "objectives":    elements = tplObjectives(effectiveOpts, warnings); break;
     case "concept-card":  elements = tplConceptCard(effectiveOpts, warnings); break;
@@ -1309,10 +1316,16 @@ export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
   }
   if (card.source) noteLines.push(card.source);
 
+  /* v2 identities: interactive slides keep their legacy elements (the live activity widgets) but sit on the
+     identity's page art and use its colours. */
+  if (design && !v2) {
+    elements.unshift({ id: `${seed}-frame`, kind: "image", x: 0, y: 0, w: W, h: H, url: frameRef(design.key, "content", card.index), objectFit: "fill" });
+  }
   return {
     slide: {
       id: seed,
       layout: card.kind,
+      ...(design ? { background: design.paper } : {}),
       notes: noteLines.join("\n").slice(0, 4000),
       activityType: card.activityType ?? null,
       gameSuggestion: card.gameSuggestion ?? null,

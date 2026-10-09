@@ -1100,7 +1100,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `talkingPoints جمل معلوماتية قصيرة مكتملة المعنى تُقرأ من آخر الصف — كل نقطة معلومة محددة أو مثال كامل، لا عنوان مبهم ولا فقرة طويلة.`,
         `نوّع الـ kind: على عرض من 6 شرائح ≥ 4 أنواع مختلفة، 8 شرائح ≥ 5 أنواع، 10+ شرائح ≥ 6 أنواع.`,
         `ابدأ بـ title، أنهِ بـ closure. ضع stat أو quote عند وجود رقم لافت أو حكمة لإضفاء إيقاع بصري.`,
-        `استخدم visualDirection.icon من المفردات: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask. اختر ما يناسب فكرة الشريحة بدقة.`,
+        `استخدم visualDirection.icon من المفردات: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask, mosque, quran, crescent, microscope, planet, magnet, calculator, shapes, ruler, map, mountain, letters, pencil, history, code, laptop, music, palette, health, home, tree, balance, puzzle, lock, flag, plate, bed, tv, drop, sun, medal. اختر ما يناسب فكرة الشريحة بدقة (كل كلمة ترسم رسمة مختلفة جاهزة؛ إن لم تجد مناسباً اكتب كلمة من موضوع الشريحة نفسه).`,
         `لا تكرر نفس العنوان أو نفس الأيقونة في شرائح متتالية.`,
         `اجعل لكل عرض شخصيته الهيكلية الخاصة: نوّع ترتيب الأنواع (kind) واختر إيقاعاً مختلفاً عن العروض النمطية.`,
       ]
@@ -1109,7 +1109,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
         `talkingPoints are short, complete, information-bearing statements readable from the back row — each carries a specific fact or full example, never a vague label, never a paragraph.`,
         `Vary kind: 6-slide deck ≥ 4 different kinds, 8-slide ≥ 5 kinds, 10+ slide ≥ 6 kinds.`,
         `Start with title, end with closure. Drop in stat or quote when a striking number or wise line exists, to add visual rhythm.`,
-        `Use visualDirection.icon from this vocabulary: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask. Pick the one that best fits the slide's idea.`,
+        `Use visualDirection.icon from this vocabulary: lightbulb, target, chart, brain, atom, leaf, globe, clock, check, info, alert, sparkles, trophy, users, book, compass, layers, zap, heart, flask, mosque, quran, crescent, microscope, planet, magnet, calculator, shapes, ruler, map, mountain, letters, pencil, history, code, laptop, music, palette, health, home, tree, balance, puzzle, lock, flag, plate, bed, tv, drop, sun, medal. Pick the one that best fits the slide's idea (each word draws a different ready-made illustration; if none fits, use a word from the slide's own topic).`,
         `Don't reuse the same title or icon in consecutive slides.`,
         `Give each deck its own structural personality: vary the ordering and mix of kinds so no two generated decks feel like copies of the same template.`,
       ];

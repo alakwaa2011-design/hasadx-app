@@ -63,6 +63,7 @@
     "@workspace/api-client-react": "workspace:*",
     "@workspace/api-zod": "workspace:*",
     "@workspace/quran-similarity": "workspace:*",
+    "@workspace/slide-templates": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "^1.1.1",

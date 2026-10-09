@@ -13,6 +13,8 @@
  */
 import PptxGenJS from "pptxgenjs";
 import { safeFetchAsDataUri } from "./url-safety";
+import { Resvg } from "@resvg/resvg-js";
+import { designAssetSvg, isDesignAsset } from "@workspace/slide-templates";
 
 type Kind = "text" | "image" | "icon" | "shape" | "activity";
 interface Element {
@@ -302,7 +304,26 @@ function isBoldWeight(w: string | number | undefined): boolean {
    helper which rejects private IPs, caps payload size, and times out
    so a malicious image URL on a slide can't probe internal services. */
 async function urlToDataUri(url: string): Promise<string | null> {
+  /* design art (hd://…) is drawn locally: SVG → PNG so PowerPoint shows it as an ordinary movable picture */
+  if (isDesignAsset(url)) return designAssetToPngDataUri(url);
   return safeFetchAsDataUri(url);
+}
+
+const designPngCache = new Map<string, string>();
+function designAssetToPngDataUri(url: string): string | null {
+  const hit = designPngCache.get(url);
+  if (hit) return hit;
+  const svg = designAssetSvg(url);
+  if (!svg) return null;
+  try {
+    const png = new Resvg(svg, { fitTo: { mode: "zoom", value: 2 }, font: { loadSystemFonts: true } }).render().asPng();
+    const out = `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
+    if (designPngCache.size > 400) designPngCache.clear();
+    designPngCache.set(url, out);
+    return out;
+  } catch {
+    return null;
+  }
 }
 
 export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {

@@ -27,6 +27,7 @@ import {
 } from "../lib/file-to-outline";
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch, searchPresentationWebImages } from "../lib/web-image-search";
+import { isDesignAsset } from "@workspace/slide-templates";
 import { generateMcqQuestions, materializeMcqSlides, type McqQuestion } from "../lib/generate-mcq-slides";
 
 const router: IRouter = Router();
@@ -1672,7 +1673,7 @@ router.put("/presentations/:id", requireTeacher, async (req, res) => {
         let imageCount = 0;
         for (const s of body.slides) {
           for (const el of s.elements ?? []) {
-            if (el.kind === "image") imageCount += 1;
+            if (el.kind === "image" && !isDesignAsset((el as { url?: string }).url)) imageCount += 1;
           }
         }
         if (imageCount > tier.limits.maxImagesRegular) {

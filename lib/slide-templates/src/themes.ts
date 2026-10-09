@@ -1,4 +1,5 @@
 import type { ThemePalette } from "./types";
+import { DESIGNS, DESIGN_KEYS } from "./designs";
 
 /* Theme palette resolver. Mirrors the renderer's SLIDE_THEMES table
    without importing it (the renderer lives in the homework-app
@@ -128,12 +129,12 @@ const THEMES: Record<string, ThemeRow> = {
 /** Allowed theme keys mirrored for runtime validation in guardrails &
     routes. Source of truth for both server and (via an identical list
     in the routes layer) the persisted deck schema. */
-export const SLIDE_TEMPLATE_THEME_KEYS = Object.keys(THEMES);
+export const SLIDE_TEMPLATE_THEME_KEYS = [...Object.keys(THEMES), ...DESIGN_KEYS];
 
 /** True when the supplied string is a known theme key. */
 export function isKnownThemeKey(s: string | null | undefined): boolean {
   if (!s || typeof s !== "string") return false;
-  return Object.prototype.hasOwnProperty.call(THEMES, s);
+  return Object.prototype.hasOwnProperty.call(THEMES, s) || Object.prototype.hasOwnProperty.call(DESIGNS, s);
 }
 
 /* Convert any "#rrggbb" / "#rgb" hex to an rgba() string. Falls back
@@ -155,6 +156,20 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function paletteForTheme(themeKey: string | null | undefined): ThemePalette {
+  const dsg = themeKey ? DESIGNS[themeKey] : undefined;
+  if (dsg) {
+    return {
+      accent: dsg.accents[0],
+      accentSoft: hexToRgba(dsg.accents[0], 0.14),
+      fg: dsg.ink,
+      muted: dsg.muted,
+      surface: dsg.dark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+      divider: dsg.dark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.10)",
+      textOnLight: !dsg.dark,
+      cssGrad: dsg.paper,
+      design: dsg.key,
+    };
+  }
   /* Tasteful default fallback (Arabic-user feedback): when no theme
      key is provided we no longer fall back to the loud green/gold
      "harvest" palette. `mist` is a calm light editorial backdrop

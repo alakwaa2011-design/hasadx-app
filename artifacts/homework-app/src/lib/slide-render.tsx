@@ -17,6 +17,7 @@ import * as LucideIcons from "lucide-react";
 import { Square } from "lucide-react";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { getTheme, getPattern, defaultTextColorForSlide } from "@/lib/slide-themes";
+import { resolveDesignAsset } from "@workspace/slide-templates";
 
 export const CANVAS_W = 1280;
 export const CANVAS_H = 720;
@@ -906,14 +907,14 @@ export function SlideRender({
                       height: `${100 / crop.h}%`,
                       transform: `translate(${-(crop.x / crop.w) * 100}%, ${-(crop.y / crop.h) * 100}%)`,
                     }}>
-                      <img src={el.url} alt="" draggable={false}
+                      <img src={resolveDesignAsset(el.url)} alt="" draggable={false}
                         style={{ display: "block", width: "100%", height: "100%", objectFit: "fill",
                           transform: transformStr, filter: filterStr }} />
                     </div>
                   )
                   : (
                     <img
-                      src={el.url}
+                      src={resolveDesignAsset(el.url)}
                       alt=""
                       style={{
                         width: "100%",

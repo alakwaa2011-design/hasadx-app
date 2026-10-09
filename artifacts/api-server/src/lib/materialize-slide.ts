@@ -281,14 +281,26 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
           layoutVariant: "classic",
         }
       : input.card;
+    /* v2 design identities place a photo themselves (in the spot of the illustration), so the
+       legacy overlay / side-column logic below is skipped for them. */
+    const isDesign = Boolean(palette.design);
     const out = materializeSlide({
       card: renderCard,
       theme: palette,
       density: input.density,
       lang: input.lang,
+      ...(isDesign && input.backgroundImageUrl ? { imageUrl: input.backgroundImageUrl } : {}),
     });
     if (palette.cssGrad) {
       out.slide.background = palette.cssGrad;
+    }
+
+    if (isDesign) {
+      if (out.warnings.length === 0 && input.card.imagePlan?.fallback && input.card.imagePlan.fallback !== "none" && !input.backgroundImageUrl) {
+        addVisualFallback(out.slide, input.card, palette, input.lang);
+      }
+      fitTextElements(out.slide.elements);
+      return { slide: out.slide, warnings: out.warnings };
     }
 
     if (placement === "background" && input.backgroundImageUrl) {
