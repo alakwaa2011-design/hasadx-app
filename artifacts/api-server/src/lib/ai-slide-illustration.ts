@@ -49,7 +49,7 @@ export async function generateSlideIllustrations(cards: OutlineCard[], themeKey:
   cards.forEach((c, i) => {
     const plan = c.imagePlan;
     if (!plan || plan.placement === "none" || !plan.imageQuery) return;
-    if (plan.mediaType !== "illustration" && plan.mediaType !== "diagram") return;
+    if (plan.mediaType !== "illustration" && plan.mediaType !== "diagram" && plan.mediaType !== "photo") return;
     if (c.kind === "interactive") return;
     wanted.push(i);
   });

@@ -300,6 +300,15 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
         addVisualFallback(out.slide, input.card, palette, input.lang);
       }
       fitTextElements(out.slide.elements);
+      /* Quality gate: a content slide whose copy is nearly empty is reported so the builder can
+         surface it instead of silently shipping a hollow slide. */
+      const kindNow = input.card.kind as string;
+      if (kindNow !== "title" && kindNow !== "closure" && kindNow !== "interactive") {
+        const bodyChars = out.slide.elements.reduce(
+          (n, el) => n + (el.kind === "text" ? String((el as { text?: string }).text ?? "").length : 0), 0);
+        const titleChars = (input.card.title ?? "").length;
+        if (bodyChars - titleChars < 60) out.warnings.push(`thin-content: slide ${input.card.index} has very little explanatory text`);
+      }
       return { slide: out.slide, warnings: out.warnings };
     }
 
