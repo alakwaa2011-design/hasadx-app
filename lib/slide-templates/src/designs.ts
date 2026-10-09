@@ -139,9 +139,9 @@ const modern: Design = {
     const cx = corner ? W : 0;
     const dots = [...Array(5)].map((_, r) => [...Array(5)].map((__, q) => `<circle cx="${(corner ? 60 : W - 60) + (corner ? 1 : -1) * q * 20}" cy="${H - 60 - r * 20}" r="3" fill="#2563EB" fill-opacity=".35"/>`).join("")).join("");
     return svg(W, H, `<rect width="${W}" height="${H}" fill="#fff"/>
-    <circle cx="${cx}" cy="0" r="${kind === "cover" ? 330 : 210}" fill="#2563EB"/>
-    <circle cx="${cx}" cy="0" r="${kind === "cover" ? 250 : 150}" fill="#F43F5E" fill-opacity=".9"/>
-    <circle cx="${cx}" cy="0" r="${kind === "cover" ? 170 : 90}" fill="#F59E0B"/>
+    <circle cx="${cx}" cy="0" r="${kind === "cover" ? 300 : 108}" fill="#2563EB"/>
+    <circle cx="${cx}" cy="0" r="${kind === "cover" ? 225 : 74}" fill="#F43F5E" fill-opacity=".9"/>
+    <circle cx="${cx}" cy="0" r="${kind === "cover" ? 150 : 40}" fill="#F59E0B"/>
     ${dots}<rect x="${corner ? W - 360 : 60}" y="${H - 22}" width="300" height="6" rx="3" fill="#111827"/>`);
   },
   card: (w, h, c) => roundCard(w, h, { r: 30, fill: "#F5F7FB", inner: `<rect x="6" y="6" width="14" height="${h - 12}" rx="7" fill="${c}"/>` }),
