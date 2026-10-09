@@ -107,10 +107,16 @@ function cover(b: B, card: OutlineCard) {
   if (!b.photo) b.glow(80, 150, 420, 420);
   b.visual(key, 110, 180, 360, { w: 400, h: 420 });
   const eb = b.lang === "ar" ? "عرض تعليمي" : "Lesson";
-  b.head(540, 168, 640, 44, eb, { size: 32, weight: 800, color: b.acc(1) });
-  b.head(540, 218, 650, 250, clip(card.title, 60), { fit: [96, 48], weight: 900, color: b.d.heading });
-  b.pill(540, 480, 360, 10, b.acc(2));
-  if (card.subtitle) b.text(540, 508, 650, 90, clip(card.subtitle, 110), { fit: [34, 22], weight: 700, color: b.d.ink });
+  const titleText = clip(card.title, 60);
+  const tSize = fitSize(titleText, 650, 230, 92, 44, 900);
+  const lines = Math.max(1, Math.min(3, Math.ceil((titleText.length * tSize * 0.6) / 650)));
+  const th = Math.round(lines * tSize * 1.25) + 8;
+  const ty = 214;
+  b.head(540, 150, 640, 44, eb, { size: 30, weight: 800, color: b.acc(1), mid: false });
+  b.head(540, ty, 650, th, titleText, { size: tSize, weight: 900, color: b.d.heading, mid: false });
+  const ry = ty + th + 18;
+  b.pill(540, ry, 360, 10, b.acc(2));
+  if (card.subtitle) b.text(540, ry + 30, 650, 90, clip(card.subtitle, 110), { fit: [34, 22], weight: 700, color: b.d.ink, mid: false });
 }
 
 /* ── 2 · objectives ── */

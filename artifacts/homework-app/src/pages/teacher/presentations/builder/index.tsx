@@ -27,6 +27,7 @@ import { useRefreshCreditsBalance } from "@/components/credits-chip";
 import { BriefForm, type BriefFormHandle } from "./brief-form";
 import { OutlineReview } from "./outline-review";
 import { BuildProgress } from "./build-progress";
+import { DesignPicker } from "./design-picker";
 
 const BRAND_GREEN = "#225739";
 
@@ -51,6 +52,8 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
   const [draft, setDraft] = useState<PresentationDraft | null>(initialDraft ?? null);
   const [guardrailFeedback, setGuardrailFeedback] = useState<string[]>([]);
   const [showBuild, setShowBuild] = useState(false);
+  /* deck identity: "" = chosen automatically by the server from subject/grade */
+  const [designChoice, setDesignChoice] = useState<string>("");
   const [lastBrief, setLastBrief] = useState<PresentationBrief | undefined>(undefined);
   const savedOutlineRecovery = (() => {
     try { return JSON.parse(localStorage.getItem("hasaad:presentation-outline-recovery") ?? "null") as { key?: string; brief?: PresentationBrief; teacherId?: number } | null; } catch { return null; }
@@ -255,6 +258,8 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
                 onValidityChange={(valid) => setBriefValid(valid)}
               />
             ) : draft ? (
+              <>
+              <DesignPicker value={designChoice} onChange={setDesignChoice} isAr={isAr} />
               <OutlineReview
                 key={`${draft.id}-${draft.updatedAt}`}
                 draft={draft}
@@ -265,6 +270,7 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
                 saving={update.isPending && update.variables?.data?.status === "draft"}
                 approving={update.isPending && update.variables?.data?.status === "outline_ready"}
               />
+              </>
             ) : null}
           </div>
 
@@ -308,6 +314,7 @@ export function AiPresentationBuilder({ open, onOpenChange, initialDraft }: Prop
           draftId={draft.id}
           totalSlides={totalSlides}
           open={showBuild}
+          theme={designChoice || undefined}
           onOpenChange={setShowBuild}
           onSuccess={handleBuildSuccess}
         />
