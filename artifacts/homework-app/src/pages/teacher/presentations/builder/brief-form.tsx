@@ -213,19 +213,19 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     "balanced",
   );
   const [activities, setActivities] = useState(
-    initial?.toggles?.activities ?? localPrefs.activities ?? false,
+    initial?.toggles?.activities ?? localPrefs.activities ?? true,
   );
   const [questions, setQuestions] = useState(
-    initial?.toggles?.questions ?? localPrefs.questions ?? false,
+    initial?.toggles?.questions ?? localPrefs.questions ?? true,
   );
   const [poll, setPoll] = useState(
     initial?.toggles?.poll ?? localPrefs.poll ?? false,
   );
   const [quiz, setQuiz] = useState(
-    initial?.toggles?.quiz ?? localPrefs.quiz ?? false,
+    initial?.toggles?.quiz ?? localPrefs.quiz ?? true,
   );
   const [notes, setNotes] = useState(
-    initial?.notes ?? localPrefs.notes ?? "",
+    initial?.notes ?? "", /* notes belong to one lesson: never carried over from the previous deck */
   );
   /* educationalStrategy is session-local — not persisted to prefs intentionally,
      since each lesson typically calls for a different pedagogical approach. */
@@ -289,9 +289,6 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
     if (initial?.toggles?.quiz === undefined && serverPrefs.quiz !== undefined) {
       setQuiz(serverPrefs.quiz);
     }
-    if (!initial?.notes && serverPrefs.notes !== undefined) {
-      setNotes(serverPrefs.notes);
-    }
 
     // Sync server prefs into localStorage as well
     saveLocalPrefs(serverPrefs as SavedPrefs);
@@ -322,7 +319,7 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
       questions,
       poll,
       quiz,
-      notes,
+      notes: "",
     };
     // Always write locally (instant, offline-safe)
     saveLocalPrefs(prefs);
