@@ -8,15 +8,15 @@ import { generateMcqQuestions } from "./generate-mcq-slides";
 
 type Kind = NonNullable<OutlineCard["gameSuggestion"]>;
 
-/* Only games that need no student devices: Wameedh (class), Tug of war (class), XO (class) and the
-   self-paced challenge. The subject only changes the order they are offered in. */
+/* Only games that need no student devices: Wameedh (class), Tug of war (class), XO (class), the wheel and
+   the self-paced challenge. The subject only changes the order they are offered in. */
 export function chooseGameKind(subject: string, topic: string, ordinal: number): Kind {
   const text = `${subject} ${topic}`.toLowerCase();
   const order: Kind[] =
-    /(رياضيات|حساب|جبر|هندسة|math|algebra|geometry)/.test(text) ? ["xo", "kahoot", "tug", "solo"]
-      : /(قرآن|قران|تجويد|حديث|فقه|سيرة|توحيد|islam|quran|hadith)/.test(text) ? ["kahoot", "tug", "solo", "xo"]
-        : /(علوم|فيزياء|كيمياء|أحياء|science|physics|chemistry|biology)/.test(text) ? ["kahoot", "xo", "tug", "solo"]
-          : ["kahoot", "tug", "xo", "solo"];
+    /(رياضيات|حساب|جبر|هندسة|math|algebra|geometry)/.test(text) ? ["xo", "kahoot", "wheel", "tug", "solo"]
+      : /(قرآن|قران|تجويد|حديث|فقه|سيرة|توحيد|islam|quran|hadith)/.test(text) ? ["kahoot", "wheel", "tug", "solo", "xo"]
+        : /(علوم|فيزياء|كيمياء|أحياء|science|physics|chemistry|biology)/.test(text) ? ["kahoot", "xo", "wheel", "tug", "solo"]
+          : ["kahoot", "tug", "wheel", "xo", "solo"];
   return order[ordinal % order.length];
 }
 

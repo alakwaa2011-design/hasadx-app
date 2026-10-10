@@ -614,7 +614,7 @@ export function sanitizeOutline(
       if (brief.toggles.activities) {
         /* Only single-screen classroom games are offered: anything that needs student devices
            (rocket, wheel, millionaire, hack…) becomes Wameedh (class mode). */
-        const CLASSROOM = new Set(["kahoot", "tug", "xo", "solo"]);
+        const CLASSROOM = new Set(["kahoot", "tug", "xo", "solo", "wheel"]);
         gameSuggestion = (CLASSROOM.has(rawGame) ? rawGame : "kahoot") as SanitizedGameSuggestion;
       } else {
         feedback.push(`Slide ${i + 1}: gameSuggestion cleared (activities disabled).`);

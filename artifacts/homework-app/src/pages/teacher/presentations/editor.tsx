@@ -4737,6 +4737,19 @@ function HasadGameInspector({
     },
     [questions, onUpdateEl],
   );
+  const onAddQuestion = useCallback(() => {
+    if (questions.length >= 12) return;
+    onUpdateEl({
+      questions: [...questions, { prompt: "", options: ["", "", "", ""], correctIndex: 0 }],
+    } as Partial<SlideElement>);
+  }, [questions, onUpdateEl]);
+  const onRemoveQuestion = useCallback(
+    (qIdx: number) => {
+      if (questions.length <= 1) return;
+      onUpdateEl({ questions: questions.filter((_, i) => i !== qIdx) } as Partial<SlideElement>);
+    },
+    [questions, onUpdateEl],
+  );
   const labelMap: Record<string, string> = {
     kahoot: isAr ? "وميض" : "Wameedh",
     wheel: isAr ? "عجلة التحدي" : "Wheel",
@@ -4834,6 +4847,8 @@ function HasadGameInspector({
           isAr={isAr}
           canEdit={!disabled}
           onUpdateQuestion={onUpdateQuestion}
+          onAddQuestion={onAddQuestion}
+          onRemoveQuestion={onRemoveQuestion}
           onClose={() => setPreviewing(false)}
         />
       )}
@@ -5735,7 +5750,7 @@ function SortableOptionRow({
 }
 
 function HasadGamePreviewModal({
-  questions, gameKind, gameLabel, isAr, canEdit, onUpdateQuestion, onClose,
+  questions, gameKind, gameLabel, isAr, canEdit, onUpdateQuestion, onAddQuestion, onRemoveQuestion, onClose,
 }: {
   questions: { prompt: string; options: string[]; correctIndex: number }[];
   gameKind: string;
@@ -5743,6 +5758,8 @@ function HasadGamePreviewModal({
   isAr: boolean;
   canEdit: boolean;
   onUpdateQuestion: (qIdx: number, next: { prompt: string; options: string[]; correctIndex: number }) => void;
+  onAddQuestion?: () => void;
+  onRemoveQuestion?: (qIdx: number) => void;
   onClose: () => void;
 }) {
   const total = questions.length;
@@ -5887,6 +5904,36 @@ function HasadGamePreviewModal({
             <span className="text-xs tabular-nums opacity-90">
               {isAr ? `سؤال ${idx + 1} / ${total}` : `Q ${idx + 1} / ${total}`}
             </span>
+            {canEdit && !editing && onAddQuestion && total < 12 && (
+              <button
+                onClick={() => {
+                  onAddQuestion();
+                  setIdx(total);
+                  setDraft({ prompt: "", options: ["", "", "", ""], correctIndex: 0 });
+                  setEditing(true);
+                  setRevealed(false);
+                }}
+                className="rounded-md hover:bg-white/15 px-2 py-1 text-[11px] font-bold inline-flex items-center gap-1"
+                title={isAr ? "إضافة سؤال جديد" : "Add a question"}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {isAr ? "سؤال جديد" : "New question"}
+              </button>
+            )}
+            {canEdit && !editing && onRemoveQuestion && total > 1 && (
+              <button
+                onClick={() => {
+                  onRemoveQuestion(Math.min(idx, total - 1));
+                  setIdx((i) => Math.max(0, Math.min(i, total - 2)));
+                  setRevealed(false);
+                }}
+                className="rounded-md hover:bg-white/15 px-2 py-1 text-[11px] font-bold inline-flex items-center gap-1"
+                title={isAr ? "حذف هذا السؤال" : "Delete this question"}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {isAr ? "حذف" : "Delete"}
+              </button>
+            )}
             {canEdit && !editing && (
               <button
                 onClick={startEdit}

@@ -455,6 +455,19 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     if (kind === "kahoot" || kind === "tug" || kind === "xo") {
       if (launchClassGame(kind, el, title, setLocation)) return;
     }
+    if (kind === "wheel" && current) {
+      try {
+        const created = await createHasadActivityFromSlide(
+          current as unknown as Parameters<typeof createHasadActivityFromSlide>[0],
+          id,
+          "quick_quiz",
+        );
+        goKeepingSlide(`/game/wheel/create?assignmentId=${created.assignmentId}`);
+        return;
+      } catch {
+        /* fall back to the in-page runner below */
+      }
+    }
     if (kind === "solo" && current) {
       try {
         const created = await createHasadActivityFromSlide(
