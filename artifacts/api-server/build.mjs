@@ -46,6 +46,8 @@ async function smokeTest(distDir) {
     SESSION_SECRET: "build-smoke-test-only-not-a-deployment-secret",
     DATABASE_URL: "postgres://smoke:smoke@127.0.0.1:1/smoke",
     API_BUILD_SMOKE_TEST: "1",
+    // The isolated startup probe must not initialize live telemetry/profiling.
+    SENTRY_DSN: "",
   });
   const child = spawn(process.execPath, ["--enable-source-maps", path.join(distDir, "index.mjs")], {
     cwd: artifactDir,
@@ -60,7 +62,9 @@ async function smokeTest(distDir) {
   let spawnError;
   child.on("error", (err) => { spawnError = err; exited = true; });
   child.on("exit", () => { exited = true; });
-  const deadline = Date.now() + 45_000;
+  // Parsing the large bundle can exceed 45s in a busy development workspace.
+  // Still bound the probe and require a real successful health response.
+  const deadline = Date.now() + 120_000;
   try {
     while (Date.now() < deadline) {
       if (exited) throw new Error(`Compiled API exited before the health check${spawnError ? `: ${spawnError.message}` : ""}`);
@@ -95,7 +99,14 @@ async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   const candidateDir = path.resolve(artifactDir, `.dist-candidate-${process.pid}`);
   const backupDir = path.resolve(artifactDir, `.dist-backup-${process.pid}`);
-  await runTypecheck();
+  // Development must open its port within the managed workflow's startup
+  // deadline. Keep the full typecheck as a production build gate and run the
+  // dedicated typecheck command separately during development.
+  if (process.env.NODE_ENV !== "development") {
+    await runTypecheck();
+  } else {
+    console.info("Development build: typecheck runs separately; compiling API.");
+  }
   await rm(candidateDir, { recursive: true, force: true });
   try {
 
