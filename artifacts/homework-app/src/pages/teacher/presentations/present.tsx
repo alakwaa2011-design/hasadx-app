@@ -291,11 +291,13 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   }, [idx, groups.length]);
   const slideMotion = useMemo<SlideMotionState | undefined>(() => {
     if (!profile) return undefined;
+    /* revealStep belongs to the previous slide for one render after a slide change: clamp it to this slide */
+    const step = Math.max(0, Math.min(revealStep, groups.length));
     const hidden = new Set<string>();
-    groups.slice(revealStep).forEach((g) => g.forEach((id) => hidden.add(id)));
+    groups.slice(step).forEach((g) => g.forEach((id) => hidden.add(id)));
     const entering = new Map<string, number>();
-    if (animateStep && revealStep > 0 && !reducedMotion) {
-      groups[revealStep - 1].forEach((id, n) => entering.set(id, n));
+    if (animateStep && step > 0 && !reducedMotion) {
+      (groups[step - 1] ?? []).forEach((id, n) => entering.set(id, n));
     }
     return { hidden, entering, style: profile.style, stagger: profile.stagger, idle: !reducedMotion };
   }, [profile, groups, revealStep, animateStep, reducedMotion]);
