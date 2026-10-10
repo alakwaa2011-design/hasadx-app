@@ -20,6 +20,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { createHasadActivityFromSlide } from "@/lib/presentation-hasad-activities";
+import { motionProfile, revealGroups, type SlideMotionState } from "@/lib/slide-motion";
 import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import { AttachedSlideFrame } from "@/components/presentations/attached-slide-frame";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
@@ -272,7 +273,39 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     });
   }, [current]);
 
+  /* Motion (identity decks only): the slide's cards appear one step per "next", and the slide itself
+     enters with the identity's transition. Calm for the formal identities, playful for kids/nature. */
+  const profile = useMemo(() => motionProfile(data?.theme), [data?.theme]);
+  const reducedMotion = useMemo(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
+    [],
+  );
+  const groups = useMemo(() => (profile && current ? revealGroups(current) : []), [profile, current]);
+  const [revealStep, setRevealStep] = useState(0);
+  const [animateStep, setAnimateStep] = useState(false);
+  useEffect(() => {
+    /* a new slide starts hidden when entered going forward, fully shown when coming back to it */
+    setRevealStep(direction === "prev" ? groups.length : 0);
+    setAnimateStep(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, groups.length]);
+  const slideMotion = useMemo<SlideMotionState | undefined>(() => {
+    if (!profile || groups.length === 0) return undefined;
+    const hidden = new Set<string>();
+    groups.slice(revealStep).forEach((g) => g.forEach((id) => hidden.add(id)));
+    const entering = new Map<string, number>();
+    if (animateStep && revealStep > 0 && !reducedMotion) {
+      groups[revealStep - 1].forEach((id, n) => entering.set(id, n));
+    }
+    return { hidden, entering, style: profile.style, stagger: profile.stagger };
+  }, [profile, groups, revealStep, animateStep, reducedMotion]);
+
   const goNext = useCallback(() => {
+    if (groups.length > 0 && revealStep < groups.length && !presentActivityState.completed) {
+      setRevealStep((n) => n + 1);
+      setAnimateStep(true);
+      return;
+    }
     if (presentActivityState.completed) {
       setDirection("next");
       setRevealAnswers(false);
@@ -288,13 +321,18 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setRevealAnswers(false);
     setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
     setIdx((i) => Math.min(i + 1, total - 1));
-  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total]);
+  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total, groups.length, revealStep]);
   const goPrev = useCallback(() => {
+    if (groups.length > 0 && revealStep > 0) {
+      setRevealStep((n) => n - 1);
+      setAnimateStep(false);
+      return;
+    }
     setDirection("prev");
     setRevealAnswers(false);
     setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
     setIdx((i) => Math.max(i - 1, 0));
-  }, []);
+  }, [groups.length, revealStep]);
   const handlePresentAnswerSelect = useCallback((elementId: string, answerIndex: number) => {
     const activeElement = (current?.elements ?? []).find((el: SlideElement) => el.id === elementId);
     let correctIndex: number | undefined;
@@ -587,7 +625,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         {isAr ? "السابق" : "Previous"}
       </button>
       <span dir="ltr" className="text-sm font-bold tabular-nums text-white">{idx + 1} / {total}</span>
-      <button onClick={goNext} disabled={idx >= total - 1} aria-label={isAr ? "الشريحة التالية" : "Next slide"} className="flex min-h-11 items-center justify-center gap-1 rounded-lg px-3 font-black hover:brightness-110 disabled:opacity-40" style={{ background: "#D9A521", color: "#1c1003" }}>
+      <button onClick={goNext} disabled={idx >= total - 1 && !(groups.length > 0 && revealStep < groups.length)} aria-label={isAr ? "الشريحة التالية" : "Next slide"} className="flex min-h-11 items-center justify-center gap-1 rounded-lg px-3 font-black hover:brightness-110 disabled:opacity-40" style={{ background: "#D9A521", color: "#1c1003" }}>
         {isAr ? "التالي" : "Next"}
         {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
       </button>
@@ -611,9 +649,12 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           an instant cut via the `motion-safe:` utility. */}
       <div
         key={current?.id ?? idx}
-        className="absolute inset-0 flex items-center justify-center motion-safe:animate-[slideEnter_.32s_ease-out]"
+        className={`absolute inset-0 flex items-center justify-center ${profile ? "" : "motion-safe:animate-[slideEnter_.32s_ease-out]"}`}
         style={{
           zIndex: 10,
+          ...(profile && !reducedMotion
+            ? { animation: `${profile.transition === "zoom" ? "_hdZoom" : profile.transition === "rise" ? "_hdRise" : "_hdFade"} ${profile.style === "playful" ? 520 : 420}ms cubic-bezier(.2,.8,.2,1) both` }
+            : {}),
           /* CSS var consumed by the keyframe; sign flipped for RTL so
              "next" always animates in from the leading edge. */
           ["--slide-dx" as string]:
@@ -667,6 +708,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         )}>
           {current && (
             <SlideStage lang={deckLang}
+              motion={slideMotion}
               slide={current}
               theme={data.theme}
               pattern={data.pattern}
@@ -694,6 +736,9 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           from { opacity: 0; transform: translateX(var(--slide-dx, 0)); }
           to   { opacity: 1; transform: translateX(0); }
         }
+        @keyframes _hdFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes _hdRise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+        @keyframes _hdZoom { from { opacity: 0; transform: scale(.93); } to { opacity: 1; transform: none; } }
         @keyframes bannerSlideIn {
           from { opacity: 0; transform: translateY(-20px); }
           to   { opacity: 1; transform: translateY(0); }

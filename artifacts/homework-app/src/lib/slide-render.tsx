@@ -19,6 +19,7 @@ import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { getTheme, getPattern, defaultTextColorForSlide } from "@/lib/slide-themes";
 import { resolveDesignAsset } from "@workspace/slide-templates";
 import { resolveImageUrl } from "@/lib/image-url";
+import type { SlideMotionState } from "@/lib/slide-motion";
 
 export const CANVAS_W = 1280;
 export const CANVAS_H = 720;
@@ -787,7 +788,7 @@ function VideoEmbedRenderer({ el }: { el: SlideElement }) {
  * coordinates so it scales letterboxed inside any container.
  */
 export function SlideRender({
-  slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers,
+  slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers, motion,
 }: {
   slide: Slide;
   theme: string;
@@ -797,6 +798,8 @@ export function SlideRender({
   revealAnswers?: boolean;
   presentActivityState?: PresentActivityState;
   presentActivityHandlers?: PresentActivityHandlers;
+  /** present-mode card reveal: hidden elements stay invisible, "entering" ones animate in */
+  motion?: SlideMotionState;
 }) {
   const bg = slideBgStyle(slide, theme, pattern);
   const slideDir = (slide as unknown as { dir?: string }).dir;
@@ -833,6 +836,9 @@ export function SlideRender({
       {/* Stage Mode: inject keyframe for element stagger animation.
           Using a <style> tag is the simplest way to define @keyframes
           without adding a motion library dependency to this utility. */}
+      {motion && (
+        <style>{`@keyframes _hdLift{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}@keyframes _hdPop{0%{opacity:0;transform:translateY(20px) scale(.82)}60%{opacity:1;transform:translateY(-5px) scale(1.04)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important}}`}</style>
+      )}
       {(stageMode || revealAnswers) && (
         <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes _answerReveal{0%{transform:scale(.98);filter:saturate(.8)}45%{transform:scale(1.025);filter:saturate(1.25)}100%{transform:scale(1);filter:saturate(1)}}`}</style>
       )}
@@ -844,10 +850,22 @@ export function SlideRender({
         const stageAnim: React.CSSProperties = stageMode
           ? { animation: `_stageElIn 0.45s ease-out ${i * 0.2}s both` }
           : {};
+        let motionStyle: React.CSSProperties = {};
+        if (motion) {
+          if (motion.hidden.has(el.id)) {
+            motionStyle = { opacity: 0, pointerEvents: "none" };
+          } else if (motion.entering.has(el.id)) {
+            const order = motion.entering.get(el.id) ?? 0;
+            motionStyle = {
+              animation: `${motion.style === "playful" ? "_hdPop" : "_hdLift"} ${motion.style === "playful" ? 560 : 480}ms cubic-bezier(.2,.8,.2,1) ${order * motion.stagger}ms both`,
+            };
+          }
+        }
         const style: React.CSSProperties = {
           position: "absolute",
           left, top, width: w, height: h,
           ...stageAnim,
+          ...motionStyle,
         };
         if (el.kind === "text") {
           const elTextDirection = (el as unknown as { textDirection?: string }).textDirection;
@@ -966,7 +984,7 @@ export function SlideRender({
  * mode and the public viewer.
  */
 export function SlideStage({
-  slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers,
+  slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers, motion,
 }: {
   slide: Slide;
   theme: string;
@@ -976,6 +994,8 @@ export function SlideStage({
   revealAnswers?: boolean;
   presentActivityState?: PresentActivityState;
   presentActivityHandlers?: PresentActivityHandlers;
+  /** present-mode card reveal: hidden elements stay invisible, "entering" ones animate in */
+  motion?: SlideMotionState;
 }) {
   /* Letterbox a 16:9 stage inside any parent (full-screen present
      mode OR a constrained modal). We render the inner frame at its
@@ -1026,7 +1046,7 @@ export function SlideStage({
         }}
         data-slide-stage-frame=""
       >
-        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} presentActivityState={presentActivityState} presentActivityHandlers={presentActivityHandlers} />
+        <SlideRender slide={slide} theme={theme} pattern={pattern} lang={lang} stageMode={stageMode} revealAnswers={revealAnswers} presentActivityState={presentActivityState} presentActivityHandlers={presentActivityHandlers} motion={motion} />
       </div>
     </div>
   );
