@@ -76,6 +76,8 @@ export default function PresentationPlay() {
   const selfPacedElementRef = useRef<string | null>(null);
   const wordCloudRunRef = useRef<string | null>(null);
   const wallRunRef = useRef<string | null>(null);
+  const [wallPublished, setWallPublished] = useState(false);
+  const [wallCards, setWallCards] = useState<{ id: string; name: string; text: string; visible: boolean }[]>([]);
   const hasSocketSyncRef = useRef(false);
 
   useEffect(() => {
@@ -167,6 +169,7 @@ export default function PresentationPlay() {
       hasSocketSyncRef.current = true;
       wordCloudRunRef.current = st.wordCloudRunId ?? null;
       wallRunRef.current = st.wallRunId ?? null;
+      setWallPublished(Boolean(st.wallPublished));
       /* MERGE rather than replace. If the server payload happens to
          omit `slide` (e.g. transient null from a deck reload) we don't
          want to wipe the slide we already hydrated from REST — that's
@@ -214,6 +217,8 @@ export default function PresentationPlay() {
     const onOpened = ({ elementId, element, wordCloudRunId, wallRunId }: any) => {
       wordCloudRunRef.current = wordCloudRunId ?? null;
       wallRunRef.current = wallRunId ?? null;
+      setWallPublished(false);
+      setWallCards([]);
       setLive((p: any) => ({ ...(p ?? {}), status: "running", activeElementId: elementId, activeElement: element, wordCloudRunId: wordCloudRunId ?? null, wallRunId: wallRunId ?? null, revealAnswer: false, revealDistribution: false }));
       setChosen(null); setSubmitted(false); setCorrectIndex(null); setDist(null);
       if (element?.kind !== "hasad-game") setGameLaunch(null);
@@ -330,6 +335,15 @@ export default function PresentationPlay() {
     const onReconnect = () => join();
 
     s.on("state:sync", onSync);
+    const onWallUpdateLocal = ({ runId, cards }: { runId?: string; cards?: { id: string; name: string; text: string; visible: boolean }[] }) => {
+      if (!runId || runId !== wallRunRef.current) return;
+      setWallCards((cards ?? []).filter((c) => c.visible));
+    };
+    const onWallPublishedLocal = ({ runId, published }: { runId?: string; published?: boolean }) => {
+      if (runId && runId === wallRunRef.current) setWallPublished(!!published);
+    };
+    s.on("wall:update", onWallUpdateLocal);
+    s.on("wall:published", onWallPublishedLocal);
     s.on("slide:changed", onSlide);
     s.on("activity:opened", onOpened);
     s.on("activity:closed", onClosed);
@@ -411,6 +425,8 @@ export default function PresentationPlay() {
     return () => {
       clearInterval(poll);
       s.off("state:sync", onSync);
+      s.off("wall:update", onWallUpdateLocal);
+      s.off("wall:published", onWallPublishedLocal);
       s.off("slide:changed", onSlide);
       s.off("activity:opened", onOpened);
       s.off("activity:closed", onClosed);
@@ -981,6 +997,19 @@ export default function PresentationPlay() {
                           ? (isAr ? "سيظهر ردك على الشاشة عند موافقة المعلم" : "Your response will appear when the teacher approves it")
                           : (isAr ? "تم حفظ إجابتك المفتوحة" : "Your open answer was saved")}
                     </div>
+                    {el.activityKind === "open_wall" && wallPublished && (
+                      <div className="w-full space-y-2 text-start" aria-label={isAr ? "ردود الجميع" : "Everyone's responses"}>
+                        <div className="text-sm font-black text-slate-700">{isAr ? "ردود الجميع" : "Everyone's responses"}</div>
+                        {wallCards.length === 0 ? (
+                          <div className="text-sm text-slate-500">{isAr ? "لا توجد ردود ظاهرة بعد." : "No visible responses yet."}</div>
+                        ) : wallCards.map((c) => (
+                          <div key={c.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <div className="text-base font-bold leading-snug text-slate-900 break-words">{c.text}</div>
+                            {c.name && <div className="mt-1 text-xs font-bold text-slate-500">{c.name}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {sessionMode === "self_paced" && el.activityKind === "word_cloud" && (
                       <div className="relative w-full h-64 overflow-hidden rounded-xl">
                         <LiveWordCloud words={selfPacedWords} isAr={isAr} />

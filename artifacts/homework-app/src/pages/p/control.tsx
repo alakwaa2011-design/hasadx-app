@@ -107,6 +107,7 @@ export default function PresentationControl() {
   const wallRunRef = useRef<string | null>(null);
   const wallRevisionRef = useRef(-1);
   const [wallCards, setWallCards] = useState<{ id: string; text: string; visible: boolean; studentKey: string }[]>([]);
+  const [wallPublished, setWallPublished] = useState(false);
   /* Stage Mode — professional cinematic display mode for the projector. */
   const [stageMode, setStageMode] = useState(false);
   /* Self-Paced Mode — tracks session pacing and per-student progress. */
@@ -149,6 +150,7 @@ export default function PresentationControl() {
       wordCloudRunRef.current = st.wordCloudRunId ?? null;
       wallRunRef.current = st.wallRunId ?? null;
       wallRevisionRef.current = st.wall?.revision ?? -1;
+      setWallPublished(Boolean((st as { wallPublished?: boolean }).wallPublished));
       setWallCards(st.wall?.cards ?? []);
       setWordCloudWords(st.wordCloud?.words ?? []);
       setLive(st);
@@ -188,6 +190,9 @@ export default function PresentationControl() {
       if (runId !== wallRunRef.current || revision < wallRevisionRef.current) return;
       wallRevisionRef.current = revision;
       setWallCards(cards ?? []);
+    };
+    const onWallPublished = ({ runId, published }: { runId: string; published: boolean }) => {
+      if (runId === wallRunRef.current) setWallPublished(!!published);
     };
     const onWallRejected = ({ runId }: { runId?: string }) => {
       if (runId === wallRunRef.current) toast.error("تعذر حفظ تغيير إظهار البطاقة. حاول مجددًا.");
@@ -243,6 +248,7 @@ export default function PresentationControl() {
     s.on("connect", onReconnect);
     s.on("word_cloud:update", onWordCloudUpdate);
     s.on("wall:update", onWallUpdate);
+    s.on("wall:published", onWallPublished);
     s.on("wall:rejected", onWallRejected);
     s.on("stage:changed", onStageChanged);
     s.on("student:progress", onStudentProgress);
@@ -263,6 +269,7 @@ export default function PresentationControl() {
       s.off("connect", onReconnect);
       s.off("word_cloud:update", onWordCloudUpdate);
       s.off("wall:update", onWallUpdate);
+      s.off("wall:published", onWallPublished);
       s.off("wall:rejected", onWallRejected);
       s.off("stage:changed", onStageChanged);
       s.off("student:progress", onStudentProgress);
@@ -711,9 +718,31 @@ export default function PresentationControl() {
         {/* ── Open Wall card moderation panel ── */}
         {!ended && wallCards.length > 0 && (
           <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2">
-            <div className="text-xs font-bold text-white/70">
-              بطاقات جدار الردود ({wallCards.length})
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs font-bold text-white/70">
+                بطاقات جدار الردود ({wallCards.length})
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => getSocket().emit("wall:set-all-visible", { sessionId: sid, elementId: live?.activeElementId, runId: wallRunRef.current, visible: true })}
+                  className="rounded-md bg-white/10 px-2 py-1 text-[11px] font-bold text-white hover:bg-white/20"
+                >إظهار كل البطاقات</button>
+                <button
+                  type="button"
+                  onClick={() => getSocket().emit("wall:set-all-visible", { sessionId: sid, elementId: live?.activeElementId, runId: wallRunRef.current, visible: false })}
+                  className="rounded-md bg-white/10 px-2 py-1 text-[11px] font-bold text-white hover:bg-white/20"
+                >إخفاء الكل</button>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => getSocket().emit("wall:publish", { sessionId: sid, runId: wallRunRef.current, published: !wallPublished })}
+              className="w-full rounded-lg px-3 py-2.5 text-sm font-black"
+              style={{ background: wallPublished ? "#16a34a" : "#D9A521", color: wallPublished ? "#fff" : "#1c1003" }}
+            >
+              {wallPublished ? "✓ الردود ظاهرة على أجهزة الجميع — اضغط للإخفاء" : "عرض الردود على أجهزة الجميع"}
+            </button>
             <div className="space-y-1.5 max-h-72 overflow-y-auto">
               {wallCards.map((card) => (
                 <div key={card.id} className="flex items-start gap-2 rounded-lg bg-black/30 border border-white/10 p-2">

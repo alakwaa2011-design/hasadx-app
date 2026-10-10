@@ -105,6 +105,21 @@ export async function toggleWallCard(input: {
   });
 }
 
+/** Teacher shows or hides every card of the active round at once. */
+export async function setAllWallCards(input: {
+  sessionId: number; teacherId: number; elementId: string; runId: string; visible: boolean;
+}) {
+  return db.transaction(async tx => {
+    const [session] = await tx.select().from(sessions).where(eq(sessions.id, input.sessionId)).for("update");
+    if (!session || session.teacherId !== input.teacherId || session.status === "ended" ||
+        session.sessionMode !== "teacher" || session.activeElementId !== input.elementId ||
+        !session.activeWallRunId || session.activeWallRunId !== input.runId) return false;
+    await tx.update(cards).set({ visible: input.visible }).where(eq(cards.runId, session.activeWallRunId));
+    await tx.update(runs).set({ revision: sql`${runs.revision} + 1` }).where(eq(runs.id, session.activeWallRunId));
+    return true;
+  });
+}
+
 export async function migratePresentationWall() {
   await db.execute(sql`ALTER TABLE presentation_sessions ADD COLUMN IF NOT EXISTS active_wall_run_id UUID`);
   await db.execute(sql`CREATE TABLE IF NOT EXISTS presentation_wall_runs (

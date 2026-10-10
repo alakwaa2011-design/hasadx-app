@@ -7,7 +7,7 @@ import { verifyPresentationJoinToken } from "../lib/presentation-join-token";
 import { recordPresentationJoin, recordPresentationOpen, recordPresentationAnswer, recordPresentationEvent } from "../lib/presentation-report-data";
 import { getWordCloudSnapshot, hasWordCloudSubmission, openWordCloud, submitWordCloud } from "../lib/presentation-word-cloud";
 import { getSelfPacedCloud } from "../lib/presentation-self-paced-cloud";
-import { getWallSnapshot, hasWallSubmission, openWall, submitWall, toggleWallCard } from "../lib/presentation-wall";
+import { getWallSnapshot, hasWallSubmission, openWall, setAllWallCards, submitWall, toggleWallCard } from "../lib/presentation-wall";
 
 /**
  * Presentations 2B — Live MVP socket layer.
@@ -62,6 +62,8 @@ interface LiveSession {
   selfPacedActivitiesCompleted?: Map<string, number>;
   /** Self-paced open_wall submissions: elementId -> { cards, nextId, submitted }. */
   selfPacedOpenWalls?: Map<string, { cards: WallCard[]; nextId: number; submitted: Set<string> }>;
+  /** Round id of the response wall the teacher has published to participants' own screens. */
+  wallPublishedRunId?: string | null;
   /** Stage Mode — professional cinematic display mode for the projector. */
   stageMode?: boolean;
   /** Unix ms timestamp when the current activity element was opened.
@@ -442,6 +444,7 @@ async function emitStateSync(_io: Server, socket: Socket, sid: number, isTeacher
     wordCloudSubmitted,
     wallRunId: wall?.runId ?? null,
     wall,
+    wallPublished: !!wall && liveSess?.wallPublishedRunId === wall.runId,
     wallSubmitted: wall && participant && !participant.isShow
       ? await hasWallSubmission(wall.runId, participant.studentKey) : false,
     revealDistribution: sess.revealDistribution,
@@ -929,6 +932,42 @@ export function setupPresentationSocket(io: Server) {
       } catch (err) {
         logger.error({ err }, "wall:submit failed");
         socket.emit("answer:rejected", { reason: "save-failed", runId });
+      }
+    });
+
+    /* Teacher shows or hides every card of the round at once. */
+    onTeacherAction("wall:set-all-visible", async ({ sessionId, elementId, visible, runId }: { sessionId: number; elementId: string; visible: boolean; runId?: string }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        if (!live || !live.teacherSockets.has(socket.id)) return;
+        const sess = await loadSessionRow(sid);
+        if (!sess || !isTeacherForSession(socket, sess.teacherId) || typeof visible !== "boolean") return;
+        const saved = await setAllWallCards({
+          sessionId: sid, teacherId: sess.teacherId, elementId: String(elementId), runId: String(runId ?? ""), visible,
+        });
+        if (!saved) return socket.emit("wall:rejected", { reason: "not-active", runId });
+        await broadcastWall(io, sid);
+      } catch (err) {
+        logger.error({ err }, "wall:set-all-visible failed");
+        socket.emit("wall:rejected", { reason: "save-failed", runId });
+      }
+    });
+
+    /* Teacher publishes the wall to every participant's own screen (or takes it back). */
+    onTeacherAction("wall:publish", async ({ sessionId, runId, published }: { sessionId: number; runId?: string; published: boolean }) => {
+      try {
+        const sid = Number(sessionId);
+        const live = sessions.get(sid);
+        if (!live || !live.teacherSockets.has(socket.id)) return;
+        const sess = await loadSessionRow(sid);
+        if (!sess || !isTeacherForSession(socket, sess.teacherId) || typeof published !== "boolean") return;
+        if (!sess.activeWallRunId || sess.activeWallRunId !== String(runId ?? "")) return;
+        live.wallPublishedRunId = published ? sess.activeWallRunId : null;
+        io.to(room(sid)).emit("wall:published", { runId: sess.activeWallRunId, published });
+        await broadcastWall(io, sid);
+      } catch (err) {
+        logger.error({ err }, "wall:publish failed");
       }
     });
 
