@@ -268,11 +268,15 @@ function mapAlign(a: string | undefined, isAr: boolean): "left" | "center" | "ri
    safest universal default for AR. For LTR we use `Calibri` which is
    the modern PowerPoint default. Users can still pick a custom family
    via the editor — we just refuse to forward CSS stacks unsanitised. */
+/* Only fonts that ship with PowerPoint/Keynote and carry Arabic glyphs. Web families such as Cairo, Tajawal or
+   Readex are NOT installed on a teacher's computer: PowerPoint then substitutes a face without Arabic and the
+   text shows as Chinese-looking glyphs, so those names are never forwarded (see ARABIC_WEB_TO_SAFE below). */
 const SAFE_AR_FONTS = new Set([
   "arial", "tahoma", "calibri", "times new roman",
-  "cairo", "tajawal", "amiri", "noto naskh arabic", "noto sans arabic",
-  "geeza pro", "scheherazade",
+  "geeza pro",
 ]);
+/* Serif web families keep a serif look via Times New Roman; every other Arabic web family becomes Arial. */
+const ARABIC_SERIF_WEB = new Set(["amiri", "noto naskh arabic", "scheherazade"]);
 const SAFE_LATIN_FONTS = new Set([
   "calibri", "arial", "helvetica", "tahoma", "times new roman",
   "georgia", "verdana", "trebuchet ms", "inter",
@@ -286,6 +290,7 @@ function safeFontFor(family: string | undefined, isAr: boolean): string {
   if (!first) return fallback;
   /* Skip generic CSS keywords. */
   if (/^(serif|sans-serif|monospace|cursive|system-ui|inherit|initial)$/i.test(first)) return fallback;
+  if (isAr && ARABIC_SERIF_WEB.has(first.toLowerCase())) return "Times New Roman";
   const allowed = isAr ? SAFE_AR_FONTS : SAFE_LATIN_FONTS;
   return allowed.has(first.toLowerCase()) ? first : fallback;
 }
