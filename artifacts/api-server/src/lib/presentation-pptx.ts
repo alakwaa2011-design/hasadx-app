@@ -472,6 +472,133 @@ export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {
       /* Live-only elements have no PowerPoint equivalent, but dropping them left the slide blank. Print a
          clear read-only card: the game's questions (without marking the answers) or the linked activity /
          video, plus a pointer to open the deck in Hasad to run it. */
+      /* A Hasad game with questions is drawn the way the platform shows it: tag + question counter, the topic,
+         the first question, and its options as colour tiles with letter badges, then a link button. */
+      if (el.kind === "hasad-game" && Array.isArray((el as unknown as { questions?: unknown[] }).questions)
+        && ((el as unknown as { questions: unknown[] }).questions.length > 0)) {
+        const g = el as unknown as {
+          accentColor?: string; topic?: string; prompt?: string; gameKind?: string;
+          questions: Array<{ prompt: string; options: string[] }>;
+        };
+        const accent = toHex(g.accentColor, "225739");
+        const slideLink = deck.presentUrl ? `${deck.presentUrl}?slide=${slideIdx + 1}` : undefined;
+        const q = g.questions[0];
+        const opts = (q.options ?? []).slice(0, 4);
+        const total = g.questions.length;
+        const TILE = [
+          { bg: "EF4444", soft: "FEE2E2", fg: "FFFFFF" },
+          { bg: "2563EB", soft: "DBEAFE", fg: "FFFFFF" },
+          { bg: "F59E0B", soft: "FEF3C7", fg: "1F2937" },
+          { bg: "16A34A", soft: "DCFCE7", fg: "FFFFFF" },
+        ];
+        const letters = isAr ? ["أ", "ب", "ج", "د"] : ["A", "B", "C", "D"];
+        const GAME_AR: Record<string, string> = {
+          kahoot: "وميض الصف", tug: "شد الحبل (وضع الصف)", xo: "إكس أو الصف", solo: "مسابقة ذاتية", wheel: "العجلة الدوارة",
+          rocket: "سباق الصواريخ", millionaire: "من سيربح المليون", hack: "تحدي الاختراق",
+        };
+        const tag = isAr ? `نشاط تفاعلي · ${GAME_AR[g.gameKind ?? ""] ?? "حصاد"}` : "Interactive activity";
+        const f = Math.min(1, pos.h / 5);                       // shrink everything when the card is short
+        const pad = 0.22 * f;
+        const rtl = isAr;
+        const innerW = pos.w - pad * 2;
+        const rightAligned = (w: number, off = 0) => (rtl ? pos.x + pos.w - pad - off - w : pos.x + pad + off);
+
+        // card
+        s.addShape(pptx.ShapeType.roundRect, {
+          ...pos, rotate: rot, fill: { color: "FFFFFF" }, line: { color: accent, width: 3 }, rectRadius: 0.12,
+        });
+        let y = pos.y + pad;
+        // tag chip + counter
+        const chipW = Math.min(innerW * 0.62, 3.6);
+        s.addShape(pptx.ShapeType.roundRect, {
+          x: rightAligned(chipW), y, w: chipW, h: 0.36 * f, fill: { color: accent }, line: { color: accent, width: 0 }, rectRadius: 0.18,
+        });
+        s.addText(tag, {
+          x: rightAligned(chipW), y, w: chipW, h: 0.36 * f, align: "center", valign: "middle",
+          color: "FFFFFF", bold: true, fontSize: Math.round(12 * f + 1), fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, margin: 0,
+        });
+        const cntW = 1.2;
+        s.addShape(pptx.ShapeType.roundRect, {
+          x: rtl ? pos.x + pad : pos.x + pos.w - pad - cntW, y: y + 0.02, w: cntW, h: 0.32 * f,
+          fill: { color: "D9A521" }, line: { color: "D9A521", width: 0 }, rectRadius: 0.1,
+        });
+        s.addText(isAr ? `${total} سؤال` : `${total} question${total === 1 ? "" : "s"}`, {
+          x: rtl ? pos.x + pad : pos.x + pos.w - pad - cntW, y: y + 0.02, w: cntW, h: 0.32 * f,
+          align: "center", valign: "middle", color: "1F2937", bold: true, fontSize: Math.round(11 * f + 1),
+          fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, margin: 0,
+        });
+        y += 0.46 * f;
+        // topic
+        const topic = (g.topic || g.prompt || "").slice(0, 90);
+        if (topic) {
+          s.addText(topic, {
+            x: pos.x + pad, y, w: innerW, h: 0.4 * f, align: rtl ? "right" : "left", valign: "middle",
+            color: accent, bold: true, fontSize: Math.round(15 * f + 2), fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, margin: 0,
+          });
+          y += 0.46 * f;
+        }
+        // question
+        const qH = 1.0 * f;
+        s.addText(`${total > 1 ? (isAr ? "س1. " : "Q1. ") : ""}${q.prompt}`.slice(0, 220), {
+          x: pos.x + pad, y, w: innerW, h: qH, align: rtl ? "right" : "left", valign: "top",
+          color: "0F172A", bold: true, fontSize: Math.round(20 * f + 2), fontFace: safeFontFor(undefined, isAr),
+          rtlMode: rtl, lang: isAr ? "ar-SA" : "en-US", margin: 0, wrap: true, fit: "shrink",
+        });
+        y += qH + 0.08 * f;
+        // option tiles
+        const cols = opts.length > 2 ? 2 : 1;
+        const gap = 0.16 * f;
+        const tileW = (innerW - gap * (cols - 1)) / cols;
+        const tileH = 0.66 * f;
+        opts.forEach((opt, i) => {
+          const col = i % cols, row = Math.floor(i / cols);
+          const tx = rightAligned(tileW, col * (tileW + gap));
+          const ty = y + row * (tileH + gap);
+          const c = TILE[i % TILE.length];
+          s.addShape(pptx.ShapeType.roundRect, {
+            x: tx, y: ty, w: tileW, h: tileH, fill: { color: c.soft }, line: { color: c.bg, width: 2 }, rectRadius: 0.12,
+          });
+          const badge = 0.42 * f;
+          const bx = rtl ? tx + tileW - badge - 0.12 : tx + 0.12;
+          s.addShape(pptx.ShapeType.roundRect, {
+            x: bx, y: ty + (tileH - badge) / 2, w: badge, h: badge, fill: { color: c.bg }, line: { color: c.bg, width: 0 }, rectRadius: 0.08,
+          });
+          s.addText(letters[i] ?? String(i + 1), {
+            x: bx, y: ty + (tileH - badge) / 2, w: badge, h: badge, align: "center", valign: "middle",
+            color: c.fg, bold: true, fontSize: Math.round(14 * f + 1), fontFace: safeFontFor(undefined, isAr), margin: 0,
+          });
+          s.addText(opt.slice(0, 90), {
+            x: rtl ? tx + 0.14 : tx + badge + 0.26, y: ty, w: tileW - badge - 0.4, h: tileH,
+            align: rtl ? "right" : "left", valign: "middle", color: "0F172A", bold: true,
+            fontSize: Math.round(14 * f + 2), fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, lang: isAr ? "ar-SA" : "en-US",
+            margin: 0, wrap: true, fit: "shrink",
+          });
+        });
+        const rows = Math.ceil(opts.length / cols);
+        y += rows * (tileH + gap) + 0.04 * f;
+        // link button + remaining count
+        const btnW = Math.min(innerW * 0.55, 3.8), btnH = 0.46 * f;
+        const btnY = Math.min(y, pos.y + pos.h - pad - btnH);
+        s.addShape(pptx.ShapeType.roundRect, {
+          x: rightAligned(btnW), y: btnY, w: btnW, h: btnH, fill: { color: "D9A521" }, line: { color: "B88A12", width: 1.5 }, rectRadius: 0.2,
+          ...(slideLink ? { hyperlink: { url: slideLink, tooltip: isAr ? "تشغيل اللعبة في حصاد" : "Run the game in Hasad" } } : {}),
+        });
+        s.addText(slideLink ? (isAr ? "▶ تشغيل اللعبة في حصاد" : "▶ Run the game in Hasad") : (isAr ? "افتح العرض في حصاد للتشغيل" : "Open in Hasad to run"), {
+          x: rightAligned(btnW), y: btnY, w: btnW, h: btnH, align: "center", valign: "middle",
+          color: "1C1003", bold: true, fontSize: Math.round(13 * f + 1), fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, margin: 0,
+          ...(slideLink ? { hyperlink: { url: slideLink } } : {}),
+        });
+        if (total > 1) {
+          const moreW = Math.max(1.2, innerW - btnW - 0.2);
+          s.addText(isAr ? `+ ${total - 1} أسئلة أخرى` : `+ ${total - 1} more`, {
+            x: rtl ? pos.x + pad : pos.x + pos.w - pad - moreW, y: btnY, w: moreW, h: btnH,
+            align: rtl ? "left" : "right", valign: "middle", color: "64748B", fontSize: Math.round(12 * f + 1),
+            fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, margin: 0,
+          });
+        }
+        continue;
+      }
+
       if (el.kind === "hasad-game" || el.kind === "hasad-activity" || el.kind === "video-embed") {
         const any = el as unknown as {
           accentColor?: string; topic?: string; prompt?: string; gameKind?: string; gameType?: string;
