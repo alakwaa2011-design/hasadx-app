@@ -2135,6 +2135,7 @@ export default function PresentationEditor() {
             }}
             onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
             onOpenImageSearch={() => setImageSearchOpen(true)}
+            onOpenImageGenerate={() => setImageGenerateOpen(true)}
             onOpenPreview={() => setPreviewIdx(activeIdx)}
             onCreateSlideHasadActivity={handleCreateSlideHasadActivity}
             creatingSlideActivity={creatingSlideActivity}
@@ -6698,7 +6699,7 @@ function MobileShell({
   onAddSlide, onDuplicateSlide, onDeleteSlide, onMoveSlide,
   onChangeTheme, onChangePattern,
   onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
-  onOpenImageSearch, onOpenPreview, onPresent, onSaveNow, onOpenAiBuilder,
+  onOpenImageSearch, onOpenImageGenerate, onOpenPreview, onPresent, onSaveNow, onOpenAiBuilder,
   onOpenSessions, onGoLive, onExport, onBack,
   onCreateSlideHasadActivity, creatingSlideActivity,
   onLaunchWameeth, launchingWameeth,
@@ -6740,6 +6741,7 @@ function MobileShell({
   onOpenActivityHub: () => void;
   onOpenVideoEmbedDialog: () => void;
   onOpenImageSearch: () => void;
+  onOpenImageGenerate?: () => void;
   onOpenPreview: () => void;
   onPresent: (fromCurrent: boolean) => void;
   onSaveNow: () => void;
@@ -6957,6 +6959,7 @@ function MobileShell({
                   }}
                   onAddImage={() => { onPickImage(); setSheet("none"); }}
                   onAddImageSearch={() => { onOpenImageSearch(); setSheet("none"); }}
+                  onAddImageGenerate={onOpenImageGenerate ? () => { onOpenImageGenerate(); setSheet("none"); } : undefined}
                   onAddShape={() => setSheet("shapes")}
                   onAddIcon={() => setSheet("icons")}
                   onAddActivity={() => { onOpenActivityPicker(); setSheet("none"); }}
@@ -7207,7 +7210,7 @@ function SlideStrip({
    grid sized for thumbs. */
 function MobileAddGrid({
   isAr, uploading, readOnly,
-  onAddText, onAddImage, onAddImageSearch, onAddShape, onAddIcon, onAddActivity, onAddHasad,
+  onAddText, onAddImage, onAddImageSearch, onAddImageGenerate, onAddShape, onAddIcon, onAddActivity, onAddHasad,
   onOpenTheme, onOpenPattern, onOpenNotes,
 }: {
   isAr: boolean;
@@ -7216,6 +7219,7 @@ function MobileAddGrid({
   onAddText: (big: boolean) => void;
   onAddImage: () => void;
   onAddImageSearch: () => void;
+  onAddImageGenerate?: () => void;
   onAddShape: () => void;
   onAddIcon: () => void;
   onAddActivity: () => void;
@@ -7235,6 +7239,7 @@ function MobileAddGrid({
     { icon: TypeIcon, label: isAr ? "نص" : "Text", color: "#0EA5E9", onClick: () => onAddText(false) },
     { icon: ImageIcon, label: isAr ? "صورة" : "Image", color: "#A855F7", onClick: onAddImage, disabled: uploading },
     { icon: Search, label: isAr ? "بحث صورة" : "Web Image", color: "#8B5CF6", onClick: onAddImageSearch },
+    ...(onAddImageGenerate ? [{ icon: Sparkles, label: isAr ? "صورة بالذكاء" : "AI image", color: "#7C3AED", onClick: onAddImageGenerate }] : []),
     { icon: Shapes, label: isAr ? "شكل" : "Shape", color: "#F59E0B", onClick: onAddShape },
     { icon: Smile, label: isAr ? "أيقونة" : "Icon", color: "#EC4899", onClick: onAddIcon },
     { icon: Sparkles, label: isAr ? "نشاط" : "Activity", color: BRAND_GREEN, onClick: onAddActivity },
