@@ -91,7 +91,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { HelpCircle, Video } from "lucide-react";
 import { parseVideoUrl } from "@/lib/video-url";
-import { resolveDesignAsset } from "@workspace/slide-templates";
+import { resolveDesignAsset, restyleSlides, designFor, baseDesignKey, designHue } from "@workspace/slide-templates";
 import { resolveImageUrl } from "@/lib/image-url";
 
 const BRAND_GREEN = "#225739";
@@ -540,6 +540,24 @@ export default function PresentationEditor() {
 
   const onChangeTheme = (key: string) => {
     setTheme(key);
+    /* Identity themes re-skin the slides themselves (page art, cards, colours, fonts) so the whole deck
+       follows the choice instead of only its background. */
+    if (key.startsWith("d_") && designFor(key)) {
+      const restyled = restyleSlides(slides as Parameters<typeof restyleSlides>[0], key) as typeof slides;
+      const changedAny = restyled.some((sl, i) => sl !== slides[i]);
+      if (changedAny) {
+        const h = historyRef.current;
+        h.past.push(slides);
+        if (h.past.length > HISTORY_LIMIT) h.past.shift();
+        h.future = [];
+        setSlides(restyled);
+        setHistoryVersion((v) => v + 1);
+        setDirty(true);
+        persist(restyled);
+      }
+      void persistTheme({ theme: key });
+      return;
+    }
     /* Applying a deck theme must also remove legacy per-slide solid
        backgrounds. Those backgrounds were written by older/generated
        decks and intentionally take precedence in slideBgStyle, which
@@ -6245,8 +6263,13 @@ function ThemePanel({
   const primaryThemes = SLIDE_THEMES.filter((t) => primaryKeys.includes(t.key));
   const otherThemes = SLIDE_THEMES.filter((t) => !primaryKeys.includes(t.key));
 
+  const baseValue = baseDesignKey(value);
+  const hue = designHue(value);
+  const isDesign = baseValue.startsWith("d_") && !!designFor(baseValue);
+  const HUES = [0, 30, 70, 120, 170, 200, 240, 280, 320];
+
   const renderCard = (t: typeof SLIDE_THEMES[0]) => {
-    const selected = value === t.key;
+    const selected = baseValue === t.key;
     const txtColor = t.textOnLight ? "#1f2937" : "#ffffff";
     const bg = t.cssGrad ?? "#ddd";
     
@@ -6254,7 +6277,7 @@ function ThemePanel({
       <button
         key={t.key}
         disabled={disabled}
-        onClick={() => onChange(t.key)}
+        onClick={() => onChange(t.key.startsWith("d_") && hue ? `${t.key}~h${hue}` : t.key)}
         className={`relative text-start rounded-xl border-2 transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-md ${selected ? 'shadow-md' : 'shadow-sm'}`}
         style={{
           borderColor: selected ? BRAND_GOLD : "transparent",
@@ -6305,6 +6328,30 @@ function ThemePanel({
 
   return (
     <div className="space-y-3">
+      {isDesign && (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="mb-2 text-xs font-extrabold">{isAr ? "لون السمة" : "Theme colour"}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {HUES.map((deg) => {
+              const k = deg ? `${baseValue}~h${deg}` : baseValue;
+              const swatch = designFor(k)?.accents[0] ?? "#888";
+              const active = hue === deg;
+              return (
+                <button
+                  key={deg}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onChange(k)}
+                  title={deg === 0 ? (isAr ? "اللون الأصلي" : "Original") : `${deg}°`}
+                  className="h-7 w-7 rounded-full border-2 transition hover:scale-110"
+                  style={{ background: swatch, borderColor: active ? BRAND_GOLD : "rgba(0,0,0,0.12)", boxShadow: active ? `0 0 0 2px ${BRAND_GOLD}55` : undefined }}
+                  aria-label={deg === 0 ? "original" : `hue ${deg}`}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         {primaryThemes.map(renderCard)}
       </div>

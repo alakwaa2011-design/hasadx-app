@@ -9,7 +9,7 @@
    idea*, the look can be improved later without rewriting saved decks. */
 
 import { ART_KEYS, artSvg, svgUri } from "./art";
-import { DESIGNS } from "./designs";
+import { designFor } from "./designs";
 
 export const DESIGN_ASSET_PREFIX = "hd://";
 
@@ -31,7 +31,7 @@ const cache = new Map<string, string>();
 function build(url: string): string | null {
   const parts = url.slice(DESIGN_ASSET_PREFIX.length).split("/");
   const kind = parts[0];
-  const d = DESIGNS[kind === "art" ? parts[2] : parts[1]];
+  const d = designFor(kind === "art" ? parts[2] : parts[1]);
   if (!d) return null;
   const wh = (s: string | undefined): [number, number] => {
     const [a, b] = (s ?? "").split("x").map(Number);

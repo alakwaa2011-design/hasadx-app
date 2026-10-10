@@ -451,7 +451,8 @@ export function resolveSlideGradient(opts: {
 }
 
 export function getTheme(key: string | undefined | null): SlideTheme {
-  return SLIDE_THEMES.find((t) => t.key === key) || SLIDE_THEMES[0];
+  const k = typeof key === "string" ? key.replace(/~h\d{1,3}$/, "") : key;
+  return SLIDE_THEMES.find((t) => t.key === k) || SLIDE_THEMES[0];
 }
 
 /* Curated tasteful defaults for new decks (May 2026 redesign).

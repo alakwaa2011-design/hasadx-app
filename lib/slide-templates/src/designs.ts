@@ -246,6 +246,62 @@ const chalk: Design = {
 
 export const DESIGNS: Record<string, Design> = Object.fromEntries([textbook, lab, modern, kids, academic, nature, chalk].map((d) => [d.key, d]));
 export const DESIGN_KEYS = Object.keys(DESIGNS);
-export function designFor(key: string | null | undefined): Design | null {
-  return key && DESIGNS[key] ? DESIGNS[key] : null;
+/* ── colour variants ──
+   Any identity can be re-coloured by rotating the hue of every coloured value in it (paper tint, accents,
+   page art, cards). Greys, whites and near-blacks stay as they are. A variant is addressed by the key
+   "<identity>~h<degrees>", e.g. "d_textbook~h200", so the choice survives in the deck's `theme` field and
+   every renderer (editor, present, PDF, PowerPoint) resolves it through designFor. */
+function hueShift(color: string, deg: number): string {
+  const h6 = /^#([0-9a-fA-F]{6})$/.exec(color);
+  if (!h6 || deg % 360 === 0) return color;
+  const n = parseInt(h6[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (d < 0.08 || l < 0.1 || l > 0.96) return color; // neutral
+  const sat = d / (1 - Math.abs(2 * l - 1));
+  let hue = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  hue = (hue * 60 + deg + 360) % 360;
+  const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs(((hue / 60) % 2) - 1)), m = l - c / 2;
+  const [r1, g1, b1] = hue < 60 ? [c, x, 0] : hue < 120 ? [x, c, 0] : hue < 180 ? [0, c, x] : hue < 240 ? [0, x, c] : hue < 300 ? [x, 0, c] : [c, 0, x];
+  const to = (v: number) => Math.round((v + m) * 255).toString(16).padStart(2, "0");
+  return `#${to(r1)}${to(g1)}${to(b1)}`;
 }
+const recolor = (s: string, deg: number) => s.replace(/#[0-9a-fA-F]{6}\b/g, (m) => hueShift(m, deg));
+function tinted(base: Design, deg: number): Design {
+  const back = (c: string) => hueShift(c, -deg); // callers pass already-shifted colours
+  const art = Object.fromEntries(Object.entries(base.art).map(([k, v]) => [k, typeof v === "string" ? hueShift(v, deg) : v])) as unknown as ArtColors;
+  return {
+    ...base,
+    key: `${base.key}~h${deg}`,
+    paper: recolor(base.paper, deg),
+    ink: hueShift(base.ink, deg),
+    muted: hueShift(base.muted, deg),
+    heading: hueShift(base.heading, deg),
+    accents: base.accents.map((c) => hueShift(c, deg)) as Design["accents"],
+    art,
+    frame: (k, n) => recolor(base.frame(k, n), deg),
+    card: (w, h, c) => recolor(base.card(w, h, back(c)), deg),
+    bandCard: (w, h, c, bh) => recolor(base.bandCard(w, h, back(c), bh), deg),
+    pill: (w, h, c) => recolor(base.pill(w, h, back(c)), deg),
+    disc: (sz, c) => recolor(base.disc(sz, back(c)), deg),
+  };
+}
+const VARIANT_RE = /^(d_[a-z]+)~h(\d{1,3})$/;
+const variantCache = new Map<string, Design>();
+export function designFor(key: string | null | undefined): Design | null {
+  if (!key) return null;
+  if (DESIGNS[key]) return DESIGNS[key];
+  const m = VARIANT_RE.exec(key);
+  if (!m || !DESIGNS[m[1]]) return null;
+  const deg = Number(m[2]);
+  if (deg < 1 || deg > 359) return DESIGNS[m[1]];
+  const hit = variantCache.get(key);
+  if (hit) return hit;
+  const out = tinted(DESIGNS[m[1]], deg);
+  variantCache.set(key, out);
+  return out;
+}
+/** "d_textbook~h200" → "d_textbook" (non-variant keys come back unchanged). */
+export const baseDesignKey = (key: string | null | undefined): string => (key ? key.replace(/~h\d{1,3}$/, "") : "");
+/** "d_textbook~h200" → 200, or 0 when the key has no tint. */
+export const designHue = (key: string | null | undefined): number => Number(VARIANT_RE.exec(key ?? "")?.[2] ?? 0);

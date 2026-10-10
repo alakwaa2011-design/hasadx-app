@@ -1,5 +1,5 @@
 import type { ThemePalette } from "./types";
-import { DESIGNS, DESIGN_KEYS } from "./designs";
+import { DESIGNS, DESIGN_KEYS, designFor } from "./designs";
 
 /* Theme palette resolver. Mirrors the renderer's SLIDE_THEMES table
    without importing it (the renderer lives in the homework-app
@@ -134,7 +134,7 @@ export const SLIDE_TEMPLATE_THEME_KEYS = [...Object.keys(THEMES), ...DESIGN_KEYS
 /** True when the supplied string is a known theme key. */
 export function isKnownThemeKey(s: string | null | undefined): boolean {
   if (!s || typeof s !== "string") return false;
-  return Object.prototype.hasOwnProperty.call(THEMES, s) || Object.prototype.hasOwnProperty.call(DESIGNS, s);
+  return Object.prototype.hasOwnProperty.call(THEMES, s) || Object.prototype.hasOwnProperty.call(DESIGNS, s) || designFor(s) !== null;
 }
 
 /* Convert any "#rrggbb" / "#rgb" hex to an rgba() string. Falls back
@@ -156,7 +156,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function paletteForTheme(themeKey: string | null | undefined): ThemePalette {
-  const dsg = themeKey ? DESIGNS[themeKey] : undefined;
+  const dsg = themeKey ? designFor(themeKey) ?? undefined : undefined;
   if (dsg) {
     return {
       accent: dsg.accents[0],

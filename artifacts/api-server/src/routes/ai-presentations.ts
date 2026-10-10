@@ -1243,7 +1243,9 @@ const ALLOWED_THEME_KEYS = [
 ] as const;
 type ThemeKey = (typeof ALLOWED_THEME_KEYS)[number];
 function isAllowedTheme(s: string): s is ThemeKey {
-  return (ALLOWED_THEME_KEYS as readonly string[]).includes(s);
+  /* "d_textbook~h200" is the identity re-coloured by 200° of hue */
+  const base = s.replace(/~h(?:[1-9]\d{0,2})$/, "");
+  return (ALLOWED_THEME_KEYS as readonly string[]).includes(base);
 }
 function hashText(s: string): number {
   let h = 2166136261;
