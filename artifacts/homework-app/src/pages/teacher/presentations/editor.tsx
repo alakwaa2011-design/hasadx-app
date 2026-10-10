@@ -1644,35 +1644,48 @@ export default function PresentationEditor() {
               <span className="hidden lg:inline">{isAr ? "معاينة" : "Preview"}</span>
             </Button>
 
-            {/* Present split-button — primary action on the left, slide-anchored
-                start on the right. Uses shadcn Button so size, focus ring, and
-                disabled states stay consistent with the rest of the toolbar. */}
-            <div className="flex items-center rounded-lg overflow-hidden shadow-sm shadow-emerald-900/20">
-              <Button
-                size="sm"
-                onClick={() => {
-                  void startPresent(1);
-                }}
-                className="h-9 px-4 sm:px-5 gap-2 rounded-none font-bold border-0 bg-[#225739] text-white hover:brightness-110"
-                title={isAr ? "ابدأ من البداية" : "Start from beginning"}
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span className="hidden sm:inline">{isAr ? "ابدأ العرض" : "Present"}</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  void startPresent(activeIdx + 1);
-                }}
-                className="h-9 px-3 sm:px-4 gap-1.5 rounded-none border-0 border-s border-emerald-800/40 font-bold bg-[#1b4430] text-white hover:brightness-110"
-                title={isAr ? `ابدأ العرض من الشريحة الحالية (رقم ${activeIdx + 1})` : `Start from the current slide (${activeIdx + 1})`}
-              >
-                <Play className="w-3.5 h-3.5" />
-                <span className="text-xs sm:text-sm">
-                  {isAr ? `من هذه الشريحة (${activeIdx + 1})` : `From this slide (${activeIdx + 1})`}
-                </span>
-              </Button>
-            </div>
+            {/* Present: one compact button; the menu offers the start point. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  className="h-9 px-3 sm:px-4 gap-2 rounded-lg font-bold border-0 bg-[#225739] text-white shadow-sm shadow-emerald-900/20 hover:brightness-110"
+                  title={isAr ? "ابدأ العرض" : "Present"}
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span className="hidden sm:inline">{isAr ? "ابدأ العرض" : "Present"}</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 p-1.5">
+                <DropdownMenuItem
+                  onClick={() => { void startPresent(1); }}
+                  className="gap-3 rounded-lg py-2.5 cursor-pointer"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+                    <Play className="w-4 h-4" />
+                  </span>
+                  <span className="flex flex-col text-start">
+                    <span className="text-sm font-bold">{isAr ? "من البداية" : "From the beginning"}</span>
+                    <span className="text-[11px] text-muted-foreground">{isAr ? "الشريحة الأولى" : "Slide 1"}</span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => { void startPresent(activeIdx + 1); }}
+                  className="gap-3 rounded-lg py-2.5 cursor-pointer"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-50 text-amber-700">
+                    <ChevronDown className="w-4 h-4 -rotate-90" />
+                  </span>
+                  <span className="flex flex-col text-start">
+                    <span className="text-sm font-bold">{isAr ? "من هذه الشريحة" : "From this slide"}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {isAr ? `الشريحة ${activeIdx + 1} من ${slides.length}` : `Slide ${activeIdx + 1} of ${slides.length}`}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Presentations 2B — Live MVP launcher. Creates a session
                 with a fresh PIN and opens the teacher control panel.
                 Brand-gold to stand out as the primary live CTA. */}
