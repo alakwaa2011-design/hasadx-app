@@ -16,7 +16,7 @@ import { safeFetchAsDataUri } from "./url-safety";
 import { Resvg } from "@resvg/resvg-js";
 import { designAssetSvg, isDesignAsset } from "@workspace/slide-templates";
 
-type Kind = "text" | "image" | "icon" | "shape" | "activity";
+type Kind = "text" | "image" | "icon" | "shape" | "activity" | "hasad-game" | "hasad-activity" | "video-embed";
 interface Element {
   id: string;
   kind: Kind;
@@ -463,6 +463,68 @@ export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {
           valign: "top",
           margin: 0,
           wrap: true,
+        });
+        continue;
+      }
+
+      /* Live-only elements have no PowerPoint equivalent, but dropping them left the slide blank. Print a
+         clear read-only card: the game's questions (without marking the answers) or the linked activity /
+         video, plus a pointer to open the deck in Hasad to run it. */
+      if (el.kind === "hasad-game" || el.kind === "hasad-activity" || el.kind === "video-embed") {
+        const any = el as unknown as {
+          accentColor?: string; topic?: string; prompt?: string; gameKind?: string; gameType?: string;
+          questions?: Array<{ prompt: string; options: string[] }>; assignmentTitle?: string;
+          title?: string; url?: string;
+        };
+        const accent = toHex(any.accentColor, "225739");
+        s.addShape(pptx.ShapeType.roundRect, {
+          ...pos, rotate: rot,
+          fill: { color: "FFFFFF" },
+          line: { color: accent, width: 2.5 },
+          rectRadius: 0.08,
+        });
+        const GAME_AR: Record<string, string> = {
+          kahoot: "وميض الصف", tug: "شد الحبل", xo: "إكس أو الصف", solo: "مسابقة ذاتية", wheel: "العجلة الدوارة",
+          rocket: "سباق الصواريخ", millionaire: "من سيربح المليون", hack: "تحدي الاختراق",
+          knowledge_race: "وميض", tug_of_war: "شد الحبل", rocket_race: "سباق الصواريخ", million: "من سيربح المليون",
+        };
+        const kindKey = any.gameKind ?? any.gameType ?? "";
+        const gameLabel = isAr ? (GAME_AR[kindKey] ?? "نشاط حصاد") : "Hasad activity";
+        const heading = el.kind === "video-embed"
+          ? (isAr ? "فيديو" : "Video")
+          : `${isAr ? "🎮 " : ""}${gameLabel}`;
+        const title = any.topic || any.assignmentTitle || any.title || any.prompt || "";
+        const lines: Array<{ text: string; options: any }> = [
+          { text: `${heading}`, options: { color: accent, bold: true, fontSize: 14, breakLine: true } },
+        ];
+        if (title) lines.push({ text: title, options: { color: "0F172A", bold: true, fontSize: 20, breakLine: true } });
+        if (el.kind === "video-embed" && any.url) {
+          lines.push({ text: any.url, options: { color: "2563EB", fontSize: 13, breakLine: true } });
+        }
+        const qs = (any.questions ?? []).slice(0, 4);
+        qs.forEach((q, qi) => {
+          lines.push({ text: `${qi + 1}. ${q.prompt}`, options: { color: "1F2937", bold: true, fontSize: 14, breakLine: true } });
+          (q.options ?? []).slice(0, 4).forEach((opt, oi) => {
+            lines.push({ text: `    ${String.fromCharCode(65 + oi)}. ${opt}`, options: { color: "374151", fontSize: 12, breakLine: true } });
+          });
+        });
+        if (el.kind !== "video-embed") {
+          lines.push({
+            text: isAr ? "لتشغيل اللعبة مع الطلاب افتح هذا العرض في منصة حصاد." : "Open this deck in Hasad to run the game with students.",
+            options: { color: "94A3B8", italic: true, fontSize: 11 },
+          });
+        }
+        s.addText(lines, {
+          x: pos.x + 0.2, y: pos.y + 0.16,
+          w: pos.w - 0.4, h: pos.h - 0.32,
+          fontFace: safeFontFor(undefined, isAr),
+          align: isAr ? "right" : "left",
+          rtlMode: isAr,
+          lang: isAr ? "ar-SA" : "en-US",
+          valign: "top",
+          margin: 0,
+          wrap: true,
+          fit: "shrink",
         });
         continue;
       }
