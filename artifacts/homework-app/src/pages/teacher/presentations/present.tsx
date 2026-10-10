@@ -15,7 +15,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Loader2, Play, Rocket,
-  User, UsersRound, Gamepad2, Flame,
+  User, UsersRound, Gamepad2, Flame, Sparkles,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
@@ -275,7 +275,28 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
 
   /* Motion (identity decks only): the slide's cards appear one step per "next", and the slide itself
      enters with the identity's transition. Calm for the formal identities, playful for kids/nature. */
-  const profile = useMemo(() => motionProfile(data?.theme), [data?.theme]);
+  type MotionMode = "auto" | "calm" | "playful" | "off";
+  const [motionMode, setMotionModeState] = useState<MotionMode>(() => {
+    try {
+      const v = localStorage.getItem(`hasad:motion:${id}`);
+      return v === "calm" || v === "playful" || v === "off" ? v : "auto";
+    } catch { return "auto"; }
+  });
+  const [motionMenuOpen, setMotionMenuOpen] = useState(false);
+  const setMotionMode = useCallback((m: MotionMode) => {
+    setMotionModeState(m);
+    setMotionMenuOpen(false);
+    try { localStorage.setItem(`hasad:motion:${id}`, m); } catch { /* ignore */ }
+  }, [id]);
+  const baseProfile = useMemo(() => motionProfile(data?.theme), [data?.theme]);
+  const profile = useMemo(() => {
+    if (!baseProfile || motionMode === "off") return null;
+    if (motionMode === "calm") {
+      return { ...baseProfile, style: "calm" as const, stagger: 60, transition: baseProfile.transition === "zoom" ? ("rise" as const) : baseProfile.transition };
+    }
+    if (motionMode === "playful") return { ...baseProfile, style: "playful" as const, stagger: 100 };
+    return baseProfile;
+  }, [baseProfile, motionMode]);
   const reducedMotion = useMemo(
     () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
     [],
@@ -631,6 +652,43 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         {isAr ? "التالي" : "Next"}
         {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
       </button>
+      {baseProfile && (
+        <div className="relative">
+          <button
+            onClick={() => setMotionMenuOpen((o) => !o)}
+            className={`flex h-11 w-11 items-center justify-center rounded-lg text-white hover:bg-white/20 ${profile ? "bg-amber-500/30" : "bg-white/10"}`}
+            title={isAr ? "الحركة" : "Motion"}
+            aria-label={isAr ? "إعدادات الحركة" : "Motion settings"}
+            aria-expanded={motionMenuOpen}
+          >
+            <Sparkles className="w-5 h-5" />
+          </button>
+          {motionMenuOpen && (
+            <div
+              className="absolute bottom-full mb-2 end-0 z-50 w-56 rounded-xl border border-white/15 bg-slate-900 p-1.5 text-start shadow-2xl"
+              role="menu"
+            >
+              {([
+                ["auto", isAr ? "تلقائية (بحسب التصميم)" : "Automatic (by design)"],
+                ["calm", isAr ? "هادئة ومهنية" : "Calm"],
+                ["playful", isAr ? "مرحة" : "Playful"],
+                ["off", isAr ? "بدون حركة" : "No motion"],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  role="menuitemradio"
+                  aria-checked={motionMode === value}
+                  onClick={() => setMotionMode(value)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-bold ${motionMode === value ? "bg-amber-500 text-slate-950" : "text-white hover:bg-white/10"}`}
+                >
+                  <span>{label}</span>
+                  {motionMode === value && <span aria-hidden>✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <button onClick={toggleFullscreen} className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20" title={isAr ? "ملء الشاشة (F)" : "Fullscreen (F)"} aria-label={isAr ? "ملء الشاشة" : "Fullscreen"}>
         {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
       </button>
