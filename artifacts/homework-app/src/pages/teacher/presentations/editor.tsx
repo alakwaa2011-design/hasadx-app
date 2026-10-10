@@ -899,14 +899,14 @@ export default function PresentationEditor() {
     setSelectedElId(null);
   };
 
-  const deleteActive = () => {
+  const deleteSlideAt = (at: number) => {
     if (slides.length <= 1) {
       toast.error(isAr ? "لا يمكن حذف الشريحة الأخيرة" : "Can't delete the last slide");
       return;
     }
-    const removedId = slides[activeIdx]?.id;
-    mutateSlides((prev) => prev.filter((_, i) => i !== activeIdx));
-    setActiveIdx((i) => Math.max(0, i - 1));
+    const removedId = slides[at]?.id;
+    mutateSlides((prev) => prev.filter((_, i) => i !== at));
+    setActiveIdx((cur) => (cur === at ? Math.max(0, at - 1) : cur > at ? cur - 1 : cur));
     setSelectedElId(null);
     /* Drop the just-deleted slide from the bulk set so the rail
        doesn't keep showing select-mode for a slide that no longer
@@ -920,6 +920,7 @@ export default function PresentationEditor() {
       });
     }
   };
+  const deleteActive = () => deleteSlideAt(activeIdx);
 
   const moveSlide = (idx: number, delta: -1 | 1) => {
     const j = idx + delta;
@@ -1859,6 +1860,7 @@ export default function PresentationEditor() {
                       }}
                       onMoveUp={() => moveSlide(i, -1)}
                       onMoveDown={() => moveSlide(i, 1)}
+                      onDelete={() => deleteSlideAt(i)}
                     />
                   ))}
                   {slides.length === 0 && (
@@ -2502,7 +2504,7 @@ function GoLiveDialog({
    plus keyboard reorder via ↑/↓ when focused on the grip. */
 function SortableSlideItem({
   slide, index, active, multi, selectMode, readOnly, isAr, isLast, theme, pattern,
-  onSelect, onToggleMulti, onMoveUp, onMoveDown,
+  onSelect, onToggleMulti, onMoveUp, onMoveDown, onDelete,
 }: {
   slide: Slide;
   index: number;
@@ -2522,6 +2524,7 @@ function SortableSlideItem({
   onToggleMulti: (additive: boolean) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onDelete: () => void;
 }) {
   const {
     attributes, listeners, setNodeRef, transform, transition, isDragging,
@@ -2610,6 +2613,17 @@ function SortableSlideItem({
           <ChevronDown className="w-3.5 h-3.5" />
         </button>
       </div>
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className={`absolute bottom-1.5 end-1.5 rounded-lg border border-red-200 bg-white p-1.5 text-red-600 shadow-sm transition-opacity hover:bg-red-50 ${active ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+          title={isAr ? "حذف الشريحة" : "Delete slide"}
+          aria-label={isAr ? "حذف الشريحة" : "Delete slide"}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
       {active ? (
          <div className="absolute bottom-1.5 start-9 text-[10px] font-black text-white px-2 py-0.5 rounded-md shadow-sm" style={{ background: BRAND_GOLD }}>
            {index + 1}
