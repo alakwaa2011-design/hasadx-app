@@ -424,8 +424,8 @@ export function HasadGameRenderer({
         border: `3px solid ${accent}`,
         borderRadius: 24,
         boxShadow: "0 16px 40px rgba(34,87,57,0.18)",
-        padding: "24px 30px",
-        display: "flex", flexDirection: "column", gap: 14,
+        padding: "14px 24px",
+        display: "flex", flexDirection: "column", gap: 8,
         overflow: "hidden",
       }}
     >
@@ -443,13 +443,13 @@ export function HasadGameRenderer({
         ) : null}
       </div>
 
-      <div style={{ color: accent, fontWeight: 950, fontSize: 24, lineHeight: 1.2, wordBreak: "break-word" }}>
+      <div style={{ color: accent, fontWeight: 950, fontSize: 18, lineHeight: 1.2, wordBreak: "break-word" }}>
         {headTitle}
       </div>
 
       {first ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0 }}>
-          <div style={{ color: "#0f172a", fontWeight: 950, fontSize: 32, lineHeight: 1.22, wordBreak: "break-word" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0 }}>
+          <div style={{ color: "#0f172a", fontWeight: 950, fontSize: 26, lineHeight: 1.25, wordBreak: "break-word" }}>
             {total > 1 ? <span style={{ color: accent, marginInlineEnd: 8 }}>{isAr ? `س${questionIndex + 1}.` : `Q${questionIndex + 1}.`}</span> : null}
             {first.prompt}
           </div>
@@ -472,11 +472,11 @@ export function HasadGameRenderer({
                   }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "14px 16px",
+                    padding: "8px 12px",
                     background: revealedCorrect ? "#dcfce7" : revealedWrong ? "#fee2e2" : color.soft,
                     border: `${revealedCorrect ? 4 : 2.5}px solid ${revealedCorrect ? "#16a34a" : revealedWrong ? "#dc2626" : color.bg}`,
                     borderRadius: 18,
-                    color: dimmedAfterAnswer ? "#94a3b8" : "#0f172a", fontSize: 22, fontWeight: 900,
+                    color: dimmedAfterAnswer ? "#94a3b8" : "#0f172a", fontSize: 19, fontWeight: 900,
                     minWidth: 0,
                     width: "100%",
                     textAlign: "start",
@@ -493,7 +493,7 @@ export function HasadGameRenderer({
                 >
                   <span style={{
                     flex: "none",
-                    width: 38, height: 38, borderRadius: 12,
+                    width: 32, height: 32, borderRadius: 10,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     background: revealedCorrect ? "#16a34a" : color.bg,
                     color: revealedCorrect ? "white" : color.fg, fontWeight: 950, fontSize: 18,

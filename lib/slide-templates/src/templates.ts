@@ -857,9 +857,12 @@ function tplInteractive(o: MaterializeOptions, warnings: string[]): Element[] {
   const cfg = DENSITY[density];
   const seed = o.idSeed ?? `s${card.index}`;
   const els = buildHeader({ seed, card, cfg, lang, palette: theme, warnings });
-  els.push(...buildCornerAccent(seed, theme, lang));
+  const isDesignSlide = Boolean(theme.design);
+  if (!isDesignSlide) els.push(...buildCornerAccent(seed, theme, lang));
 
-  const top = CONTENT_TOP;
+  /* Identity decks draw their own page art; give the live widget the whole open area under the header. */
+  const top = isDesignSlide ? 236 : CONTENT_TOP;
+  const widgetH = isDesignSlide ? H - 236 - 44 : H - top - CONTENT_BOTTOM;
   const promptText = card.talkingPoints[0]
     ?? card.purpose
     ?? (lang === "ar" ? "أضف سؤالك هنا" : "Add your question here");
@@ -875,7 +878,7 @@ function tplInteractive(o: MaterializeOptions, warnings: string[]): Element[] {
   if (card.gameSuggestion || hasGameQuestions) {
     const launcher: HasadGameElement = {
       id: id(seed, "game"), kind: "hasad-game",
-      x: PAD, y: top, w: W - PAD * 2, h: H - top - CONTENT_BOTTOM,
+      x: PAD, y: top, w: W - PAD * 2, h: widgetH,
       gameKind: card.gameSuggestion ?? "kahoot",
       prompt: clip(promptText, 200, warnings, "نص النشاط", lang),
       topic: card.title,
@@ -901,7 +904,7 @@ function tplInteractive(o: MaterializeOptions, warnings: string[]): Element[] {
      open prompt instead so the slide remains valid without fake answers. */
   const activity: ActivityElement = {
     id: id(seed, "act"), kind: "activity",
-    x: PAD, y: top, w: W - PAD * 2, h: H - top - CONTENT_BOTTOM,
+    x: PAD, y: top, w: W - PAD * 2, h: widgetH,
     activityKind: card.interactionHint === "poll" ? "poll"
       : card.interactionHint === "discussion" ? "open"
       : "open",
