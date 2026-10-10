@@ -586,7 +586,7 @@ export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {
           x: rightAligned(btnW), y: btnY, w: btnW, h: btnH, fill: { color: "D9A521" }, line: { color: "B88A12", width: 1.5 }, rectRadius: 0.2,
           ...(slideLink ? { hyperlink: { url: slideLink, tooltip: isAr ? "تشغيل اللعبة في حصاد" : "Run the game in Hasad" } } : {}),
         });
-        s.addText(slideLink ? (publicLink ? (isAr ? "▶ العب الآن (بدون حساب)" : "▶ Play now (no account)") : (isAr ? "▶ تشغيل اللعبة في حصاد" : "▶ Run the game in Hasad")) : (isAr ? "افتح العرض في حصاد للتشغيل" : "Open in Hasad to run"), {
+        s.addText(slideLink ? (isAr ? "▶ العب الآن" : "▶ Play now") : (isAr ? "افتح العرض في حصاد للتشغيل" : "Open in Hasad to run"), {
           x: rightAligned(btnW), y: btnY, w: btnW, h: btnH, align: "center", valign: "middle",
           color: "1C1003", bold: true, fontSize: Math.round(13 * f + 1), fontFace: safeFontFor(undefined, isAr), rtlMode: rtl, margin: 0,
           ...(slideLink ? { hyperlink: { url: slideLink } } : {}),
