@@ -1338,6 +1338,37 @@ export default function PresentationEditor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [readOnly, undo, redo, activeSlide, duplicateActive, saveNow]);
 
+  /* Move between slides with the keyboard while editing: arrows (when no element is selected), PageUp /
+     PageDown, Home and End. Left/right follow the reading direction of the deck's language. */
+  useEffect(() => {
+    const onNavKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      const inField = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      if (inField) return;
+      const last = slides.length - 1;
+      if (last < 0) return;
+      let to: number | null = null;
+      const next = Math.min(last, activeIdx + 1), prev = Math.max(0, activeIdx - 1);
+      if (e.key === "PageDown") to = next;
+      else if (e.key === "PageUp") to = prev;
+      else if (e.key === "Home") to = 0;
+      else if (e.key === "End") to = last;
+      else if (!selectedElId && multiSelectIds.length === 0) {
+        if (e.key === "ArrowDown") to = next;
+        else if (e.key === "ArrowUp") to = prev;
+        else if (e.key === "ArrowRight") to = isAr ? prev : next;
+        else if (e.key === "ArrowLeft") to = isAr ? next : prev;
+      }
+      if (to === null || to === activeIdx) return;
+      e.preventDefault();
+      setActiveIdx(to);
+      setSelectedElId(null);
+    };
+    window.addEventListener("keydown", onNavKey);
+    return () => window.removeEventListener("keydown", onNavKey);
+  }, [slides.length, activeIdx, selectedElId, multiSelectIds.length, isAr]);
+
   /* Loading / error guards live AFTER every hook so the hook count
      stays identical between the loading render and the loaded render
      — this is what fixed the "white editor page" bug (React was
