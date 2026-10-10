@@ -729,7 +729,7 @@ async function handleOutlineGeneration(req: Request, res: Response): Promise<voi
       await refundCredits(req, "invalid outline");
       res.status(422).json({
         message: brief.language === "ar"
-          ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى."
+          ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى. (E1: ردّ غير مقروء)"
           : "Could not produce a valid outline. Adjust the brief and retry.",
       });
       return;
@@ -816,9 +816,11 @@ async function handleOutlineGeneration(req: Request, res: Response): Promise<voi
     if (!parsed.success) {
       req.log.warn({ issues: parsed.error.issues }, "Outline failed strict validation");
       await refundCredits(req, "invalid outline");
+      const firstIssue = parsed.error.issues[0];
+      const issueCode = firstIssue ? `${firstIssue.path.slice(0, 4).join(".")}: ${firstIssue.message}`.slice(0, 120) : "?";
       res.status(422).json({
         message: brief.language === "ar"
-          ? "تعذّر توليد العرض. أعد المحاولة مرة أخرى."
+          ? `تعذّر توليد العرض. أعد المحاولة مرة أخرى. (E2: ${issueCode})`
           : "Could not produce a valid outline. Adjust the brief and retry.",
         issues: parsed.error.issues.slice(0, 5),
       });
