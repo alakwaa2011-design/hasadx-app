@@ -743,20 +743,25 @@ export default function PresentationControl() {
             >
               {wallPublished ? "✓ الردود ظاهرة على أجهزة الجميع — اضغط للإخفاء" : "عرض الردود على أجهزة الجميع"}
             </button>
-            <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            <div className="grid max-h-80 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2 xl:grid-cols-3">
               {wallCards.map((card) => (
-                <div key={card.id} className="flex items-start gap-2 rounded-lg bg-black/30 border border-white/10 p-2">
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-sm break-words leading-snug ${card.visible ? "text-white/90" : "text-white/40 line-through"}`}>
-                      {card.text}
-                    </div>
+                <div
+                  key={card.id}
+                  className="relative rounded-xl border p-3 pe-11 transition-colors"
+                  style={{
+                    background: card.visible ? "rgba(34,87,57,0.28)" : "rgba(255,255,255,0.04)",
+                    borderColor: card.visible ? "rgba(52,211,153,0.45)" : "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <div className={`text-sm font-bold leading-snug break-words ${card.visible ? "text-white" : "text-white/40 line-through"}`}>
+                    {card.text}
                   </div>
                   <button
                     type="button"
                     onClick={() => getSocket().emit("wall:toggle-card", { sessionId: sid, elementId: live?.activeElementId, runId: wallRunRef.current, cardId: card.id, visible: !card.visible })}
-                    className="shrink-0 rounded-md p-1.5 transition-colors"
-                    style={{ background: card.visible ? "rgba(34,87,57,0.4)" : "rgba(255,255,255,0.06)" }}
+                    className="absolute end-2 top-2 rounded-lg p-1.5 transition-colors hover:bg-white/10"
                     title={card.visible ? "إخفاء البطاقة" : "إظهار البطاقة"}
+                    aria-label={card.visible ? "إخفاء البطاقة" : "إظهار البطاقة"}
                   >
                     {card.visible ? <Eye className="w-4 h-4 text-emerald-300" /> : <EyeOff className="w-4 h-4 text-white/40" />}
                   </button>

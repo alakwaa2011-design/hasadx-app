@@ -998,16 +998,23 @@ export default function PresentationPlay() {
                           : (isAr ? "تم حفظ إجابتك المفتوحة" : "Your open answer was saved")}
                     </div>
                     {el.activityKind === "open_wall" && wallPublished && (
-                      <div className="w-full space-y-2 text-start" aria-label={isAr ? "ردود الجميع" : "Everyone's responses"}>
-                        <div className="text-sm font-black text-slate-700">{isAr ? "ردود الجميع" : "Everyone's responses"}</div>
+                      <div className="mt-2 w-full text-start" aria-label={isAr ? "ردود الجميع" : "Everyone's responses"}>
+                        <div className="mb-2 text-sm font-black text-slate-700">{isAr ? `ردود الجميع (${wallCards.length})` : `Everyone's responses (${wallCards.length})`}</div>
                         {wallCards.length === 0 ? (
                           <div className="text-sm text-slate-500">{isAr ? "لا توجد ردود ظاهرة بعد." : "No visible responses yet."}</div>
-                        ) : wallCards.map((c) => (
-                          <div key={c.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                            <div className="text-base font-bold leading-snug text-slate-900 break-words">{c.text}</div>
-                            {c.name && <div className="mt-1 text-xs font-bold text-slate-500">{c.name}</div>}
+                        ) : (
+                          <div className="grid max-h-[46vh] grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3">
+                            {wallCards.map((c, n) => {
+                              const tones = ["#FEF3C7", "#DCFCE7", "#DBEAFE", "#FCE7F3", "#EDE9FE", "#FFEDD5"];
+                              return (
+                                <div key={c.id} className="rounded-xl p-3 shadow-sm" style={{ background: tones[n % tones.length] }}>
+                                  <div className="text-sm font-bold leading-snug text-slate-900 break-words">{c.text}</div>
+                                  {c.name && <div className="mt-1.5 text-[11px] font-bold text-slate-600">{c.name}</div>}
+                                </div>
+                              );
+                            })}
                           </div>
-                        ))}
+                        )}
                       </div>
                     )}
                     {sessionMode === "self_paced" && el.activityKind === "word_cloud" && (
