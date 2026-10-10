@@ -3737,6 +3737,13 @@ function Inspector({
     }
   }, [activeGifOpen]);
 
+  /* The GIF library lives in the slide inspector, which shows the selected element's properties instead while
+     something is selected — so opening the library from the toolbar must clear the selection first. */
+  useEffect(() => {
+    if (activeGifOpen && selectedEl) onDeselect?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGifOpen]);
+
   if (!slide) return null;
 
   if (selectedEl) {
