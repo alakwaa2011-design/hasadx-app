@@ -1309,7 +1309,7 @@ export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
   /* Speaker notes — concatenate purpose + interaction hint so the
      teacher sees the AI rationale without us inserting it into the
      visual canvas. */
-  const noteLines = [card.purpose];
+  const noteLines = card.teacherNotes ? [card.teacherNotes, card.purpose] : [card.purpose];
   if (card.interactionHint) {
     noteLines.push(
       opts.lang === "ar"

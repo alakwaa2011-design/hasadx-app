@@ -66,6 +66,8 @@ export interface OutlineCard {
   title: string;
   subtitle?: string;
   purpose: string;
+  /** speaker script for the teacher (what to say, an example, a question to ask); never drawn on the slide */
+  teacherNotes?: string;
   talkingPoints: string[];
   interactionHint: InteractionHint;
   /* Phase 3 — when set, the materializer will emit a `hasad-game`

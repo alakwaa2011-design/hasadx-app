@@ -152,6 +152,7 @@ export const outlineSlideCardSchema = z.object({
   title: z.string().min(1).max(80),
   subtitle: z.string().max(80).optional(),
   purpose: z.string().min(1).max(140),
+  teacherNotes: z.string().max(1500).optional(),
   /* Title slides and interactive quiz slides may legitimately use their
      title/gameQuestions as the complete visible content. sanitizeOutline
      already marks every other empty-content slide as fatal, so requiring a
@@ -816,7 +817,7 @@ async function handleOutlineGeneration(req: Request, res: Response): Promise<voi
 
     /* Quran references the model wrote as [[آية:سورة:آية]] become the official text (see resolve-quran-refs). */
     try {
-      await resolveQuranRefsInOutline(outline as { slides: Array<{ talkingPoints: string[] }> });
+      await resolveQuranRefsInOutline(outline as { slides: Array<{ talkingPoints: string[]; teacherNotes?: string }> });
     } catch (err) {
       req.log.warn({ err }, "Quran reference resolution failed; tokens left as pointers");
     }

@@ -46,6 +46,7 @@ interface Element {
 }
 interface Slide {
   id: string;
+  notes?: string;
   background?: string;
   backgroundImage?: string;
   elements?: Element[];
@@ -345,6 +346,10 @@ export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {
 
   for (const [slideIdx, slide] of (deck.slides ?? []).entries()) {
     const s = pptx.addSlide();
+    const speakerNotes = (slide as { notes?: string }).notes;
+    if (typeof speakerNotes === "string" && speakerNotes.trim()) {
+      try { s.addNotes(speakerNotes.trim().slice(0, 4000)); } catch { /* notes are optional */ }
+    }
     /* Background priority: per-slide image → per-slide solid hex →
        deck theme palette → PowerPoint default white. The theme
        fallback is the critical fix for "Arabic title disappeared on

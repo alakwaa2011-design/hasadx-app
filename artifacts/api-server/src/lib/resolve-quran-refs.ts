@@ -47,9 +47,13 @@ export async function resolveQuranRefsInText(text: string): Promise<string> {
 }
 
 /** Resolves every reference token in an outline's talking points, in place. */
-export async function resolveQuranRefsInOutline(outline: { slides: Array<{ talkingPoints: string[] }> }): Promise<number> {
+export async function resolveQuranRefsInOutline(outline: { slides: Array<{ talkingPoints: string[]; teacherNotes?: string }> }): Promise<number> {
   let resolved = 0;
   for (const slide of outline.slides) {
+    if (slide.teacherNotes && slide.teacherNotes.includes("[[")) {
+      const after = await resolveQuranRefsInText(slide.teacherNotes);
+      if (after !== slide.teacherNotes) { slide.teacherNotes = after.slice(0, 1500); resolved++; }
+    }
     for (let i = 0; i < slide.talkingPoints.length; i++) {
       const before = slide.talkingPoints[i];
       if (!before.includes("[[")) continue;

@@ -90,6 +90,7 @@ export interface SanitizedSlide {
   title: string;
   subtitle?: string;
   purpose: string;
+  teacherNotes?: string;
   talkingPoints: string[];
   interactionHint: SanitizedInteractionHint;
   /* Phase 3 — when set, the materializer emits a `hasad-game` launcher
@@ -734,11 +735,15 @@ export function sanitizeOutline(
       feedback.push(`Slide ${i + 1}: missing visual plan — kept the slide text-led instead of inventing decoration.`);
     }
 
+    /* The speaker script is free text: keep it, but never let a model-written quotation of scripture through. */
+    const notesRaw = clipStr((slide as RawRecord).teacherNotes, 1500);
+    const teacherNotes = notesRaw ? sanitizeScripture(notesRaw, brief.sourceText ?? "").text : "";
     const out: SanitizedSlide = {
       index: i + 1,
       kind,
       title,
       purpose,
+      ...(teacherNotes ? { teacherNotes } : {}),
       talkingPoints,
       interactionHint,
       gameSuggestion,

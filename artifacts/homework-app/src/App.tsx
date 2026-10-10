@@ -137,6 +137,7 @@ const StudentTimeline = lazy(() => import("@/pages/p/student-timeline"));
 const PresentationSessionsHistory = lazy(() => import("@/pages/teacher/presentations/sessions"));
 const PresentationCompare = lazy(() => import("@/pages/teacher/presentations/compare"));
 const PresentationActivityRunner = lazy(() => import("@/pages/teacher/presentations/activity-runner"));
+const PresentationPresenter = lazy(() => import("@/pages/teacher/presentations/presenter"));
 const CreateVideoLesson = lazy(() => import("@/pages/teacher/create-video-lesson"));
 const AiVideoIndex = lazy(() => import("@/pages/teacher/ai-video/index"));
 const AiVideoNew = lazy(() => import("@/pages/teacher/ai-video/new"));
@@ -476,6 +477,13 @@ function Router() {
         <Route path="/teacher/presentations/activity-runner/:seedId" component={PresentationActivityRunner} />
         <Route path="/teacher/presentations/:id/sessions" component={PresentationSessionsHistory} />
         <Route path="/teacher/presentations/:id/compare" component={PresentationCompare} />
+        <Route path="/teacher/presentations/:id/presenter">
+          <Suspense fallback={<DarkLoadingFallback />}>
+            <ErrorBoundary label="نافذة المقدّم">
+              <PresentationPresenter />
+            </ErrorBoundary>
+          </Suspense>
+        </Route>
         <Route path="/teacher/presentations/:id/present">
           {/* Wrap in an ErrorBoundary so a runtime crash inside the
               read-only slide renderer (bad slide payload, missing

@@ -15,7 +15,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronLeft, ChevronRight, X, Maximize2, Minimize2, Loader2, Play, Rocket,
-  User, UsersRound, Gamepad2, Flame, Sparkles,
+  User, UsersRound, Gamepad2, Flame, Sparkles, StickyNote,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
@@ -468,11 +468,42 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         case "Escape":     e.preventDefault(); exit(); break;
         case "f":
         case "F":          e.preventDefault(); void toggleFullscreen(); break;
+        case "n":
+        case "N":          e.preventDefault(); setShowNotes((v) => !v); break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isAr, goNext, goPrev, exit, toggleFullscreen, total]);
+
+  /* Speaker notes. "N" toggles an on-screen panel (for a teacher who is alone with the screen); the notes
+     button opens the presenter window, which follows this one over a BroadcastChannel and can drive it. */
+  const [showNotes, setShowNotes] = useState(false);
+  const goNextRef = useRef(goNext);
+  const goPrevRef = useRef(goPrev);
+  useEffect(() => { goNextRef.current = goNext; goPrevRef.current = goPrev; }, [goNext, goPrev]);
+  const idxRef = useRef(idx);
+  useEffect(() => { idxRef.current = idx; }, [idx]);
+  const presenterChan = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    if (isPublic || typeof BroadcastChannel === "undefined") return;
+    const ch = new BroadcastChannel(`hasad-present-${id}`);
+    presenterChan.current = ch;
+    ch.onmessage = (e: MessageEvent) => {
+      const m = e.data as { type?: string; cmd?: string };
+      if (m?.type === "hello") ch.postMessage({ type: "slide", idx: idxRef.current });
+      else if (m?.type === "cmd" && m.cmd === "next") goNextRef.current();
+      else if (m?.type === "cmd" && m.cmd === "prev") goPrevRef.current();
+    };
+    return () => { ch.close(); presenterChan.current = null; };
+  }, [id, isPublic]);
+  useEffect(() => {
+    presenterChan.current?.postMessage({ type: "slide", idx });
+  }, [idx]);
+  const openPresenterWindow = useCallback(() => {
+    window.open(`/teacher/presentations/${id}/presenter`, "hasad-presenter", "width=560,height=760,noopener=no");
+  }, [id]);
+  const currentNotes = ((current as { notes?: string } | undefined)?.notes ?? "").trim();
 
   const progress = total > 1 ? ((idx + 1) / total) * 100 : 100;
 
@@ -682,6 +713,17 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         {isAr ? "التالي" : "Next"}
         {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
       </button>
+      {!isPublic && (
+        <button
+          onClick={openPresenterWindow}
+          className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-white/10 px-3 text-white hover:bg-white/20"
+          title={isAr ? "نافذة المقدّم: ملاحظاتك أمامك والعرض على الشاشة (للنص على الشاشة نفسها: N)" : "Presenter window (N toggles notes on this screen)"}
+          aria-label={isAr ? "ملاحظات المعلم" : "Speaker notes"}
+        >
+          <StickyNote className="w-5 h-5" />
+          <span className="hidden md:inline text-sm font-bold">{isAr ? "الملاحظات" : "Notes"}</span>
+        </button>
+      )}
       {baseProfile && (
         <div className="relative">
           <button
@@ -844,6 +886,23 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+
+      {showNotes && !isPublic && (
+        <div
+          className="absolute inset-x-0 bottom-0 z-[60] max-h-[45%] overflow-y-auto border-t-4 border-amber-400 bg-slate-950/95 p-5 text-white shadow-2xl"
+          dir={dir}
+          role="complementary"
+          aria-label={isAr ? "ملاحظات المعلم" : "Speaker notes"}
+        >
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-black text-amber-300">{isAr ? "ملاحظات المعلم — N للإخفاء" : "Speaker notes — N to hide"}</span>
+            <button onClick={() => setShowNotes(false)} className="rounded-md bg-white/10 p-1.5 hover:bg-white/20" aria-label="close"><X className="h-4 w-4" /></button>
+          </div>
+          <p className="whitespace-pre-wrap text-xl font-bold leading-[1.9]">
+            {currentNotes || (isAr ? "لا توجد ملاحظات لهذه الشريحة." : "No notes for this slide.")}
+          </p>
+        </div>
+      )}
 
       {/* PIN + QR overlay — shown after a hasad-activity is launched so
           students can join without the teacher switching windows. The

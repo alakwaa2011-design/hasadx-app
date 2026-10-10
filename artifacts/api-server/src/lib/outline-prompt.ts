@@ -1115,6 +1115,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       "kind": "title|objectives|concept-card|comparison|visual-hero|steps|interactive|closure|timeline|formula|stat|quote|callout",
       "title": "...",
       ${lim.allowSubtitle ? '"subtitle": "...",\n      ' : ""}"purpose": "...",
+      "teacherNotes": "نص شرح للمعلم (لا يظهر على الشريحة)",
       "talkingPoints": ["...", "..."],
       "interactionHint": "poll|quiz|discussion|activity|null",
       "gameSuggestion": "tug|rocket|wheel|millionaire|hack|kahoot|null",
@@ -1136,6 +1137,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     ? [
         `كل شريحة لها فكرة واحدة فقط. لا تخلط فكرتين على نفس الشريحة.`,
         `ممنوع منعًا باتًا أن تكتب نص آية قرآنية أو حديث نبوي من ذاكرتك أو بين علامتي تنصيص. للاستشهاد بآية اكتب مرجعها فقط بالصيغة [[آية:رقم_السورة:رقم_الآية|اسم_السورة]] أو لمدى [[آية:2:255-256|البقرة]] وستضع المنصة نصها الرسمي تلقائيًا، واشرح المعنى بكلامك. أما الحديث فاذكر راويه وكتابه فقط واشرح معناه دون نقل لفظه. لا تنسب كلامًا للقرآن أو للنبي ﷺ ما لم يكن في النص المصدر الذي قدّمه المعلم.`,
+        `teacherNotes لكل شريحة (ما عدا الغلاف إن شئت): نص للمعلم من 60 إلى 160 كلمة بصيغة المتحدث يشرح بها الشريحة بصوته: ماذا يقول، ومثال أو موقف يرويه، وسؤال يطرحه على الطلاب، وخطأ شائع ينبّه إليه. لا يتكرر فيه نص الشريحة حرفيًا، ويناسب عمر الطلاب. يلتزم بقاعدة عدم نقل نص آية أو حديث.`,
         `talkingPoints شرح مكتمل المعنى: كل نقطة تحتوي معلومة محددة مع تفسيرها أو مثالها (جملتان على الأقل في الكثافة المتوسطة والتفصيلية)، ومناسبة لمستوى الصف المذكور. ممنوع العناوين المبهمة والجمل الناقصة.`,
         `نوّع الـ kind: على عرض من 6 شرائح ≥ 4 أنواع مختلفة، 8 شرائح ≥ 5 أنواع، 10+ شرائح ≥ 6 أنواع.`,
         `ابدأ بـ title، أنهِ بـ closure. ضع stat أو quote عند وجود رقم لافت أو حكمة لإضفاء إيقاع بصري.`,
@@ -1146,6 +1148,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     : [
         `One idea per slide. Never mix two ideas on the same slide.`,
         `NEVER write out the wording of a Quran verse or a hadith from memory or inside quotation marks. To cite a verse, write only its reference as [[آية:SURAH_NUMBER:AYAH_NUMBER|SURAH_NAME]] or a range [[آية:2:255-256|البقرة]]; the platform inserts the official text automatically. Explain the meaning in your own words. For a hadith give only the narrator and collection and explain the meaning without quoting its wording. Do not attribute wording to the Quran or the Prophet unless it appears in the teacher's source text.`,
+        `teacherNotes for each slide (the cover may skip it): a 60–160 word speaker script in the presenter's voice — what to say, an example or story to tell, a question to ask the students, a common mistake to flag. It never repeats the slide text verbatim, is pitched to the audience, and follows the no-scripture-wording rule.`,
         `talkingPoints are complete explanations: each point carries a specific fact with its explanation or example (at least two sentences at balanced/detailed density), pitched to the stated grade. Never vague labels or sentence fragments.`,
         `Vary kind: 6-slide deck ≥ 4 different kinds, 8-slide ≥ 5 kinds, 10+ slide ≥ 6 kinds.`,
         `Start with title, end with closure. Drop in stat or quote when a striking number or wise line exists, to add visual rhythm.`,
