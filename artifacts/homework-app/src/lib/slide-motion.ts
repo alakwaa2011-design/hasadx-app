@@ -14,17 +14,20 @@ export interface MotionProfile {
   transition: "fade" | "rise" | "zoom";
   /** ms between elements that appear in the same step */
   stagger: number;
+  /** how a card appears: lift (rise), pop (spring) or wipe (chalk write-on) */
+  reveal: "lift" | "pop" | "wipe";
 }
 
 export function motionProfile(themeKey: string | null | undefined): MotionProfile | null {
   const base = baseDesignKey(themeKey);
   if (!base.startsWith("d_")) return null;
   switch (base) {
-    case "d_kids": return { style: "playful", transition: "zoom", stagger: 110 };
-    case "d_nature": return { style: "playful", transition: "rise", stagger: 90 };
+    case "d_kids": return { style: "playful", transition: "zoom", stagger: 110, reveal: "pop" };
+    case "d_nature": return { style: "playful", transition: "rise", stagger: 90, reveal: "pop" };
+    case "d_chalk": return { style: "calm", transition: "fade", stagger: 80, reveal: "wipe" };
     case "d_modern":
-    case "d_lab": return { style: "calm", transition: "rise", stagger: 60 };
-    default: return { style: "calm", transition: "fade", stagger: 60 };
+    case "d_lab": return { style: "calm", transition: "rise", stagger: 60, reveal: "lift" };
+    default: return { style: "calm", transition: "fade", stagger: 60, reveal: "lift" };
   }
 }
 
@@ -35,6 +38,11 @@ export interface SlideMotionState {
   entering: Map<string, number>;
   style: MotionStyle;
   stagger: number;
+  reveal?: "lift" | "pop" | "wipe";
+  /** text direction of the deck (a chalk wipe starts from the reading side) */
+  rtl?: boolean;
+  /** called once when a number starts counting up (used for its sound) */
+  onCount?: () => void;
   /** drawings keep a small idle movement (off when the system asks for reduced motion) */
   idle?: boolean;
 }

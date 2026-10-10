@@ -21,6 +21,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { createHasadActivityFromSlide } from "@/lib/presentation-hasad-activities";
 import { motionProfile, revealGroups, type SlideMotionState } from "@/lib/slide-motion";
+import { playMotionSound } from "@/lib/motion-sound";
 import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import { AttachedSlideFrame } from "@/components/presentations/attached-slide-frame";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
@@ -283,6 +284,13 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     } catch { return "auto"; }
   });
   const [motionMenuOpen, setMotionMenuOpen] = useState(false);
+  const [motionSound, setMotionSoundState] = useState<boolean>(() => {
+    try { return localStorage.getItem(`hasad:motion-sound:${id}`) !== "off"; } catch { return true; }
+  });
+  const setMotionSound = useCallback((on: boolean) => {
+    setMotionSoundState(on);
+    try { localStorage.setItem(`hasad:motion-sound:${id}`, on ? "on" : "off"); } catch { /* ignore */ }
+  }, [id]);
   const setMotionMode = useCallback((m: MotionMode) => {
     setMotionModeState(m);
     setMotionMenuOpen(false);
@@ -310,6 +318,17 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setAnimateStep(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, groups.length]);
+  const lastSoundIdx = useRef<number | null>(null);
+  useEffect(() => {
+    if (lastSoundIdx.current !== null && lastSoundIdx.current !== idx && profile && motionSound && !reducedMotion) {
+      playMotionSound("slide", profile.style);
+    }
+    lastSoundIdx.current = idx;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx]);
+  const onCountStart = useCallback(() => {
+    if (profile && motionSound && !reducedMotion) playMotionSound("count", profile.style);
+  }, [profile, motionSound, reducedMotion]);
   const slideMotion = useMemo<SlideMotionState | undefined>(() => {
     if (!profile) return undefined;
     /* revealStep belongs to the previous slide for one render after a slide change: clamp it to this slide */
@@ -320,13 +339,18 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     if (animateStep && step > 0 && !reducedMotion) {
       (groups[step - 1] ?? []).forEach((id, n) => entering.set(id, n));
     }
-    return { hidden, entering, style: profile.style, stagger: profile.stagger, idle: !reducedMotion };
-  }, [profile, groups, revealStep, animateStep, reducedMotion]);
+    return {
+      hidden, entering, style: profile.style, stagger: profile.stagger, idle: !reducedMotion,
+      reveal: profile.style === "playful" && profile.reveal === "lift" ? "pop" : profile.reveal,
+      rtl: deckLang === "ar", onCount: onCountStart,
+    };
+  }, [profile, groups, revealStep, animateStep, reducedMotion, deckLang, onCountStart]);
 
   const goNext = useCallback(() => {
     if (groups.length > 0 && revealStep < groups.length && !presentActivityState.completed) {
       setRevealStep((n) => n + 1);
       setAnimateStep(true);
+      if (profile && motionSound && !reducedMotion) playMotionSound("reveal", profile.style);
       return;
     }
     if (presentActivityState.completed) {
@@ -344,7 +368,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setRevealAnswers(false);
     setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
     setIdx((i) => Math.min(i + 1, total - 1));
-  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total, groups.length, revealStep]);
+  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total, groups.length, revealStep, profile, motionSound, reducedMotion]);
   const goPrev = useCallback(() => {
     if (groups.length > 0 && revealStep > 0) {
       setRevealStep((n) => n - 1);
@@ -685,6 +709,16 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                   {motionMode === value && <span aria-hidden>✓</span>}
                 </button>
               ))}
+              <div className="my-1 h-px bg-white/10" />
+              <button
+                role="menuitemcheckbox"
+                aria-checked={motionSound}
+                onClick={() => setMotionSound(!motionSound)}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-bold text-white hover:bg-white/10"
+              >
+                <span>{isAr ? "المؤثرات الصوتية" : "Sound effects"}</span>
+                <span aria-hidden>{motionSound ? "🔊" : "🔇"}</span>
+              </button>
             </div>
           )}
         </div>

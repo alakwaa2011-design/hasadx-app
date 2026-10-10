@@ -12,7 +12,7 @@
  * shared theme/pattern catalog.
  */
 import * as React from "react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as LucideIcons from "lucide-react";
 import { Square } from "lucide-react";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
@@ -787,6 +787,51 @@ function VideoEmbedRenderer({ el }: { el: SlideElement }) {
  * controls the outer size — we just lay the elements out at percentage
  * coordinates so it scales letterboxed inside any container.
  */
+/* Big figures (e.g. "77%", "300", "٣٠") count up from zero when their step appears. */
+function parseCountable(text: string): { prefix: string; value: number; decimals: number; suffix: string; arabic: boolean } | null {
+  const t = (text ?? "").trim();
+  if (!t || t.length > 12 || /\s/.test(t)) return null;
+  const m = /^([^0-9٠-٩]{0,2})([0-9٠-٩]+(?:[.,٫][0-9٠-٩]+)?)([^0-9٠-٩]{0,3})$/.exec(t);
+  if (!m) return null;
+  const arabic = /[٠-٩]/.test(m[2]);
+  const latin = m[2].replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/[,٫]/, ".");
+  const value = Number(latin);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const decimals = latin.includes(".") ? latin.split(".")[1].length : 0;
+  return { prefix: m[1], value, decimals, suffix: m[3], arabic };
+}
+
+function CountUpText({ text, active, onStart }: { text: string; active: boolean; onStart?: () => void }) {
+  const parsed = useMemo(() => parseCountable(text), [text]);
+  const render = useCallback((n: number) => {
+    if (!parsed) return text;
+    let s = n.toFixed(parsed.decimals);
+    if (parsed.arabic) s = s.replace(/[0-9]/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]).replace(".", "٫");
+    return `${parsed.prefix}${s}${parsed.suffix}`;
+  }, [parsed, text]);
+  const [shown, setShown] = useState<string>(() => (parsed ? render(0) : text));
+  const started = useRef(false);
+  useEffect(() => {
+    if (!parsed) { setShown(text); return; }
+    if (!active) { started.current = false; setShown(render(0)); return; }
+    if (started.current) return;
+    started.current = true;
+    onStart?.();
+    const t0 = performance.now();
+    let raf = 0;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / 1100);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShown(p >= 1 ? text : render(parsed.value * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, text]);
+  return <>{shown}</>;
+}
+
 export function SlideRender({
   slide, theme, pattern, lang, stageMode, revealAnswers, presentActivityState, presentActivityHandlers, motion,
 }: {
@@ -837,7 +882,7 @@ export function SlideRender({
           Using a <style> tag is the simplest way to define @keyframes
           without adding a motion library dependency to this utility. */}
       {motion && (
-        <style>{`@keyframes _hdFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-7px*var(--amp,1)))}}@keyframes _hdSway{0%,100%{transform:rotate(calc(-4deg*var(--amp,1)))}50%{transform:rotate(calc(4deg*var(--amp,1)))}}@keyframes _hdWiggle{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(calc(9deg*var(--amp,1)))}84%{transform:rotate(calc(-8deg*var(--amp,1)))}92%{transform:rotate(calc(5deg*var(--amp,1)))}}@keyframes _hdFlap{0%,100%{transform:scaleX(1) translateY(0)}50%{transform:scaleX(.82) translateY(calc(-5px*var(--amp,1)))}}@keyframes _hdBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(calc(-9px*var(--amp,1))) rotate(calc(-2deg*var(--amp,1)))}}@keyframes _hdSpin{to{transform:rotate(360deg)}}@keyframes _hdPulse{0%,100%{transform:scale(1)}50%{transform:scale(calc(1 + .055*var(--amp,1)))}}@keyframes _hdLift{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}@keyframes _hdPop{0%{opacity:0;transform:translateY(20px) scale(.82)}60%{opacity:1;transform:translateY(-5px) scale(1.04)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important}}`}</style>
+        <style>{`@keyframes _hdFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-7px*var(--amp,1)))}}@keyframes _hdSway{0%,100%{transform:rotate(calc(-4deg*var(--amp,1)))}50%{transform:rotate(calc(4deg*var(--amp,1)))}}@keyframes _hdWiggle{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(calc(9deg*var(--amp,1)))}84%{transform:rotate(calc(-8deg*var(--amp,1)))}92%{transform:rotate(calc(5deg*var(--amp,1)))}}@keyframes _hdFlap{0%,100%{transform:scaleX(1) translateY(0)}50%{transform:scaleX(.82) translateY(calc(-5px*var(--amp,1)))}}@keyframes _hdBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(calc(-9px*var(--amp,1))) rotate(calc(-2deg*var(--amp,1)))}}@keyframes _hdSpin{to{transform:rotate(360deg)}}@keyframes _hdPulse{0%,100%{transform:scale(1)}50%{transform:scale(calc(1 + .055*var(--amp,1)))}}@keyframes _hdWipeR{from{opacity:1;clip-path:inset(0 0 0 100%)}to{opacity:1;clip-path:inset(0 0 0 0)}}@keyframes _hdWipeL{from{opacity:1;clip-path:inset(0 100% 0 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}@keyframes _hdLift{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}@keyframes _hdPop{0%{opacity:0;transform:translateY(20px) scale(.82)}60%{opacity:1;transform:translateY(-5px) scale(1.04)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important}}`}</style>
       )}
       {(stageMode || revealAnswers) && (
         <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes _answerReveal{0%{transform:scale(.98);filter:saturate(.8)}45%{transform:scale(1.025);filter:saturate(1.25)}100%{transform:scale(1);filter:saturate(1)}}`}</style>
@@ -858,7 +903,10 @@ export function SlideRender({
             const parts: string[] = [];
             if (motion.entering.has(el.id)) {
               const order = motion.entering.get(el.id) ?? 0;
-              parts.push(`${motion.style === "playful" ? "_hdPop" : "_hdLift"} ${motion.style === "playful" ? 560 : 480}ms cubic-bezier(.2,.8,.2,1) ${order * motion.stagger}ms both`);
+              const how = motion.reveal ?? (motion.style === "playful" ? "pop" : "lift");
+              const name = how === "wipe" ? (motion.rtl ? "_hdWipeR" : "_hdWipeL") : how === "pop" ? "_hdPop" : "_hdLift";
+              const ms = how === "wipe" ? 700 : how === "pop" ? 560 : 480;
+              parts.push(`${name} ${ms}ms cubic-bezier(.2,.8,.2,1) ${order * motion.stagger}ms both`);
             }
             const idle = el.kind === "image" && motion.idle !== false ? artIdle((el as { url?: string }).url) : null;
             if (idle) {
@@ -901,7 +949,9 @@ export function SlideRender({
                 overflow: "hidden",
               }}
             >
-              {el.text ?? ""}
+              {motion && motion.idle !== false && (el.fontSize ?? 28) >= 56 && parseCountable(el.text ?? "")
+                ? <CountUpText text={el.text ?? ""} active={!motion.hidden.has(el.id)} onStart={motion.onCount} />
+                : (el.text ?? "")}
             </div>
           );
         }
