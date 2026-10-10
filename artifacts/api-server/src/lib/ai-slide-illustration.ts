@@ -88,3 +88,25 @@ export async function generateSlideIllustrations(cards: OutlineCard[], themeKey:
   }
   return out;
 }
+
+/** One picture drawn on demand (the editor's "draw me an image" button). Returns the stored public path or null. */
+export async function drawIllustration(description: string, themeKey: string | null | undefined): Promise<string | null> {
+  try {
+    const res = await withTimeout(
+      openai.images.generate({
+        model: "gpt-image-1",
+        prompt: promptFor(description, themeKey ?? "d_modern"),
+        n: 1,
+        size: "1024x1024",
+        quality: "low",
+      } as Parameters<typeof openai.images.generate>[0]),
+      TIMEOUT_MS,
+    );
+    const b64 = (res as { data?: Array<{ b64_json?: string }> }).data?.[0]?.b64_json;
+    if (!b64) return null;
+    return await new ObjectStorageService().uploadBufferAsPublic({ buffer: Buffer.from(b64, "base64"), contentType: "image/png", extension: ".png" });
+  } catch (err) {
+    logger.warn({ err }, "On-demand illustration failed");
+    return null;
+  }
+}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, X as XIcon, ImagePlus, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, X as XIcon, ImagePlus, CheckCircle2, Sparkles } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -20,13 +20,17 @@ export function ImageSearchDialog({
   onInsert,
   isAr,
   initialQuery,
+  theme,
 }: {
   open: boolean;
   onClose: () => void;
   onInsert: (url: string) => void;
   isAr: boolean;
   initialQuery?: string;
+  /** deck theme key, so a drawn picture matches the deck's identity */
+  theme?: string;
 }) {
+  const [drawing, setDrawing] = useState(false);
   const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<ImageResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,6 +111,32 @@ export function ImageSearchDialog({
     }
   }
 
+    async function drawImage() {
+    const term = query.trim();
+    if (!term || drawing) return;
+    setDrawing(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/presentations/image-generate`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: term, theme }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as { url?: string; message?: string };
+      if (!res.ok || !payload.url) {
+        toast.error(payload.message ?? (isAr ? "تعذّر رسم الصورة الآن." : "Could not draw the image right now."));
+        return;
+      }
+      const drawn: ImageResult = { url: payload.url, thumbUrl: payload.url, title: term, source: "AI" };
+      setResults((prev) => [drawn, ...prev]);
+      setSelected(payload.url);
+    } catch {
+      toast.error(isAr ? "تعذّر الاتصال بالخادم." : "Could not reach the server.");
+    } finally {
+      setDrawing(false);
+    }
+  }
+
   async function handleInsert() {
     if (!selected) return;
     setInserting(true);
@@ -161,6 +191,16 @@ export function ImageSearchDialog({
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             <span className="ms-1.5 hidden sm:inline">{isAr ? "بحث" : "Search"}</span>
           </Button>
+          <Button
+            onClick={drawImage}
+            disabled={drawing || !query.trim()}
+            variant="outline"
+            className="rounded-xl"
+            title={isAr ? "يرسم الذكاء الاصطناعي صورة بهذا الوصف (يستهلك رصيدًا)" : "AI draws an image for this description (uses credits)"}
+          >
+            {drawing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            <span className="ms-1.5 hidden sm:inline">{isAr ? "ارسم لي صورة" : "Draw it"}</span>
+          </Button>
         </div>
 
         {/* Results grid */}
@@ -176,7 +216,7 @@ export function ImageSearchDialog({
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
               <Search className="w-10 h-10 opacity-30" />
               <p className="text-sm">{isAr ? "ابحث عن صورة لتراها هنا" : "Search for an image to see results here"}</p>
-              <p className="text-xs opacity-60">{isAr ? "الصور مجانية من Wikimedia Commons" : "Free images from Wikimedia Commons"}</p>
+              <p className="text-xs opacity-60">{isAr ? "اكتب وصفًا ثم «بحث» لصور من الإنترنت، أو «ارسم لي صورة» ليرسمها الذكاء الاصطناعي" : "Type a description, then Search the web or let the AI draw it"}</p>
             </div>
           )}
 

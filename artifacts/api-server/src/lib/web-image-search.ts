@@ -317,6 +317,36 @@ async function fetchWikimediaPresentationHits(
   }
 }
 
+
+/* Google Programmable Search (image search). Needs two values from the platform owner's Google account:
+   GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX. Without them this source is skipped silently. */
+async function fetchGooglePresentationHits(
+  query: string,
+  limit: number,
+): Promise<{ hits: PresentationImageHit[]; error?: string }> {
+  const key = process.env.GOOGLE_CSE_API_KEY?.trim();
+  const cx = process.env.GOOGLE_CSE_CX?.trim();
+  if (!key || !cx) return { hits: [] };
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 5000);
+    const url = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(key)}&cx=${encodeURIComponent(cx)}`
+      + `&searchType=image&safe=active&num=${Math.min(10, limit)}&q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, { signal: ac.signal });
+    clearTimeout(t);
+    if (!res.ok) return { hits: [], error: `Google CSE HTTP ${res.status}` };
+    const data = (await res.json()) as { items?: Array<{ title?: string; link?: string; image?: { thumbnailLink?: string }; displayLink?: string }> };
+    const hits: PresentationImageHit[] = [];
+    for (const it of data.items ?? []) {
+      if (!it.link || !isUsefulPresentationImage(it.link, it.title)) continue;
+      hits.push({ url: it.link, thumbUrl: it.image?.thumbnailLink || it.link, title: (it.title ?? "").trim() || "Image", source: it.displayLink || "Google" });
+    }
+    return { hits: rankImageResults(query, hits).slice(0, limit) };
+  } catch (e) {
+    return { hits: [], error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 /**
  * Multi-result search for the presentation editor: tries Brave (if key is set),
  * then Wikimedia Commons. Never throws; surfaces provider errors via diagnostics
@@ -328,13 +358,18 @@ export async function searchPresentationWebImages(
 ): Promise<{
   results: PresentationImageHit[];
   diagnostics: {
-    primary: "brave" | "wikimedia" | "none";
+    primary: "google" | "brave" | "wikimedia" | "none";
     braveError?: string;
     wikimediaError?: string;
   };
 }> {
   const trimmed = normalizePresentationImageQuery(query);
   const n = Math.min(Math.max(1, count), 20);
+
+  const google = await fetchGooglePresentationHits(trimmed, n);
+  if (google.hits.length > 0) {
+    return { results: google.hits, diagnostics: { primary: "google" } };
+  }
 
   const brave = await fetchBravePresentationHits(trimmed, n);
   if (brave.hits.length > 0) {

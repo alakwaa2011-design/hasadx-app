@@ -20,6 +20,7 @@ import { mintExportToken, verifyExportToken } from "../lib/export-token";
 import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentations-tier";
 import { extractFileContent, type ExtractedFile } from "../lib/file-extractor";
 import { extractSourceImages } from "../lib/extract-source-images";
+import { drawIllustration } from "../lib/ai-slide-illustration";
 import { pickDeckTheme } from "../lib/deck-theme";
 import {
   estimateSlideCount,
@@ -2016,6 +2017,35 @@ const registerAssetBody = z.object({
 const imageSearchBody = z.object({
   q: z.string().min(1).max(200),
   count: z.number().int().min(1).max(20).default(12),
+});
+
+
+/* ── POST /api/presentations/image-generate
+   "Draw me an image": one AI picture in the deck identity's style, charged as a single-slide AI call. */
+const imageGenerateBody = z.object({
+  prompt: z.string().trim().min(2).max(300),
+  theme: z.string().max(40).optional(),
+});
+router.post("/presentations/image-generate", requireTeacher, checkCredits("presentation-slide"), async (req, res) => {
+  try {
+    const { prompt, theme } = imageGenerateBody.parse(req.body);
+    const url = await drawIllustration(prompt, theme);
+    if (!url) {
+      await refundCredits(req, "image generation failed");
+      res.status(502).json({ message: "تعذّر رسم الصورة الآن. حاول مرة أخرى بعد قليل." });
+      return;
+    }
+    await captureCredits(req);
+    res.json({ url });
+  } catch (err) {
+    await refundCredits(req, "image generation error");
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ message: "وصف الصورة غير صالح." });
+      return;
+    }
+    req.log.error({ err }, "image-generate failed");
+    res.status(500).json({ message: "تعذّر رسم الصورة." });
+  }
 });
 
 router.post("/presentations/image-search", requireTeacher, async (req, res) => {

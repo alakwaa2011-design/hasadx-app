@@ -2199,6 +2199,7 @@ export default function PresentationEditor() {
             setImageSearchOpen(false);
           }}
           isAr={isAr}
+          theme={theme}
         />
 
         {Number.isFinite(id) && (
