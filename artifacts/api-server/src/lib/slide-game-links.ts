@@ -16,6 +16,7 @@ import {
   questionsTable,
   directPlayLinksTable,
   savedGameActivitiesTable,
+  soloChallengesTable,
 } from "@workspace/db";
 import { canonicalizeJson, gameContentFingerprint } from "./saved-game-activities";
 import { logger } from "./logger";
@@ -94,13 +95,13 @@ async function savedActivityToken(
   );
 }
 
-/** Wameedh class: assignment from the slide's questions + `wameeth_class` play link. */
-async function wameedhToken(
+/** The assignment that backs a slide game (created once per slide, reused afterwards). */
+async function ensureSlideAssignment(
   teacherId: number,
   slideKey: string,
   title: string,
   questions: GameQuestion[],
-): Promise<string | null> {
+): Promise<number | null> {
   if (questions.length < 2) return null;
   let assignmentId: number | null = null;
   const [existing] = await db.select({ id: assignmentsTable.id }).from(assignmentsTable)
@@ -141,6 +142,45 @@ async function wameedhToken(
     });
     assignmentId = created.id;
   }
+  return assignmentId;
+}
+
+/** Self-paced challenge: a public /solo/<slug> page on the slide's assignment. Returns the slug. */
+async function soloSlug(teacherId: number, assignmentId: number, title: string): Promise<string | null> {
+  const [existing] = await db.select({ slug: soloChallengesTable.slug }).from(soloChallengesTable)
+    .where(and(eq(soloChallengesTable.assignmentId, assignmentId), eq(soloChallengesTable.teacherId, teacherId))).limit(1);
+  if (existing) return existing.slug;
+  const slug = `slide-${randomBytes(5).toString("hex")}`;
+  const shortSlug = `s-${randomBytes(4).toString("hex")}`;
+  const [created] = await db.insert(soloChallengesTable).values({
+    slug,
+    shortSlug,
+    assignmentId,
+    teacherId,
+    assignmentTitle: title.slice(0, 200) || "مسابقة",
+    questions: [],
+    timePerQuestion: 20,
+    questionsPerParticipant: null,
+    leaderboardDisplay: "top20",
+    maxAttempts: 1,
+    notes: null,
+    expiresAt: null,
+    isMultiLevel: false,
+    levels: null,
+    difficultyDistribution: null,
+    allowedClasses: null,
+  } as never).returning({ slug: soloChallengesTable.slug });
+  return created?.slug ?? null;
+}
+
+/** Wameedh class: assignment from the slide's questions + `wameeth_class` play link. */
+async function wameedhToken(
+  teacherId: number,
+  slideKey: string,
+  title: string,
+  questions: GameQuestion[],
+): Promise<string | null> {
+  const assignmentId = await ensureSlideAssignment(teacherId, slideKey, title, questions);
   if (assignmentId === null) return null;
   return linkFor(
     and(
@@ -154,6 +194,7 @@ async function wameedhToken(
 
 const CLASS_PATH: Record<string, string> = {
   kahoot: "/game/wameeth/class",
+  wheel: "/game/wameeth/class", // the wheel has no public classroom link; Wameedh class plays the same questions
   tug: "/game/tug/class",
   xo: "/game/xo/class",
 };
@@ -171,11 +212,17 @@ export async function buildSlideGameLinks(
     const game = (slide.elements ?? []).find((e) => e.kind === "hasad-game") as
       | { gameKind?: string; topic?: string; prompt?: string; questions?: unknown }
       | undefined;
-    if (!game || !game.gameKind || !CLASS_PATH[game.gameKind]) continue;
+    if (!game || !game.gameKind || (!CLASS_PATH[game.gameKind] && game.gameKind !== "solo")) continue;
     try {
       const questions = cleanQuestions(game.questions);
       const title = String(game.topic ?? game.prompt ?? "");
       let token: string | null = null;
+      if (game.gameKind === "solo") {
+        const aId = await ensureSlideAssignment(teacherId, `${deckId}:${slide.id ?? i}`, title, questions);
+        const slug = aId === null ? null : await soloSlug(teacherId, aId, title);
+        if (slug) out[i] = `${origin}/solo/${slug}`;
+        continue;
+      }
       if (game.gameKind === "xo") token = await savedActivityToken(teacherId, "xo", title, questions);
       else if (game.gameKind === "tug") token = await savedActivityToken(teacherId, "tug", title, questions);
       else token = await wameedhToken(teacherId, `${deckId}:${slide.id ?? i}`, title, questions);
