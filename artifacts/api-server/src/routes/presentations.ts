@@ -21,6 +21,7 @@ import { resolvePresentationsTier, getPresentationUsage } from "../lib/presentat
 import { extractFileContent, type ExtractedFile } from "../lib/file-extractor";
 import { extractSourceImages } from "../lib/extract-source-images";
 import { drawIllustration } from "../lib/ai-slide-illustration";
+import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { pickDeckTheme } from "../lib/deck-theme";
 import {
   estimateSlideCount,
