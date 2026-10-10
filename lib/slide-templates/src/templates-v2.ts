@@ -257,9 +257,9 @@ function timeline(b: B, card: OutlineCard) {
 function closure(b: B, card: OutlineCard) {
   header(b, card, "closure");
   const items = pts(card).slice(0, 5);
-  const key = pickArtKey([card.visualDirection.icon, "medal"], 0);
+  const key = pickArtKey([card.visualDirection.icon, card.title, ...items], card.index);
   b.disc(90, 330, 250, b.acc(2));
-  b.art("medal", 105, 345, 220);
+  b.art(key, 105, 345, 220);
   const x0 = 380, w0 = SAFE_R - x0, n = Math.max(1, items.length), gap = 16, top = 300, h = (650 - top - gap * (n - 1)) / n;
   void key;
   items.forEach((t, i) => {

@@ -155,10 +155,10 @@ const DEFAULT_PREFS: Required<SavedPrefs> = {
   durationMinutes: 45,
   languageLevel: "medium",
   density: "detailed",
-  activities: false,
-  questions: false,
+  activities: true,
+  questions: true,
   poll: false,
-  quiz: false,
+  quiz: true,
   notes: "",
 };
 
@@ -501,6 +501,15 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
         })()}
       </div>
 
+        <div className="space-y-2">
+          <Label>{tx.toggles ?? (isAr ? "اقتراحات تفاعل (لن تُدرج تلقائياً)" : "Interaction hints (never auto-inserted)")}</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <ToggleRow label={isAr ? "أنشطة" : "Activities"} value={activities} onChange={setActivities} />
+            <ToggleRow label={isAr ? "أسئلة" : "Questions"} value={questions} onChange={setQuestions} />
+            <ToggleRow label={isAr ? "استطلاع" : "Poll"} value={poll} onChange={setPoll} />
+            <ToggleRow label={isAr ? "اختبار سريع" : "Quick quiz"} value={quiz} onChange={setQuiz} />
+          </div>
+        </div>
       {/* ── Advanced options toggle ── */}
       <div className="flex items-center justify-between">
         <button
@@ -583,15 +592,6 @@ export const BriefForm = forwardRef<BriefFormHandle, Props>(function BriefForm(
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>{tx.toggles ?? (isAr ? "اقتراحات تفاعل (لن تُدرج تلقائياً)" : "Interaction hints (never auto-inserted)")}</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <ToggleRow label={isAr ? "أنشطة" : "Activities"} value={activities} onChange={setActivities} />
-              <ToggleRow label={isAr ? "أسئلة" : "Questions"} value={questions} onChange={setQuestions} />
-              <ToggleRow label={isAr ? "استطلاع" : "Poll"} value={poll} onChange={setPoll} />
-              <ToggleRow label={isAr ? "اختبار سريع" : "Quick quiz"} value={quiz} onChange={setQuiz} />
-            </div>
-          </div>
 
         </div>
       )}
