@@ -242,6 +242,28 @@ export async function buildPdf(printUrl: string): Promise<Buffer> {
       "window.__SLIDES_READY__ === true",
       { timeout: 15_000 },
     ).catch(() => undefined);
+    /* Web fonts are fetched lazily per unicode-range subset, so `networkidle0` can return before the Arabic
+       subset of a family has loaded. The server's own fonts have no Arabic, so an unloaded family falls
+       back to a CJK face and the text prints as unreadable Chinese glyphs. Ask for every family used on the
+       slides explicitly, with Arabic sample text, and wait for them before printing. */
+    await page.evaluate(`(async () => {
+      const fams = new Set();
+      document.querySelectorAll('.print-slide *').forEach((el) => {
+        const ff = getComputedStyle(el).fontFamily || '';
+        ff.split(',').map((f) => f.trim().replace(/^["']|["']$/g, '')).filter(Boolean).forEach((f) => {
+          if (!/^(sans-serif|serif|system-ui|monospace|inherit)$/i.test(f)) fams.add(f);
+        });
+      });
+      const loads = [];
+      fams.forEach((f) => {
+        for (const w of ['400', '700', '900']) {
+          loads.push(document.fonts.load(w + ' 32px "' + f + '"', 'أبجد هوز ابتث 0123 Abc').catch(() => null));
+        }
+      });
+      await Promise.all(loads);
+      await document.fonts.ready;
+    })()`).catch(() => undefined);
+    await new Promise((r) => setTimeout(r, 400));
     /* Diagnostic: how many slide divs actually rendered, and is the
        first one non-empty? Helps tell "page count looks right but
        blank" from "renderer never mounted". */
