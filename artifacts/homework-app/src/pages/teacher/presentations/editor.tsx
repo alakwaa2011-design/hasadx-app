@@ -3456,8 +3456,24 @@ function ElementContent({
        first question's options, the correct answer, and a "+N more"
        hint when the launcher has additional questions. */
     return (
-      <div style={{ width: "100%", height: "100%", userSelect: "none" }}>
+      <div style={{ width: "100%", height: "100%", userSelect: "none", position: "relative" }}>
         <HasadGameRenderer el={el} lang={isAr ? "ar" : "en"} />
+        {/* Editor-only shortcut: the questions live in a dialog, so say so on the slide itself. */}
+        <button
+          type="button"
+          onClick={() => requestGameQuestionEditor(String((el as { id?: string }).id ?? ""))}
+          title={isAr ? "تحرير وإضافة أسئلة اللعبة" : "Edit and add game questions"}
+          style={{
+            position: "absolute", top: 10, insetInlineStart: 10, zIndex: 5,
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "6px 12px", borderRadius: 999, border: "none", cursor: "pointer",
+            background: "#D9A521", color: "#1c1003", fontWeight: 800, fontSize: 14,
+            boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          }}
+        >
+          <span aria-hidden>✎</span>
+          {isAr ? "تحرير الأسئلة" : "Edit questions"}
+        </button>
       </div>
     );
   }
@@ -4717,6 +4733,14 @@ function SlideActivitySuggestions({
   );
 }
 
+/* The slide's "edit questions" chip and the inspector's dialog live in different components: the chip records
+   which game wants its question editor, and the inspector opens it once that element is selected. */
+let pendingGameQuestionEditor: string | null = null;
+function requestGameQuestionEditor(elId: string) {
+  pendingGameQuestionEditor = elId;
+  window.dispatchEvent(new CustomEvent("hasad:edit-game-questions", { detail: { id: elId } }));
+}
+
 function HasadGameInspector({
   el, onUpdateEl, disabled, isAr, deckTheme,
 }: {
@@ -4730,6 +4754,22 @@ function HasadGameInspector({
   const questions = ((el as { questions?: { prompt: string; options: string[]; correctIndex: number }[] }).questions) ?? [];
   const prompt = String((el as { prompt?: string }).prompt ?? "");
   const [previewing, setPreviewing] = useState(false);
+  const gameElId = String((el as { id?: string }).id ?? "");
+  useEffect(() => {
+    if (pendingGameQuestionEditor && pendingGameQuestionEditor === gameElId) {
+      pendingGameQuestionEditor = null;
+      setPreviewing(true);
+    }
+    const onRequest = (e: Event) => {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      if (id && id === gameElId) {
+        pendingGameQuestionEditor = null;
+        setPreviewing(true);
+      }
+    };
+    window.addEventListener("hasad:edit-game-questions", onRequest);
+    return () => window.removeEventListener("hasad:edit-game-questions", onRequest);
+  }, [gameElId]);
   const onUpdateQuestion = useCallback(
     (qIdx: number, next: { prompt: string; options: string[]; correctIndex: number }) => {
       const updated = questions.map((q, i) => (i === qIdx ? next : q));
