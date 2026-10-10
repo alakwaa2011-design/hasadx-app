@@ -21,6 +21,7 @@ import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch } from "../lib/web-image-search";
 import { generateSlideIllustrations } from "../lib/ai-slide-illustration";
 import { resolveQuranRefsInOutline } from "../lib/resolve-quran-refs";
+import { fillActivityGames } from "../lib/activity-game-fill";
 import { slideSchema, slidesSchema } from "./presentations";
 import type { OutlineCard, Density, Lang } from "@workspace/slide-templates";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -1440,6 +1441,15 @@ router.post("/presentations/ai/build/:draftId", requireTeacher, checkCredits("pr
     } catch (err) {
       req.log.warn({ err }, "Presentation image batch failed; using visual fallbacks");
       imageHits = imageQueries.map(() => null);
+    }
+
+    /* v2 design decks: open-answer activity slides become playable games with questions from the lesson. */
+    if (themeKey.startsWith("d_")) {
+      try {
+        await fillActivityGames(outline.slides, { req, language: outline.language, subject: brief.subject, topic: brief.topic });
+      } catch (err) {
+        req.log.warn({ err }, "Activity game fill failed; keeping open-answer activities");
+      }
     }
 
     /* v2 design decks: draw illustrations / diagrams in the deck's own style where the outline asks for them.
