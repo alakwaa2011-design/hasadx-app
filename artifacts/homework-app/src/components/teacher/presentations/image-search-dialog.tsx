@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, X as XIcon, ImagePlus, CheckCircle2, Sparkles } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { resolveImageUrl } from "@/lib/image-url";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -239,7 +240,7 @@ export function ImageSearchDialog({
                     title={img.title}
                   >
                     <img
-                      src={img.thumbUrl}
+                      src={resolveImageUrl(img.thumbUrl) ?? img.thumbUrl}
                       alt={img.title}
                       loading="lazy"
                       className="w-full h-full object-cover"
