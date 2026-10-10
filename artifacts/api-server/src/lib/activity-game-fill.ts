@@ -8,15 +8,16 @@ import { generateMcqQuestions } from "./generate-mcq-slides";
 
 type Kind = NonNullable<OutlineCard["gameSuggestion"]>;
 
-/** Pick a game that suits the subject; otherwise rotate so one deck's games differ. */
+/* Only games that need no student devices: Wameedh (class), Tug of war (class), XO (class) and the
+   self-paced challenge. The subject only changes the order they are offered in. */
 export function chooseGameKind(subject: string, topic: string, ordinal: number): Kind {
   const text = `${subject} ${topic}`.toLowerCase();
-  if (/(قرآن|قران|تجويد|حديث|فقه|سيرة|توحيد|islam|quran|hadith)/.test(text)) return ordinal % 2 === 0 ? "kahoot" : "wheel";
-  if (/(رياضيات|حساب|جبر|هندسة|math|algebra|geometry)/.test(text)) return ordinal % 2 === 0 ? "rocket" : "millionaire";
-  if (/(علوم|فيزياء|كيمياء|أحياء|science|physics|chemistry|biology)/.test(text)) return ordinal % 2 === 0 ? "millionaire" : "kahoot";
-  if (/(جغرافيا|تاريخ|دراسات|geography|history|social)/.test(text)) return ordinal % 2 === 0 ? "tug" : "kahoot";
-  const rotation: Kind[] = ["kahoot", "tug", "wheel", "rocket", "millionaire"];
-  return rotation[ordinal % rotation.length];
+  const order: Kind[] =
+    /(رياضيات|حساب|جبر|هندسة|math|algebra|geometry)/.test(text) ? ["xo", "kahoot", "tug", "solo"]
+      : /(قرآن|قران|تجويد|حديث|فقه|سيرة|توحيد|islam|quran|hadith)/.test(text) ? ["kahoot", "tug", "solo", "xo"]
+        : /(علوم|فيزياء|كيمياء|أحياء|science|physics|chemistry|biology)/.test(text) ? ["kahoot", "xo", "tug", "solo"]
+          : ["kahoot", "tug", "xo", "solo"];
+  return order[ordinal % order.length];
 }
 
 const needsGame = (c: OutlineCard) =>

@@ -165,7 +165,7 @@ export const outlineSlideCardSchema = z.object({
      model can omit it on slides where no game fits. */
   gameSuggestion: z.enum([
     "kahoot", "wheel", "millionaire", "flag-quiz", "capitals",
-    "letrly", "rocket", "tug", "maraqui", "hack",
+    "letrly", "rocket", "tug", "maraqui", "hack", "xo", "solo",
   ]).nullable().optional(),
   /* Phase 5 — AI-generated complete question set for the slide's
      suggested game. When present, the editor + live-control "Start

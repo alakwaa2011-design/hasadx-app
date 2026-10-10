@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
+import { createHasadActivityFromSlide } from "@/lib/presentation-hasad-activities";
 import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import { AttachedSlideFrame } from "@/components/presentations/attached-slide-frame";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
@@ -91,6 +92,35 @@ function playPresentAnswerSound(kind: "correct" | "wrong") {
   } catch {
     // Audio feedback should never block presenting.
   }
+}
+
+/** Classroom games that run on one screen, opened in the same tab so the presentation stays the home page.
+ *  Wameedh (class) / Tug of war (class) / XO (class) read their questions from sessionStorage; the
+ *  self-paced challenge is created from the slide's questions and opened in its own setup page. */
+type ClassGameKind = "kahoot" | "tug" | "xo";
+const CLASS_GAME_ROUTE: Record<ClassGameKind, { key: string; path: string }> = {
+  kahoot: { key: "wameeth-class-setup", path: "/game/wameeth/class" },
+  tug: { key: "tug-class-setup", path: "/game/tug/class" },
+  xo: { key: "xo-class-setup", path: "/game/xo/class" },
+};
+function launchClassGame(
+  kind: ClassGameKind,
+  el: HasadGameEl,
+  title: string,
+  go: (to: string) => void,
+): boolean {
+  const questions = (el.questions ?? [])
+    .filter((q) => q.options?.length >= 2)
+    .map((q) => ({ text: q.prompt, options: q.options, correct: q.correctIndex }));
+  if (questions.length < 2) return false;
+  const route = CLASS_GAME_ROUTE[kind];
+  try {
+    sessionStorage.setItem(route.key, JSON.stringify({ questions, duration: 20, title, endMode: "questions" }));
+  } catch {
+    return false;
+  }
+  go(route.path);
+  return true;
 }
 
 /** Write activity payload to localStorage then open the runner in a new tab. */
@@ -399,6 +429,33 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     );
   }, [isAr, setLocation]);
 
+  /** Start the slide's own game: a single-screen classroom mode opened in this same tab (the page the
+   *  teacher returns to with "back"), or the self-paced challenge built from the slide's questions. */
+  const launchGameFromSlide = useCallback(async (el: HasadGameEl) => {
+    const kind = el.gameKind;
+    const title = el.topic || el.prompt || data?.title || "";
+    try {
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}?slide=${idx + 1}`);
+    } catch { /* ignore */ }
+    if (kind === "kahoot" || kind === "tug" || kind === "xo") {
+      if (launchClassGame(kind, el, title, setLocation)) return;
+    }
+    if (kind === "solo" && current) {
+      try {
+        const created = await createHasadActivityFromSlide(
+          current as unknown as Parameters<typeof createHasadActivityFromSlide>[0],
+          id,
+          "quick_quiz",
+        );
+        setLocation(`/teacher/solo-challenges/new?source=assignment&assignmentId=${created.assignmentId}`);
+        return;
+      } catch {
+        /* fall back to the in-page runner below */
+      }
+    }
+    launchActivityRunner(el, data?.theme, deckLang);
+  }, [current, data?.theme, data?.title, deckLang, id, idx, setLocation]);
+
   /** If the editor already stored a game type, launch it directly. */
   const launchSelectedHasadGame = useCallback(() => {
     if (!activeActivityEl?.assignmentId || isLaunchingActivity) return;
@@ -548,7 +605,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
             {activeGameEl && (
               <button
                 type="button"
-                onClick={() => launchActivityRunner(activeGameEl, data.theme, deckLang)}
+                onClick={() => void launchGameFromSlide(activeGameEl)}
                 className="pointer-events-auto flex min-h-14 items-center gap-3 rounded-2xl px-8 py-3 text-lg font-black text-white ring-4 ring-amber-300/60 transition-all hover:scale-105 active:scale-95 motion-safe:animate-pulse"
                 style={{
                   background: "#D9A521",

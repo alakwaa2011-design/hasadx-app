@@ -193,7 +193,9 @@ export type ActivityElement = BaseElement & {
    a Hasad game on an interactive slide. */
 export type HasadGameKind =
   | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals"
-  | "letrly" | "rocket" | "tug" | "maraqui" | "hack";
+  | "letrly" | "rocket" | "tug" | "maraqui" | "hack"
+  /* single-screen classroom modes: XO (class) and the student self-paced challenge */
+  | "xo" | "solo";
 
 /* Phase 5 — AI-generated complete question set carried alongside a
    `hasad-game` launcher. When present, the editor + live control's

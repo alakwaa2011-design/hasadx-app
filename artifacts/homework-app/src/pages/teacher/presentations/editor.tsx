@@ -2054,7 +2054,6 @@ export default function PresentationEditor() {
                 deckTitle={data.title ?? ""}
                 onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
                 onOpenImageSearch={() => setImageSearchOpen(true)}
-            onOpenImageGenerate={() => setImageGenerateOpen(true)}
                 onOpenImageGenerate={() => setImageGenerateOpen(true)}
                 uploading={uploading}
                 onDeselect={() => setSelectedElId(null)}
@@ -4749,6 +4748,8 @@ function HasadGameInspector({
     tug: isAr ? "شد الحبل" : "Tug of war",
     maraqui: isAr ? "السلّم والثعبان" : "Maraqui",
     hack: isAr ? "تحدي الاختراق" : "Hack challenge",
+    xo: isAr ? "إكس أو الصف" : "XO (class)",
+    solo: isAr ? "مسابقة ذاتية" : "Self-paced challenge",
   };
   return (
     <>

@@ -243,6 +243,11 @@ export default function SoloChallengeCreatePage() {
       .then(data => {
         const list = Array.isArray(data) ? data : (Array.isArray(data?.assignments) ? data.assignments : []);
         setAssignments(list);
+        const wanted = new URLSearchParams(window.location.search).get("assignmentId");
+        if (wanted) {
+          const hit = list.find((a: { id: number | string }) => String(a.id) === wanted);
+          if (hit) setSelectedAssignment(hit);
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingAssignments(false));

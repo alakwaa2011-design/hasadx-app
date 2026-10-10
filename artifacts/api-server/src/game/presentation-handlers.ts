@@ -153,6 +153,8 @@ const HASAD_GAME_TEACHER_URL: Record<string, string> = {
   "tug":         "/game/tug-create",
   "maraqui":     "/game/maraqui-setup",
   "hack":        "/game/hack-setup",
+  "xo":          "/game/xo/create",
+  "solo":        "/teacher/solo-challenges/new",
 };
 const HASAD_GAME_STUDENT_URL = "/game/join";
 

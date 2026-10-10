@@ -264,7 +264,7 @@ const hasadGameElement = baseElement.extend({
   kind: z.literal("hasad-game"),
   gameKind: z.enum([
     "kahoot", "wheel", "millionaire", "flag-quiz", "capitals",
-    "letrly", "rocket", "tug", "maraqui", "hack",
+    "letrly", "rocket", "tug", "maraqui", "hack", "xo", "solo",
   ]),
   prompt: z.string().min(1).max(200).optional(),
   topic: z.string().max(200).optional(),

@@ -75,7 +75,7 @@ export interface SanitizedImagePlan {
 
 export type SanitizedGameSuggestion =
   | "kahoot" | "wheel" | "millionaire" | "flag-quiz" | "capitals"
-  | "letrly" | "rocket" | "tug" | "maraqui" | "hack"
+  | "letrly" | "rocket" | "tug" | "maraqui" | "hack" | "xo" | "solo"
   | null;
 
 export interface SanitizedGameQuestion {
@@ -149,7 +149,7 @@ const ALLOWED_STAGES = new Set<Stage>(["opener", "concept", "practice", "closure
 const ALLOWED_INTERACTION = new Set(["poll", "quiz", "discussion", "activity"]);
 const ALLOWED_GAMES = new Set<NonNullable<SanitizedGameSuggestion>>([
   "kahoot", "wheel", "millionaire", "flag-quiz", "capitals",
-  "letrly", "rocket", "tug", "maraqui", "hack",
+  "letrly", "rocket", "tug", "maraqui", "hack", "xo", "solo",
 ]);
 const ALLOWED_ACTIVITY_TYPES = new Set([
   "word_cloud", "discussion_wall", "live_poll", "quick_quiz",
@@ -612,7 +612,10 @@ export function sanitizeOutline(
     const rawGame = typeof slide.gameSuggestion === "string" ? slide.gameSuggestion : "";
     if (rawGame && ALLOWED_GAMES.has(rawGame as NonNullable<SanitizedGameSuggestion>)) {
       if (brief.toggles.activities) {
-        gameSuggestion = rawGame as SanitizedGameSuggestion;
+        /* Only single-screen classroom games are offered: anything that needs student devices
+           (rocket, wheel, millionaire, hack…) becomes Wameedh (class mode). */
+        const CLASSROOM = new Set(["kahoot", "tug", "xo", "solo"]);
+        gameSuggestion = (CLASSROOM.has(rawGame) ? rawGame : "kahoot") as SanitizedGameSuggestion;
       } else {
         feedback.push(`Slide ${i + 1}: gameSuggestion cleared (activities disabled).`);
       }
