@@ -1266,6 +1266,41 @@ function tplCallout(o: MaterializeOptions, warnings: string[]): Element[] {
 }
 
 /* ── Public entry. Materializes one outline card → one slide. */
+
+/* A short "what to do on this slide" direction by kind, used when the outline carries no teacherNotes. */
+function stageDirection(card: OutlineCard, lang: "ar" | "en"): string {
+  const ar = lang === "ar";
+  const t = (card.title || "").trim();
+  switch (card.kind) {
+    case "title":
+      return ar ? `ابدأ بسؤال يثير فضول الطلاب حول «${t}»، ودعهم يتوقعون قبل أن تكشف الموضوع.` : `Open with a question that makes students curious about "${t}" and let them predict first.`;
+    case "objectives":
+      return ar ? "اقرأ الأهداف، ثم اسأل الطلاب: ماذا تتوقعون أن نتعلم في هذه الحصة؟" : "Read the objectives, then ask: what do you expect to learn today?";
+    case "concept-card":
+      return ar ? "اقرأ التعريف ببطء، ثم اطلب من طالب أن يعيد صياغته بكلماته وأعطِ مثالًا من حياتهم." : "Read the definition slowly, have a student restate it, then give an example from their life.";
+    case "comparison":
+      return ar ? "ركّز على الفرق بين الطرفين، ثم اسأل: ما وجه الشبه؟ وما الفرق الأهم؟" : "Focus on the difference between the two, then ask: what is similar, and what matters most?";
+    case "steps":
+      return ar ? "اطلب من الطلاب توقّع الخطوة التالية قبل أن تعرضها، ثم اربط الخطوات ببعضها." : "Ask students to predict each next step before you reveal it, then link the steps together.";
+    case "timeline":
+      return ar ? "اعرض الأحداث بالتتابع واسأل في كل حدث: ماذا حدث بعده ولماذا؟" : "Reveal events one by one and ask after each: what happened next, and why?";
+    case "stat":
+      return ar ? "اترك الطلاب يخمّنون الرقم أولًا، ثم اكشفه واسأل: ما الذي يدل عليه؟" : "Let students guess the figure first, then reveal it and ask what it tells us.";
+    case "quote":
+      return ar ? "اقرأ النص بصوت واضح، ثم اسأل: ما الفكرة التي يحثّنا عليها؟" : "Read it aloud, then ask: what idea does it call us to?";
+    case "formula":
+      return ar ? "اكتب القاعدة على السبورة مع الطلاب، ثم جرّبها على مثال واحد قبل الانتقال." : "Write the rule with the class, then try it on one example before moving on.";
+    case "callout":
+      return ar ? "توقّف هنا وركّز على هذه النقطة، واطلب من الطلاب أن يكرروها بكلماتهم." : "Pause here and stress this point; ask students to repeat it in their own words.";
+    case "closure":
+      return ar ? "اطلب من طالب أن يلخّص الدرس بجملة، ثم اسأل: ما أهم ما تعلمناه اليوم؟" : "Ask a student to summarise the lesson in one sentence, then ask: what mattered most today?";
+    case "interactive":
+      return ar ? "اطرح السؤال، واترك خمس ثوانٍ للتفكير قبل الإجابة، ثم ناقش الإجابة مع الطلاب." : "Pose the question, give five seconds to think before answering, then discuss the answer.";
+    default:
+      return ar ? "اقرأ الشريحة ثم اسأل الطلاب سؤالًا يربطها بما سبق." : "Read the slide, then ask students a question that connects it to what came before.";
+  }
+}
+
 export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
   const warnings: string[] = [];
   const seed = opts.idSeed ?? `s${opts.card.index}`;
@@ -1309,14 +1344,10 @@ export function materializeSlide(opts: MaterializeOptions): MaterializeResult {
   /* Speaker notes — concatenate purpose + interaction hint so the
      teacher sees the AI rationale without us inserting it into the
      visual canvas. */
-  const noteLines = card.teacherNotes ? [card.teacherNotes, card.purpose] : [card.purpose];
-  if (card.interactionHint) {
-    noteLines.push(
-      opts.lang === "ar"
-        ? `اقتراح تفاعل: ${opts.card.interactionHint}`
-        : `Suggested interaction: ${opts.card.interactionHint}`,
-    );
-  }
+  /* The notes tell the teacher what to DO on the slide (a stage direction), not what the slide says. The
+     model writes them (`teacherNotes`); when it did not, a direction fitted to the slide kind is used
+     instead of the old one-line summary. */
+  const noteLines = [card.teacherNotes?.trim() || stageDirection(card, opts.lang)];
   if (card.source) noteLines.push(card.source);
 
   /* v2 identities: interactive slides keep their legacy elements (the live activity widgets) but sit on the
