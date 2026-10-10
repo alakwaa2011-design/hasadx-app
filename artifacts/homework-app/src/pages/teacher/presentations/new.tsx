@@ -17,7 +17,7 @@ import {
   Sparkles, Loader2, ArrowLeft, ArrowRight, Zap, Settings2,
   CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, Play, Pencil,
   MessageSquare, HelpCircle, BarChart2, Type, Target, Image as ImageIcon, File, Presentation,
-  UploadCloud, FileText, X, Trash2, Plus, Check, Search, BookOpen
+  UploadCloud, FileText, X, Trash2, Plus, Check, Search, BookOpen, LayoutGrid, PenLine
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -890,9 +890,11 @@ export default function NewPresentationPage() {
                 <Link href="/teacher/presentations">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 text-sm font-black text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 transition-colors bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl"
+                    className="inline-flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-300 hover:text-white hover:bg-emerald-600 transition-colors bg-white dark:bg-[#15201B] border border-emerald-200 dark:border-emerald-800/60 shadow-sm px-4 py-2.5 rounded-xl"
                   >
+                    <LayoutGrid className="w-4 h-4" />
                     {isAr ? "قائمة العروض" : "All decks"}
+                    {isAr ? <ArrowLeft className="w-3.5 h-3.5 opacity-70" /> : <ArrowRight className="w-3.5 h-3.5 opacity-70" />}
                   </button>
                 </Link>
               </div>
@@ -1023,6 +1025,7 @@ export default function NewPresentationPage() {
                 <div className="flex-1 h-px bg-emerald-100 dark:bg-emerald-900/40" />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Import File — same visual weight, dashed border signals "bring your own" */}
               <button
                 onClick={() => setMode("import")}
@@ -1049,6 +1052,29 @@ export default function NewPresentationPage() {
                   </div>
                 </div>
               </button>
+              {/* Manual — start from a blank deck and build it by hand */}
+              <Link href="/teacher/presentations?create=1" className="block">
+                <div className="group w-full h-full relative overflow-hidden rounded-3xl bg-white dark:bg-[#15201B] border-2 border-slate-200 dark:border-slate-700/60 p-4 sm:p-5 text-start transition-all duration-300 hover:border-emerald-400 hover:shadow-md active:scale-[0.99] cursor-pointer">
+                  <div className="relative z-10 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-slate-800/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform border border-slate-200 dark:border-slate-700/50">
+                      <PenLine className="w-5 h-5 text-slate-600 dark:text-slate-300" strokeWidth={2} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-base text-slate-800 dark:text-slate-100 mb-0.5">
+                        {isAr ? "إنشاء يدوي" : "Create manually"}
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                        {isAr ? "ابدأ بعرض فارغ وابنِ شرائحك بنفسك" : "Start from a blank deck and build it yourself"}
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-1.5 text-sm font-black text-emerald-600 dark:text-emerald-400 group-hover:gap-2.5 transition-all duration-200">
+                      {isAr ? "ابدأ" : "Start"}
+                      {isAr ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+              </div>
             </motion.div>
           )}
 

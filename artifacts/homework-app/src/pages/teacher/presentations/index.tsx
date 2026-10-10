@@ -138,6 +138,18 @@ export default function PresentationsIndex({
   const [tab, setTab] = useState<TabId>("recent");
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  /* "Create manually" on the new-deck screen links here with ?create=1 to open the blank-deck dialog. */
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("create") === "1") {
+        setShowCreate(true);
+        sp.delete("create");
+        const rest = sp.toString();
+        window.history.replaceState(window.history.state, "", window.location.pathname + (rest ? `?${rest}` : ""));
+      }
+    } catch { /* ignore */ }
+  }, []);
   const [showImport, setShowImport] = useState(false);
   const [goLiveLoading, setGoLiveLoading] = useState<number | null>(null);
 
