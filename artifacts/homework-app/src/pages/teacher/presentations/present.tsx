@@ -469,7 +469,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         case "f":
         case "F":          e.preventDefault(); void toggleFullscreen(); break;
         case "n":
-        case "N":          e.preventDefault(); setShowNotes((v) => !v); break;
+        case "N":          e.preventDefault(); if (notesEnabledRef.current) setShowNotes((v) => !v); break;
       }
     };
     window.addEventListener("keydown", onKey);
@@ -479,9 +479,20 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   /* Speaker notes. "N" toggles an on-screen panel (for a teacher who is alone with the screen); the notes
      button opens the presenter window, which follows this one over a BroadcastChannel and can drive it. */
   const [showNotes, setShowNotes] = useState(false);
+  /* The teacher can switch the notes feature off entirely (button, N key and panel disappear). */
+  const [notesEnabled, setNotesEnabledState] = useState<boolean>(() => {
+    try { return localStorage.getItem("hasad:notes-enabled") !== "off"; } catch { return true; }
+  });
+  const setNotesEnabled = useCallback((on: boolean) => {
+    setNotesEnabledState(on);
+    if (!on) setShowNotes(false);
+    try { localStorage.setItem("hasad:notes-enabled", on ? "on" : "off"); } catch { /* ignore */ }
+  }, []);
+  const notesEnabledRef = useRef(true);
   const goNextRef = useRef(goNext);
   const goPrevRef = useRef(goPrev);
   useEffect(() => { goNextRef.current = goNext; goPrevRef.current = goPrev; }, [goNext, goPrev]);
+  useEffect(() => { notesEnabledRef.current = notesEnabled; }, [notesEnabled]);
   const idxRef = useRef(idx);
   useEffect(() => { idxRef.current = idx; }, [idx]);
   const presenterChan = useRef<BroadcastChannel | null>(null);
@@ -713,7 +724,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         {isAr ? "التالي" : "Next"}
         {isAr ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
       </button>
-      {!isPublic && (
+      {!isPublic && notesEnabled && (
         <button
           onClick={openPresenterWindow}
           className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-white/10 px-3 text-white hover:bg-white/20"
@@ -724,7 +735,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           <span className="hidden md:inline text-sm font-bold">{isAr ? "الملاحظات" : "Notes"}</span>
         </button>
       )}
-      {baseProfile && (
+      {!isPublic && (
         <div className="relative">
           <button
             onClick={() => setMotionMenuOpen((o) => !o)}
@@ -740,7 +751,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
               className="absolute bottom-full mb-2 end-0 z-50 w-56 rounded-xl border border-white/15 bg-slate-900 p-1.5 text-start shadow-2xl"
               role="menu"
             >
-              {([
+              {baseProfile && ([
                 ["auto", isAr ? "تلقائية (بحسب التصميم)" : "Automatic (by design)"],
                 ["calm", isAr ? "هادئة ومهنية" : "Calm"],
                 ["playful", isAr ? "مرحة" : "Playful"],
@@ -757,8 +768,17 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                   {motionMode === value && <span aria-hidden>✓</span>}
                 </button>
               ))}
-              <div className="my-1 h-px bg-white/10" />
+              {baseProfile && <div className="my-1 h-px bg-white/10" />}
               <button
+                role="menuitemcheckbox"
+                aria-checked={notesEnabled}
+                onClick={() => setNotesEnabled(!notesEnabled)}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-bold text-white hover:bg-white/10"
+              >
+                <span>{isAr ? "ملاحظات المعلم" : "Speaker notes"}</span>
+                <span aria-hidden>{notesEnabled ? "✓" : "—"}</span>
+              </button>
+              {baseProfile && <button
                 role="menuitemcheckbox"
                 aria-checked={motionSound}
                 onClick={() => setMotionSound(!motionSound)}
@@ -766,7 +786,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
               >
                 <span>{isAr ? "المؤثرات الصوتية" : "Sound effects"}</span>
                 <span aria-hidden>{motionSound ? "🔊" : "🔇"}</span>
-              </button>
+              </button>}
             </div>
           )}
         </div>
@@ -887,7 +907,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         }
       `}</style>
 
-      {showNotes && !isPublic && (
+      {showNotes && !isPublic && notesEnabled && (
         <div
           className="absolute inset-x-0 bottom-0 z-[60] max-h-[45%] overflow-y-auto border-t-4 border-amber-400 bg-slate-950/95 p-5 text-white shadow-2xl"
           dir={dir}
