@@ -299,7 +299,8 @@ export function buildOneSlide(input: BuildOneInput): BuildOneResult {
       if (out.warnings.length === 0 && input.card.imagePlan?.fallback && input.card.imagePlan.fallback !== "none" && !input.backgroundImageUrl) {
         addVisualFallback(out.slide, input.card, palette, input.lang);
       }
-      fitTextElements(out.slide.elements);
+      /* Identity layouts already size every text box to its text (fitSize in templates-v2); the legacy fitter
+         measures differently and shrank those boxes' text, so it is not applied here. */
       /* Quality gate: a content slide whose copy is nearly empty is reported so the builder can
          surface it instead of silently shipping a hollow slide. */
       const kindNow = input.card.kind as string;

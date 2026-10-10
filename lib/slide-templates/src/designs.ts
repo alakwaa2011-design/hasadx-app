@@ -116,7 +116,7 @@ const lab: Design = {
     const side = n % 2 === 0;
     const bar = side ? `<rect x="${W - 34}" y="0" width="34" height="${H}" fill="#0B7285"/>${[...Array(18)].map((_, k) => `<rect x="${W - 34}" y="${30 + k * 38}" width="${k % 3 === 0 ? 22 : 12}" height="3" fill="#fff" fill-opacity=".7"/>`).join("")}` : `<rect x="0" y="0" width="34" height="${H}" fill="#0B7285"/>${[...Array(18)].map((_, k) => `<rect x="0" y="${30 + k * 38}" width="${k % 3 === 0 ? 22 : 12}" height="3" fill="#fff" fill-opacity=".7"/>`).join("")}`;
     const mol = kind === "cover"
-      ? hex(side ? 150 : W - 150, 140, 70, "#3B82F6") + hex(side ? 230 : W - 230, 180, 46, "#F59E0B") + hex(side ? 90 : W - 90, 232, 36, "#0B7285")
+      ? hex(side ? 150 : W - 150, 56, 70, "#3B82F6") + hex(side ? 262 : W - 262, 66, 40, "#F59E0B") + hex(side ? 62 : W - 62, 124, 28, "#0B7285")
       : hex(side ? 110 : W - 110, 70, 40, "#BFE3F5") + hex(side ? 170 : W - 170, 100, 24, "#F9D58A");
     return svg(W, H, `<rect width="${W}" height="${H}" fill="#F3F8FC"/>${grid}${bar}${mol}<rect x="0" y="${H - 8}" width="${W}" height="8" fill="#0B7285" fill-opacity=".18"/>`);
   },
