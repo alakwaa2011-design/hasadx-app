@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "wouter";
+import { useSmartBack } from "@/lib/nav-history";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Trophy, X } from "lucide-react";
 import { getTheme, resolveSlideGradient } from "@/lib/slide-themes";
@@ -20,6 +21,7 @@ type Payload = {
 
 export default function ActivityRunner() {
   const ui = useI18n();
+  const goBack = useSmartBack("/teacher/presentations");
   const params = useParams<{ seedId: string }>();
   const seedId = params?.seedId ?? "";
   const [payload, setPayload] = useState<Payload | null>(null);
@@ -78,7 +80,7 @@ export default function ActivityRunner() {
           <div className="text-sm text-white/70">
             {copy.missingBody}
           </div>
-          <Button onClick={() => window.close()} variant="outline">
+          <Button onClick={() => { if (window.history.length > 1) goBack(); else window.close(); }} variant="outline">
             <X className="w-4 h-4 me-1" /> {copy.close}
           </Button>
         </div>
@@ -154,7 +156,7 @@ export default function ActivityRunner() {
           <div className="text-sm font-bold tabular-nums" style={{ color: subtle }}>
             {done ? `${score} / ${total}` : copy.questionProgress.replace("{current}", String(idx + 1)).replace("{total}", String(total))}
           </div>
-          <Button size="sm" variant="outline" onClick={() => window.close()} aria-label={copy.close}>
+          <Button size="sm" variant="outline" onClick={() => { if (window.history.length > 1) goBack(); else window.close(); }} aria-label={copy.close}>
             <X className="w-4 h-4" />
           </Button>
         </div>
@@ -183,7 +185,7 @@ export default function ActivityRunner() {
               <Button onClick={restart} style={{ background: accent, color: "#1c1003" }} className="font-bold">
                 {copy.retry}
               </Button>
-              <Button onClick={() => window.close()} variant="outline">
+              <Button onClick={() => { if (window.history.length > 1) goBack(); else window.close(); }} variant="outline">
                 {copy.close}
               </Button>
             </div>

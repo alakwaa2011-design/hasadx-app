@@ -124,7 +124,7 @@ function launchClassGame(
 }
 
 /** Write activity payload to localStorage then open the runner in a new tab. */
-function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined, language?: "ar" | "en") {
+function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined, language?: "ar" | "en", go?: (to: string) => void) {
   const seedId = el.id ?? `run-${Date.now()}`;
   const payload = {
     gameKind: el.gameKind ?? "kahoot",
@@ -137,11 +137,9 @@ function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined, lan
   try {
     localStorage.setItem(`hasad:activity:${seedId}`, JSON.stringify(payload));
   } catch { /* ignore */ }
-  window.open(
-    `/teacher/presentations/activity-runner/${encodeURIComponent(seedId)}`,
-    "_blank",
-    "noopener",
-  );
+  const to = `/teacher/presentations/activity-runner/${encodeURIComponent(seedId)}`;
+  if (go) go(to);
+  else window.open(to, "_blank", "noopener");
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -191,10 +189,16 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
      editor's "Start from current slide" button can deep-link in. */
   const initialIdx = useMemo(() => {
     const sp = new URLSearchParams(window.location.search);
-    const raw = parseInt(sp.get("slide") ?? "1", 10);
+    let resume: string | null = null;
+    try {
+      resume = sessionStorage.getItem(`hasad:present-resume:${id}`);
+    } catch { /* ignore */ }
+    const raw = sp.get("slide") !== null
+      ? parseInt(sp.get("slide") ?? "1", 10)
+      : (resume !== null ? parseInt(resume, 10) + 1 : 1);
     if (!Number.isFinite(raw) || raw < 1) return 0;
     return Math.min(raw - 1, Math.max(0, total - 1));
-  }, [total]);
+  }, [total, id]);
 
   const [idx, setIdx] = useState(0);
   const [direction, setDirection] = useState<"next" | "prev">("next");
@@ -217,6 +221,11 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setIdx(initialIdx); }, [initialIdx]);
+  /* The saved slide has been applied; drop it so a later fresh start begins at slide 1. */
+  useEffect(() => {
+    if (total === 0) return;
+    try { sessionStorage.removeItem(`hasad:present-resume:${id}`); } catch { /* ignore */ }
+  }, [id, total]);
 
   /* Listen for game-finished broadcast from the teacher game console tab. */
   useEffect(() => {
@@ -429,10 +438,16 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     );
   }, [isAr, setLocation]);
 
+  /** Open a game page in this same tab, remembering the slide so "back" lands on it. */
+  const goKeepingSlide = useCallback((path: string) => {
+    try { sessionStorage.setItem(`hasad:present-resume:${id}`, String(idx)); } catch { /* ignore */ }
+    setLocation(path);
+  }, [id, idx, setLocation]);
+
   /** Start the slide's own game: a single-screen classroom mode opened in this same tab (the page the
    *  teacher returns to with "back"), or the self-paced challenge built from the slide's questions. */
   const launchGameFromSlide = useCallback(async (el: HasadGameEl) => {
-    const kind = el.gameKind;
+    const kind = el.gameKind as string | undefined;
     const title = el.topic || el.prompt || data?.title || "";
     try {
       window.history.replaceState(window.history.state, "", `${window.location.pathname}?slide=${idx + 1}`);
@@ -453,8 +468,8 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
         /* fall back to the in-page runner below */
       }
     }
-    launchActivityRunner(el, data?.theme, deckLang);
-  }, [current, data?.theme, data?.title, deckLang, id, idx, setLocation]);
+    launchActivityRunner(el, data?.theme, deckLang, goKeepingSlide);
+  }, [current, data?.theme, data?.title, deckLang, id, idx, setLocation, goKeepingSlide]);
 
   /** If the editor already stored a game type, launch it directly. */
   const launchSelectedHasadGame = useCallback(() => {
@@ -463,15 +478,15 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     const gameType = activeActivityEl.gameType ?? "knowledge_race";
 
     if (gameType === "rocket_race") {
-      window.open(`/game/rocket/create?assignmentId=${assignmentId}`, "_blank", "noopener");
+      goKeepingSlide(`/game/rocket/create?assignmentId=${assignmentId}`);
       return;
     }
     if (gameType === "tug_of_war") {
-      window.open(`/game/tug/create?assignmentId=${assignmentId}`, "_blank", "noopener");
+      goKeepingSlide(`/game/tug/create?assignmentId=${assignmentId}`);
       return;
     }
     if (gameType === "million") {
-      window.open(`/game/million?assignmentId=${assignmentId}`, "_blank", "noopener");
+      goKeepingSlide(`/game/million?assignmentId=${assignmentId}`);
       return;
     }
     if (gameType === "hack") {
@@ -479,14 +494,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       return;
     }
     if (gameType === "knowledge_race") {
-      window.open(getWameethSetupPath(assignmentId), "_blank", "noopener");
+      goKeepingSlide(getWameethSetupPath(assignmentId));
       return;
     }
     /* Wheel still uses Wameeth-compatible questions from presentations, so
        send it through the canonical Wameeth setup instead of creating a
        parallel session directly. */
-    window.open(getWameethSetupPath(assignmentId), "_blank", "noopener");
-  }, [activeActivityEl, createWameethSession, isLaunchingActivity]);
+    goKeepingSlide(getWameethSetupPath(assignmentId));
+  }, [activeActivityEl, createWameethSession, isLaunchingActivity, goKeepingSlide]);
 
   /** Confirm the game-mode selection and launch the appropriate game session.
    *
@@ -501,23 +516,19 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setShowGameModeModal(false);
 
     if (selectedGameMode === "rocket") {
-      window.open(
-        `/game/rocket/create?assignmentId=${activeActivityEl.assignmentId}`,
-        "_blank",
-        "noopener",
-      );
+      goKeepingSlide(`/game/rocket/create?assignmentId=${activeActivityEl.assignmentId}`);
       return;
     }
 
     if (selectedGameMode === "hotseat") {
-      window.open("/game/hotseat/create", "_blank", "noopener");
+      goKeepingSlide("/game/hotseat/create");
       return;
     }
 
     // Wameeth's play mode and session setup live in one place. The new tab
     // preserves presentation behavior without duplicating socket setup here.
-    window.open(getWameethSetupPath(activeActivityEl.assignmentId), "_blank", "noopener");
-  }, [activeActivityEl, isLaunchingActivity, selectedGameMode, selectedTeamCount, isAr, setLocation]);
+    goKeepingSlide(getWameethSetupPath(activeActivityEl.assignmentId));
+  }, [activeActivityEl, isLaunchingActivity, selectedGameMode, selectedTeamCount, isAr, setLocation, goKeepingSlide]);
 
   if (isLoading) {
     return (
