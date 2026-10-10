@@ -383,6 +383,7 @@ export default function PresentationEditor() {
   const [smartAddOpen, setSmartAddOpen] = useState(false);
   const [videoEmbedDialogOpen, setVideoEmbedDialogOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [imageGenerateOpen, setImageGenerateOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [creatingSlideActivity, setCreatingSlideActivity] = useState(false);
   const [launchingWameeth, setLaunchingWameeth] = useState(false);
@@ -2053,6 +2054,8 @@ export default function PresentationEditor() {
                 deckTitle={data.title ?? ""}
                 onOpenVideoEmbedDialog={() => setVideoEmbedDialogOpen(true)}
                 onOpenImageSearch={() => setImageSearchOpen(true)}
+            onOpenImageGenerate={() => setImageGenerateOpen(true)}
+                onOpenImageGenerate={() => setImageGenerateOpen(true)}
                 uploading={uploading}
                 onDeselect={() => setSelectedElId(null)}
                 gifLibraryOpen={gifLibraryOpen}
@@ -2191,6 +2194,17 @@ export default function PresentationEditor() {
           isAr={isAr}
         />
 
+        <ImageSearchDialog
+          open={imageGenerateOpen}
+          mode="generate"
+          onClose={() => setImageGenerateOpen(false)}
+          onInsert={(url) => {
+            insertImageFromUrl(url);
+            setImageGenerateOpen(false);
+          }}
+          isAr={isAr}
+          theme={theme}
+        />
         <ImageSearchDialog
           open={imageSearchOpen}
           onClose={() => setImageSearchOpen(false)}
@@ -3647,7 +3661,7 @@ function Inspector({
   onChangeTheme, onChangePattern,
   onUpdateSlide, onUpdateEl, onRemoveEl, onDuplicateEl, onMoveZ,
   onPickImage, onInsertElement, onOpenActivityPicker, onOpenActivityHub, onOpenVideoEmbedDialog,
-  onOpenImageSearch, uploading,
+  onOpenImageSearch, onOpenImageGenerate, uploading,
   onDeselect,
   gifLibraryOpen, setGifLibraryOpen,
   onOpenActivityPickerWithKind,
@@ -3677,6 +3691,8 @@ function Inspector({
   onOpenActivityHub: () => void;
   onOpenVideoEmbedDialog: () => void;
   onOpenImageSearch: () => void;
+  /** opens the AI image-generation dialog (optional: hidden where not wired) */
+  onOpenImageGenerate?: () => void;
   uploading: boolean;
   onDeselect: () => void;
   gifLibraryOpen?: boolean;
@@ -4221,7 +4237,7 @@ function Inspector({
             ))}
           </div>
           {/* Media quick-grid */}
-          <div className="grid grid-cols-4 gap-1">
+          <div className={`grid gap-1 ${onOpenImageGenerate ? "grid-cols-5" : "grid-cols-4"}`}>
             <button type="button" disabled={readOnly} onClick={onPickImage}
               title={isAr ? "رفع صورة" : "Upload image"}
               className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
@@ -4246,6 +4262,14 @@ function Inspector({
               <Search className="w-4 h-4" />
               <span className="text-[9px] font-bold leading-none">{isAr ? "بحث" : "Search"}</span>
             </button>
+            {onOpenImageGenerate && (
+              <button type="button" disabled={readOnly} onClick={onOpenImageGenerate}
+                title={isAr ? "توليد صورة بالذكاء الاصطناعي" : "Generate an image with AI"}
+                className="flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-0.5 hover:bg-emerald-50 hover:text-emerald-700 text-muted-foreground transition-colors disabled:opacity-40">
+                <Sparkles className="w-4 h-4" />
+                <span className="text-[9px] font-bold leading-none">{isAr ? "صورة بالذكاء" : "AI image"}</span>
+              </button>
+            )}
           </div>
         </div>
       </Section>

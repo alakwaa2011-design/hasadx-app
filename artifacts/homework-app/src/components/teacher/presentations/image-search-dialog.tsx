@@ -21,6 +21,7 @@ export function ImageSearchDialog({
   isAr,
   initialQuery,
   theme,
+  mode = "search",
 }: {
   open: boolean;
   onClose: () => void;
@@ -29,6 +30,8 @@ export function ImageSearchDialog({
   initialQuery?: string;
   /** deck theme key, so a drawn picture matches the deck's identity */
   theme?: string;
+  /** "generate" shows only the AI image generator; "search" is the web search with a generate shortcut */
+  mode?: "search" | "generate";
 }) {
   const [drawing, setDrawing] = useState(false);
   const [query, setQuery] = useState(initialQuery ?? "");
@@ -159,7 +162,7 @@ export function ImageSearchDialog({
       >
         <DialogHeader>
           <DialogTitle className="text-base font-bold" style={{ color: "#225739" }}>
-            {isAr ? "البحث عن صورة من الإنترنت" : "Search images from the web"}
+            {mode === "generate" ? (isAr ? "توليد صورة بالذكاء الاصطناعي" : "Generate an image with AI") : (isAr ? "البحث عن صورة من الإنترنت" : "Search images from the web")}
           </DialogTitle>
         </DialogHeader>
 
@@ -173,7 +176,7 @@ export function ImageSearchDialog({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && runSearch()}
-              placeholder={isAr ? "ابحث عن صورة... (مثال: طبيعة، تعليم، علوم)" : "Search for an image... (e.g. nature, education, science)"}
+              placeholder={mode === "generate" ? (isAr ? "صف الصورة التي تريدها... (مثال: قافلة جمال في الصحراء)" : "Describe the image you want...") : (isAr ? "ابحث عن صورة... (مثال: طبيعة، تعليم، علوم)" : "Search for an image... (e.g. nature, education, science)")}
               className="ps-9 rounded-xl"
             />
             {query && (
@@ -185,7 +188,7 @@ export function ImageSearchDialog({
               </button>
             )}
           </div>
-          <Button
+          {mode !== "generate" && (<Button
             onClick={() => runSearch()}
             disabled={loading || !query.trim()}
             className="rounded-xl"
@@ -193,16 +196,16 @@ export function ImageSearchDialog({
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             <span className="ms-1.5 hidden sm:inline">{isAr ? "بحث" : "Search"}</span>
-          </Button>
+          </Button>)}
           <Button
             onClick={drawImage}
             disabled={drawing || !query.trim()}
             variant="outline"
             className="rounded-xl"
-            title={isAr ? "يرسم الذكاء الاصطناعي صورة بهذا الوصف (يستهلك رصيدًا)" : "AI draws an image for this description (uses credits)"}
+            title={isAr ? "يولّد الذكاء الاصطناعي صورة بهذا الوصف (يستهلك رصيدًا)" : "AI generates an image for this description (uses credits)"}
           >
             {drawing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            <span className="ms-1.5 hidden sm:inline">{isAr ? "ارسم لي صورة" : "Draw it"}</span>
+            <span className="ms-1.5 hidden sm:inline">{isAr ? "صورة بالذكاء" : "AI image"}</span>
           </Button>
         </div>
 
@@ -219,7 +222,7 @@ export function ImageSearchDialog({
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
               <Search className="w-10 h-10 opacity-30" />
               <p className="text-sm">{isAr ? "ابحث عن صورة لتراها هنا" : "Search for an image to see results here"}</p>
-              <p className="text-xs opacity-60">{isAr ? "اكتب وصفًا ثم «بحث» لصور من الإنترنت، أو «ارسم لي صورة» ليرسمها الذكاء الاصطناعي" : "Type a description, then Search the web or let the AI draw it"}</p>
+              <p className="text-xs opacity-60">{mode === "generate" ? (isAr ? "صف الصورة ثم اضغط «صورة بالذكاء» — يستهلك رصيد الذكاء الاصطناعي" : "Describe the image, then press AI image — uses AI credits") : (isAr ? "اكتب وصفًا ثم «بحث» لصور من الإنترنت، أو «صورة بالذكاء» ليولّدها الذكاء الاصطناعي" : "Type a description, then Search the web or generate it with AI")}</p>
             </div>
           )}
 
