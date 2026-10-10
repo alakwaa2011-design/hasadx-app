@@ -1029,6 +1029,44 @@ Mandatory rules:
 - Do not use objectives unless truly useful.`;
 
 /* Build the user-message prompt for one outline-generation call. */
+
+/* Reads the audience the teacher named (grade, age, "university", "employees"…) and tells the model how to
+   pitch language, depth and visuals. It is guidance, not a template: the model still decides what each
+   slide needs (a definition, an example, a story, a number, a question…) and drops what does not fit. */
+function audienceGuide(gradeLevel: string, subject: string, ar: boolean): string {
+  const g = `${gradeLevel} ${subject}`.toLowerCase();
+  const has = (re: RegExp) => re.test(g);
+  let band: "early" | "lower" | "upper" | "middle" | "secondary" | "adult" | "unknown" = "unknown";
+  if (has(/(روضة|تمهيدي|حضانة|طفولة مبكرة|kindergarten|\bkg\b|preschool|nursery)/)) band = "early";
+  else if (has(/(جامع|بكالوريوس|ماجستير|دكتوراه|دورة|تدريب|موظف|مؤتمر|ورشة|كبار|university|college|training|workshop|conference|adult|professional|employee)/)) band = "adult";
+  else if (has(/(ثانوي|توجيهي|حادي عشر|ثاني عشر|العاشر|secondary|high school|grade ?(1[0-2])\b)/)) band = "secondary";
+  else if (has(/(متوسط|إعدادي|اعدادي|السابع|الثامن|التاسع|middle|grade ?[7-9]\b)/)) band = "middle";
+  else if (has(/(الرابع|الخامس|السادس|grade ?[4-6]\b|fourth|fifth|sixth)/)) band = "upper";
+  else if (has(/(الأول|الاول|الثاني|الثالث|grade ?[1-3]\b|first|second|third)/)) band = "lower";
+  const AR: Record<string, string> = {
+    early: "الجمهور أطفال روضة: جمل من 3 إلى 6 كلمات، مفردات يومية بسيطة جدًا، فكرة واحدة بسيطة في الشريحة، تكرار محبب، أمثلة من البيت والألعاب والحيوانات والألوان، وأسئلة نعم/لا أو اختيار صورة. لا مصطلحات مجردة ولا أرقام كبيرة.",
+    lower: "الجمهور صغار (الصفوف الأولى): جمل قصيرة واضحة، مفردات بسيطة، فكرة واحدة في الشريحة، أمثلة من حياة الطفل (البيت، المدرسة، اللعب)، وأسئلة مباشرة بخيارين أو ثلاثة. اشرح المصطلح الجديد بجملة واحدة.",
+    upper: "الجمهور الصفوف الأولى من المرحلة الابتدائية العليا: لغة واضحة وجمل متوسطة، مصطلحات جديدة مع تعريفها، أمثلة وقصص قصيرة، وأسئلة فهم وتفكير بسيط.",
+    middle: "الجمهور المرحلة المتوسطة: لغة أدق، تفسير السبب والنتيجة، أمثلة متنوعة ومقارنات، وأسئلة تحليل وتطبيق. يمكن إدخال مصطلحات علمية مع تبسيطها.",
+    secondary: "الجمهور المرحلة الثانوية: عمق مفاهيمي أكبر، مصطلحات دقيقة، أدلة وأمثلة تطبيقية وربط بالواقع أو الاختبارات، وأسئلة تحليل ونقاش.",
+    adult: "الجمهور كبار (جامعة/تدريب/مؤتمر): لغة مهنية دقيقة، تركيز على المفهوم والدليل والتطبيق والأرقام والحالات، بدون تبسيط طفولي ولا زخرفة، ومنهجية عرض مناسبة لمحاضرة أو ورشة.",
+    unknown: "الجمهور غير محدد بدقة: استنتج العمر والمستوى من الصف والمادة، واختر لغة وعمقًا مناسبين له.",
+  };
+  const EN: Record<string, string> = {
+    early: "Audience is kindergarten: 3–6 word sentences, everyday vocabulary, one simple idea per slide, friendly repetition, examples from home, play, animals and colours, yes/no or pick-a-picture questions. No abstract terms or big numbers.",
+    lower: "Audience is young children (early primary): short clear sentences, simple words, one idea per slide, examples from the child's life, direct two-or-three-option questions. Explain each new term in one sentence.",
+    upper: "Audience is upper primary: clear language and medium sentences, new terms with definitions, short examples and stories, simple comprehension and thinking questions.",
+    middle: "Audience is middle school: more precise language, cause and effect, varied examples and comparisons, analysis and application questions; scientific terms with simplification.",
+    secondary: "Audience is secondary school: greater conceptual depth, precise terms, evidence and applied examples, links to real life or exams, analysis and discussion questions.",
+    adult: "Audience is adults (university/training/conference): professional precise language, concept-evidence-application-numbers-cases, no childish simplification or decoration, structured like a lecture or workshop.",
+    unknown: "Audience is not stated precisely: infer age and level from the grade and subject, and choose language and depth to match.",
+  };
+  const rule = ar
+    ? "أنت من يقرر ما تحتاجه كل شريحة (تعريف، تفسير، مثال، قصة، رقم، سؤال، نشاط…): أدرج منها ما يخدم هذا الدرس وهذا الجمهور فقط، ولا تكرر قالبًا ثابتًا في كل شريحة. إن لم يكن المستخدم معلمًا (محاضر، مدرب، متحدث) فخاطب جمهوره بالأسلوب المناسب لا بأسلوب حصة مدرسية."
+    : "You decide what each slide needs (definition, explanation, example, story, figure, question, activity…): include only what serves this topic and audience, and never repeat one fixed template. If the presenter is not a classroom teacher (lecturer, trainer, speaker), address their audience in the fitting register, not as a school lesson.";
+  return `${(ar ? AR : EN)[band]}\n${rule}`;
+}
+
 export function buildOutlinePrompt(brief: OutlineBrief): string {
   const ar = brief.language === "ar";
   const lim = densityLimits(brief.density);
@@ -1196,6 +1234,9 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
     "",
     ar ? "تخطيطات الشرائح المتاحة" : "AVAILABLE LAYOUTS",
     layoutRules,
+    "",
+    ar ? "فهم الجمهور" : "AUDIENCE",
+    audienceGuide(brief.gradeLevel ?? "", brief.subject ?? "", ar),
     "",
     ar ? "عمق الحصة الكاملة" : "FULL LESSON DEPTH",
     ar ? LESSON_DEPTH_AR : LESSON_DEPTH_EN,
