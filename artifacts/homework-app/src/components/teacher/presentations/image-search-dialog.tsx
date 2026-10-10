@@ -124,7 +124,10 @@ export function ImageSearchDialog({
       });
       const payload = (await res.json().catch(() => ({}))) as { url?: string; message?: string };
       if (!res.ok || !payload.url) {
-        toast.error(payload.message ?? (isAr ? "تعذّر رسم الصورة الآن." : "Could not draw the image right now."));
+        const why = res.status === 404 ? (isAr ? "الخادم لم يُعد تشغيله بعد" : "server not restarted yet")
+          : res.status === 402 ? (isAr ? "الرصيد غير كافٍ" : "not enough credits")
+          : `HTTP ${res.status}`;
+        toast.error(`${payload.message ?? (isAr ? "تعذّر رسم الصورة الآن." : "Could not draw the image right now.")} (${why})`);
         return;
       }
       const drawn: ImageResult = { url: payload.url, thumbUrl: payload.url, title: term, source: "AI" };
