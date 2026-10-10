@@ -1,3 +1,4 @@
+import { EXTRA_ART, EXTRA_KEYS } from "./art-extra";
 /* Illustration library for the v2 slide designs.
    Every drawing is a small standalone SVG (viewBox 0 0 200 200) painted with the colours of the
    active design, so the same idea looks native in every identity. The AI never draws: it names an
@@ -27,7 +28,7 @@ function star(cx: number, cy: number, r: number, fill: string, pts = 8): string 
   return `<path d="${d}Z" fill="${fill}"/>`;
 }
 
-export const ART: Record<string, Draw> = {
+const BASE_ART: Record<string, Draw> = {
   idea: (c) => V(`<path d="M100 22a56 56 0 0 0-30 103v20h60v-20A56 56 0 0 0 100 22Z" fill="${c.a}"/><rect x="74" y="150" width="52" height="12" rx="6" fill="${c.i}"/><rect x="82" y="168" width="36" height="12" rx="6" fill="${c.i}"/><path d="M86 70l14 30 14-30" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 80h14M166 80h14M36 36l10 10M164 36l-10 10" stroke="${c.a}" stroke-width="7" stroke-linecap="round"/>`),
   book: (c) => V(`<path d="M24 50Q62 36 100 54V164Q62 148 24 162Z" fill="${c.p}"/><path d="M176 50Q138 36 100 54V164Q138 148 176 162Z" fill="${c.s}"/><path d="M36 66Q62 58 90 70M36 86Q62 78 90 90M36 106Q62 98 90 110" stroke="#fff" stroke-opacity=".6" stroke-width="5" fill="none"/><path d="M110 70Q138 58 164 66M110 90Q138 78 164 86" stroke="#fff" stroke-opacity=".6" stroke-width="5" fill="none"/>`),
   target: (c) => V(`<circle cx="100" cy="104" r="78" fill="${c.p}"/><circle cx="100" cy="104" r="58" fill="#fff"/><circle cx="100" cy="104" r="40" fill="${c.s}"/><circle cx="100" cy="104" r="20" fill="#fff"/><circle cx="100" cy="104" r="9" fill="${c.a}"/><path d="M100 104L166 38" stroke="${c.i}" stroke-width="7" stroke-linecap="round"/><path d="M150 22l16 16-6 22-22-6z" fill="${c.a}"/>`),
@@ -83,7 +84,7 @@ export const ART: Record<string, Draw> = {
 };
 
 /* Keyword → drawing. Arabic and English hints; first match wins, so order matters. */
-const KEYS: Array<[RegExp, string]> = [
+const BASE_KEYS: Array<[RegExp, string]> = [
   [/صلاة|مسجد|مصلى|أذان|إسلام|mosque|prayer/i, "mosque"],
   [/قرآن|مصحف|آية|سورة|quran|verse/i, "quran"],
   [/رمضان|صيام|صوم|هلال|عيد|crescent|ramadan|fasting/i, "crescent"],
@@ -135,6 +136,10 @@ const KEYS: Array<[RegExp, string]> = [
   [/صحيح|نجاح|تم|correct|right|done|success/i, "check"],
   [/ألغاز|تركيب|ترابط|puzzle|connect/i, "puzzle"],
 ];
+
+/* The second batch (art-extra.ts) is merged in; its specific topics are matched first. */
+export const ART: Record<string, Draw> = { ...BASE_ART, ...EXTRA_ART };
+const KEYS: Array<[RegExp, string]> = [...EXTRA_KEYS, ...BASE_KEYS];
 
 const FALLBACK = ["idea", "book", "target", "star", "puzzle", "chat", "trophy", "clock", "people", "medal"];
 
