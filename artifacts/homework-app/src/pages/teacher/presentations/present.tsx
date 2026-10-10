@@ -94,13 +94,14 @@ function playPresentAnswerSound(kind: "correct" | "wrong") {
 }
 
 /** Write activity payload to localStorage then open the runner in a new tab. */
-function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined) {
+function launchActivityRunner(el: HasadGameEl, themeKey: string | undefined, language?: "ar" | "en") {
   const seedId = el.id ?? `run-${Date.now()}`;
   const payload = {
     gameKind: el.gameKind ?? "kahoot",
     prompt: el.topic ?? el.prompt ?? "",
     questions: el.questions ?? [],
     themeKey: themeKey ?? null,
+    language,
     expiresAt: Date.now() + 30 * 60 * 1000,
   };
   try {
@@ -542,13 +543,13 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       >
         <AttachedSlideFrame footer={navigationControls} header={(activeGameEl || activeActivityEl) && (
           <div
-            className="flex flex-wrap items-center gap-2 border-b border-amber-400/40 bg-slate-900 p-2"
+            className="flex flex-wrap items-center justify-center gap-2 border-b border-amber-400/40 bg-slate-900 p-3"
           >
             {activeGameEl && (
               <button
                 type="button"
-                onClick={() => launchActivityRunner(activeGameEl, data.theme)}
-                className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black text-white transition-all hover:scale-105 active:scale-95"
+                onClick={() => launchActivityRunner(activeGameEl, data.theme, deckLang)}
+                className="pointer-events-auto flex min-h-14 items-center gap-3 rounded-2xl px-8 py-3 text-lg font-black text-white ring-4 ring-amber-300/60 transition-all hover:scale-105 active:scale-95 motion-safe:animate-pulse"
                 style={{
                   background: "#D9A521",
                   color: "#1c1003",
@@ -566,7 +567,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
                 type="button"
                 onClick={activeActivityEl.gameType ? launchSelectedHasadGame : launchHasadActivity}
                 disabled={isLaunchingActivity}
-                className="pointer-events-auto flex min-h-11 items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="pointer-events-auto flex min-h-14 items-center gap-3 rounded-2xl px-8 py-3 text-lg font-black ring-4 ring-amber-300/60 transition-all hover:scale-105 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{
                   background: "rgba(217,165,33,0.95)",
                   color: "#1f2937",

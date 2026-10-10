@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, ChevronLeft, ChevronRight, Eye, Trophy, X } from "lucide-react";
 import { getTheme, resolveSlideGradient } from "@/lib/slide-themes";
 import { useI18n } from "@/lib/i18n";
+import { ar as arLocale } from "@/locales/ar";
+import { en as enLocale } from "@/locales/en";
 
 type Question = { prompt: string; options: string[]; correctIndex: number };
 type Payload = {
@@ -12,14 +14,18 @@ type Payload = {
   prompt?: string;
   questions: Question[];
   themeKey?: string | null;
+  /** the deck's own language, so a Arabic deck stays Arabic whatever the UI locale is */
+  language?: "ar" | "en";
 };
 
 export default function ActivityRunner() {
-  const { t, dir, lang } = useI18n();
-  const copy = t.activityRunner;
+  const ui = useI18n();
   const params = useParams<{ seedId: string }>();
   const seedId = params?.seedId ?? "";
   const [payload, setPayload] = useState<Payload | null>(null);
+  const lang: "ar" | "en" = payload?.language ?? ui.lang;
+  const dir = lang === "ar" ? "rtl" : "ltr";
+  const copy = (lang === "ar" ? arLocale : enLocale).activityRunner;
   const [missing, setMissing] = useState(false);
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);

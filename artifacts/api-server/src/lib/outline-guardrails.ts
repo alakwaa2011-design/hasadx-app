@@ -342,6 +342,26 @@ export function sanitizeText(v: unknown, max: number): string {
     .slice(0, max);
 }
 
+
+/* Scripture safety: a model must never "recall" the wording of a Quran verse or a hadith. A quoted passage next
+   to a scripture marker is kept only when the teacher's own source text contains it; otherwise the quoted words
+   are replaced by a pointer so no invented or misquoted text reaches a classroom screen. */
+const SCRIPTURE_MARK = /(قال\s+(?:الله\s+)?تعالى|قوله\s+تعالى|الآية|آية|الاية|﴿|سورة|قال\s+(?:رسول\s+الله|النبي)|الحديث|حديث|صلى\s+الله\s+عليه\s+وسلم|ﷺ)/;
+const QUOTED_SEGMENT = /["“«﴿]([^"”»﴾]{6,}?)["”»﴾]/g;
+const SCRIPTURE_POINTER = "«راجع نص الآية أو الحديث من المصحف أو المصدر الموثوق»";
+const plainArabic = (t: string) => t.replace(/[\u064B-\u0652\u0670\u0640]/g, "").replace(/[^\u0600-\u06FFa-zA-Z0-9]/g, "");
+function sanitizeScripture(point: string, sourceText: string): { text: string; changed: boolean } {
+  if (!SCRIPTURE_MARK.test(point)) return { text: point, changed: false };
+  const src = plainArabic(sourceText);
+  let changed = false;
+  const text = point.replace(QUOTED_SEGMENT, (m, inner: string) => {
+    if (src && src.includes(plainArabic(inner))) return m;
+    changed = true;
+    return SCRIPTURE_POINTER;
+  });
+  return { text, changed };
+}
+
 function clipStr(v: unknown, max: number): string {
   return sanitizeText(v, max);
 }
@@ -519,6 +539,11 @@ export function sanitizeOutline(
       feedback.push(`Slide ${i + 1}: talking point dropped (near-duplicate of "${kept}"): "${dropped}"`);
     });
     let talkingPoints = tpDeduped
+      .map((p) => {
+        const r = sanitizeScripture(p, brief.sourceText ?? "");
+        if (r.changed) feedback.push(`Slide ${i + 1}: quoted Quran/hadith wording replaced with a verification pointer (not in the teacher's source).`);
+        return r.text;
+      })
       .filter((p) => {
         const banned = containsBanned(p, brief.language);
         if (banned) {
