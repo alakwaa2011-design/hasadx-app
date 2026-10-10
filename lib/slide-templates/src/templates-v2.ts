@@ -22,11 +22,11 @@ const KIND_EN: Record<string, string> = {
 
 /** Largest font size (≤ max, ≥ min) at which `text` fits a w×h box. */
 export function fitSize(text: string, w: number, h: number, max: number, min: number, weight = 800): number {
-  const cw = weight >= 800 ? 0.6 : 0.54; // average glyph width in em (Arabic/Latin mix)
+  const cw = weight >= 800 ? 0.65 : 0.58; // average glyph width in em (Arabic/Latin mix)
   for (let s = max; s >= min; s -= 2) {
     let lines = 0;
     for (const para of text.split("\n")) lines += Math.max(1, Math.ceil((para.length * s * cw) / w));
-    if (lines * s * 1.28 <= h) return s;
+    if (lines * s * 1.45 <= h) return s;
   }
   return min;
 }
@@ -47,7 +47,7 @@ class B {
       const cw = (o.weight ?? 700) >= 800 ? 0.6 : 0.54;
       let lines = 0;
       for (const para of text.split("\n")) lines += Math.max(1, Math.ceil((para.length * size * cw) / w));
-      const th = Math.min(h, lines * size * 1.28 + 4);
+      const th = Math.min(h, lines * size * 1.45 + 6);
       y += Math.max(0, (h - th) / 2);
       h = th;
     }
@@ -92,8 +92,8 @@ function header(b: B, card: OutlineCard, kind: string) {
   const accent = b.acc(0);
   if (eb) {
     const w = Math.max(120, eb.length * 20 + 56);
-    b.pill(SAFE_R - w, 128, w, 40, accent);
-    b.text(SAFE_R - w, 132, w, 34, eb, { size: 20, weight: 800, color: b.onAcc(), align: "center", font: b.d.head });
+    b.pill(SAFE_R - w, 124, w, 46, accent);
+    b.text(SAFE_R - w, 124, w, 46, eb, { size: 19, weight: 800, color: b.onAcc(), align: "center", font: b.d.head });
   }
   b.head(SAFE_L + 20, 168, SAFE_W - 40, 84, clip(card.title, 70), { fit: [54, 34], color: b.d.heading, mid: false });
   if (card.subtitle) b.text(SAFE_L + 20, 246, SAFE_W - 40, 40, clip(card.subtitle, 100), { size: 24, weight: 600, color: b.d.muted, mid: false });
