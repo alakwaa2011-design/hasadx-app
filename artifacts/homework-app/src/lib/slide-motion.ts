@@ -35,6 +35,8 @@ export interface SlideMotionState {
   entering: Map<string, number>;
   style: MotionStyle;
   stagger: number;
+  /** drawings keep a small idle movement (off when the system asks for reduced motion) */
+  idle?: boolean;
 }
 
 type El = { id: string; kind: string; x: number; y: number; w: number; h: number; url?: string };
@@ -65,4 +67,34 @@ export function revealGroups(slide: { elements?: unknown[] } | null | undefined)
     if (hit >= 0) groups[hit].push(e.id);
   }
   return groups;
+}
+
+/* ── Phase 2: idle life for the drawings ─────────────────────────────────────────────────────────────
+   Each illustration gets a small, always-on movement that fits what it is (a lantern sways, a moon
+   breathes, a butterfly flaps, a rocket bobs). Calm identities use the same movement at a lower amplitude. */
+export interface ArtIdle { name: string; duration: number; origin?: string }
+
+const IDLE: Array<[RegExp, ArtIdle]> = [
+  [/^(lantern)$/, { name: "_hdSway", duration: 4200, origin: "50% 0%" }],
+  [/^(bell)$/, { name: "_hdWiggle", duration: 3600, origin: "50% 0%" }],
+  [/^(butterfly|bird|bee)$/, { name: "_hdFlap", duration: 1500 }],
+  [/^(rocket|plane|paperplane|boat)$/, { name: "_hdBob", duration: 3200 }],
+  [/^(sun|gear|atom|planet|compass)$/, { name: "_hdSpin", duration: 26000 }],
+  [/^(moon|star|crescent|idea|bolt|medal|award|trophy|flame|heart|pulse|target|check)$/, { name: "_hdPulse", duration: 3000 }],
+];
+
+/** Idle movement for a design-art reference ("hd://art/<key>/<design>"), or null for anything else. */
+export function artIdle(url: string | undefined | null): ArtIdle | null {
+  const m = /^hd:\/\/art\/([a-z0-9_-]+)\//i.exec(url ?? "");
+  if (!m) return null;
+  const key = m[1].toLowerCase();
+  for (const [re, idle] of IDLE) if (re.test(key)) return idle;
+  return { name: "_hdFloat", duration: 4800 };
+}
+
+/** Stable per-element offset so several icons on one slide do not move in lockstep. */
+export function idlePhase(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 1400;
 }

@@ -290,14 +290,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, groups.length]);
   const slideMotion = useMemo<SlideMotionState | undefined>(() => {
-    if (!profile || groups.length === 0) return undefined;
+    if (!profile) return undefined;
     const hidden = new Set<string>();
     groups.slice(revealStep).forEach((g) => g.forEach((id) => hidden.add(id)));
     const entering = new Map<string, number>();
     if (animateStep && revealStep > 0 && !reducedMotion) {
       groups[revealStep - 1].forEach((id, n) => entering.set(id, n));
     }
-    return { hidden, entering, style: profile.style, stagger: profile.stagger };
+    return { hidden, entering, style: profile.style, stagger: profile.stagger, idle: !reducedMotion };
   }, [profile, groups, revealStep, animateStep, reducedMotion]);
 
   const goNext = useCallback(() => {

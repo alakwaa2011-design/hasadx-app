@@ -19,7 +19,7 @@ import type { Slide, SlideElement } from "@workspace/api-client-react";
 import { getTheme, getPattern, defaultTextColorForSlide } from "@/lib/slide-themes";
 import { resolveDesignAsset } from "@workspace/slide-templates";
 import { resolveImageUrl } from "@/lib/image-url";
-import type { SlideMotionState } from "@/lib/slide-motion";
+import { artIdle, idlePhase, type SlideMotionState } from "@/lib/slide-motion";
 
 export const CANVAS_W = 1280;
 export const CANVAS_H = 720;
@@ -837,7 +837,7 @@ export function SlideRender({
           Using a <style> tag is the simplest way to define @keyframes
           without adding a motion library dependency to this utility. */}
       {motion && (
-        <style>{`@keyframes _hdLift{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}@keyframes _hdPop{0%{opacity:0;transform:translateY(20px) scale(.82)}60%{opacity:1;transform:translateY(-5px) scale(1.04)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important}}`}</style>
+        <style>{`@keyframes _hdFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(-7px*var(--amp,1)))}}@keyframes _hdSway{0%,100%{transform:rotate(calc(-4deg*var(--amp,1)))}50%{transform:rotate(calc(4deg*var(--amp,1)))}}@keyframes _hdWiggle{0%,70%,100%{transform:rotate(0)}76%{transform:rotate(calc(9deg*var(--amp,1)))}84%{transform:rotate(calc(-8deg*var(--amp,1)))}92%{transform:rotate(calc(5deg*var(--amp,1)))}}@keyframes _hdFlap{0%,100%{transform:scaleX(1) translateY(0)}50%{transform:scaleX(.82) translateY(calc(-5px*var(--amp,1)))}}@keyframes _hdBob{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(calc(-9px*var(--amp,1))) rotate(calc(-2deg*var(--amp,1)))}}@keyframes _hdSpin{to{transform:rotate(360deg)}}@keyframes _hdPulse{0%,100%{transform:scale(1)}50%{transform:scale(calc(1 + .055*var(--amp,1)))}}@keyframes _hdLift{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}@keyframes _hdPop{0%{opacity:0;transform:translateY(20px) scale(.82)}60%{opacity:1;transform:translateY(-5px) scale(1.04)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){*{animation-duration:1ms!important;animation-delay:0ms!important}}`}</style>
       )}
       {(stageMode || revealAnswers) && (
         <style>{`@keyframes _stageElIn{from{opacity:0;transform:translateY(16px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes _answerReveal{0%{transform:scale(.98);filter:saturate(.8)}45%{transform:scale(1.025);filter:saturate(1.25)}100%{transform:scale(1);filter:saturate(1)}}`}</style>
@@ -854,11 +854,24 @@ export function SlideRender({
         if (motion) {
           if (motion.hidden.has(el.id)) {
             motionStyle = { opacity: 0, pointerEvents: "none" };
-          } else if (motion.entering.has(el.id)) {
-            const order = motion.entering.get(el.id) ?? 0;
-            motionStyle = {
-              animation: `${motion.style === "playful" ? "_hdPop" : "_hdLift"} ${motion.style === "playful" ? 560 : 480}ms cubic-bezier(.2,.8,.2,1) ${order * motion.stagger}ms both`,
-            };
+          } else {
+            const parts: string[] = [];
+            if (motion.entering.has(el.id)) {
+              const order = motion.entering.get(el.id) ?? 0;
+              parts.push(`${motion.style === "playful" ? "_hdPop" : "_hdLift"} ${motion.style === "playful" ? 560 : 480}ms cubic-bezier(.2,.8,.2,1) ${order * motion.stagger}ms both`);
+            }
+            const idle = el.kind === "image" && motion.idle !== false ? artIdle((el as { url?: string }).url) : null;
+            if (idle) {
+              /* starts once the entrance is over; the offset keeps neighbours out of step */
+              parts.push(`${idle.name} ${idle.duration}ms ease-in-out ${900 + idlePhase(el.id)}ms infinite`);
+              motionStyle = {
+                animation: parts.join(", "),
+                transformOrigin: idle.origin ?? "50% 50%",
+                ["--amp" as string]: motion.style === "playful" ? 1.7 : 1,
+              };
+            } else if (parts.length) {
+              motionStyle = { animation: parts.join(", ") };
+            }
           }
         }
         const style: React.CSSProperties = {
