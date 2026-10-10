@@ -106,3 +106,14 @@ export function idlePhase(id: string): number {
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return h % 1400;
 }
+
+/** The art key inside a reveal step, if the step contains a drawing ("hd://art/<key>/<design>"). */
+export function artKeyOfStep(slide: { elements?: unknown[] } | null | undefined, ids: string[]): string | null {
+  const set = new Set(ids);
+  for (const e of (slide?.elements ?? []) as Array<{ id?: string; url?: string }>) {
+    if (!e.id || !set.has(e.id)) continue;
+    const m = /^hd:\/\/art\/([a-z0-9_-]+)\//i.exec(e.url ?? "");
+    if (m) return m[1].toLowerCase();
+  }
+  return null;
+}

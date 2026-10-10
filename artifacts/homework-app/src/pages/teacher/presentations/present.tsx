@@ -20,8 +20,9 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { useGameShareUrl } from "@/lib/use-game-share-url";
 import { createHasadActivityFromSlide } from "@/lib/presentation-hasad-activities";
-import { motionProfile, revealGroups, type SlideMotionState } from "@/lib/slide-motion";
-import { playMotionSound } from "@/lib/motion-sound";
+import { motionProfile, revealGroups, artKeyOfStep, type SlideMotionState } from "@/lib/slide-motion";
+import { playMotionSound, soundForArt } from "@/lib/motion-sound";
+import { baseDesignKey } from "@workspace/slide-templates";
 import { SlideStage, type PresentActivityState } from "@/lib/slide-render";
 import { AttachedSlideFrame } from "@/components/presentations/attached-slide-frame";
 import type { Slide, SlideElement } from "@workspace/api-client-react";
@@ -321,7 +322,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   const lastSoundIdx = useRef<number | null>(null);
   useEffect(() => {
     if (lastSoundIdx.current !== null && lastSoundIdx.current !== idx && profile && motionSound && !reducedMotion) {
-      playMotionSound("slide", profile.style);
+      playMotionSound(profile.reveal === "wipe" ? "chalk" : "slide", profile.style);
     }
     lastSoundIdx.current = idx;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,7 +351,12 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     if (groups.length > 0 && revealStep < groups.length && !presentActivityState.completed) {
       setRevealStep((n) => n + 1);
       setAnimateStep(true);
-      if (profile && motionSound && !reducedMotion) playMotionSound("reveal", profile.style);
+      if (profile && motionSound && !reducedMotion) {
+        /* chalk decks scratch; a card with a drawing sounds like its drawing; plain cards climb a scale */
+        const art = soundForArt(artKeyOfStep(current, groups[revealStep] ?? []));
+        const kind = baseDesignKey(data?.theme) === "d_chalk" ? "chalk" : (art ?? "pop");
+        playMotionSound(kind, profile.style, revealStep);
+      }
       return;
     }
     if (presentActivityState.completed) {
@@ -368,7 +374,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
     setRevealAnswers(false);
     setPresentActivityState({ elementId: null, questionIndex: 0, selectedIndex: null, completed: false });
     setIdx((i) => Math.min(i + 1, total - 1));
-  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total, groups.length, revealStep, profile, motionSound, reducedMotion]);
+  }, [currentHasRevealableAnswer, presentActivityState.completed, revealAnswers, total, groups.length, revealStep, profile, motionSound, reducedMotion, current, data?.theme, groups]);
   const goPrev = useCallback(() => {
     if (groups.length > 0 && revealStep > 0) {
       setRevealStep((n) => n - 1);
