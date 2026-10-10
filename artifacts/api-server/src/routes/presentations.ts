@@ -2219,6 +2219,11 @@ router.post(
            bug that made titles "disappear" in the previous export. */
         theme: row.theme ?? undefined,
         pattern: row.pattern ?? undefined,
+        presentUrl: (() => {
+          const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0].trim();
+          const host = String(req.headers["x-forwarded-host"] ?? req.get("host") ?? "").split(",")[0].trim();
+          return host ? `${proto}://${host}/teacher/presentations/${id}/present` : undefined;
+        })(),
         slides: Array.isArray(hydratedSlides) ? (hydratedSlides as PresentationForExport["slides"]) : [],
       };
       const buf = await buildPptx(deck);

@@ -60,6 +60,8 @@ export interface PresentationForExport {
      light-coloured text invisible. */
   theme?: string;
   pattern?: string;
+  /** Address of this deck's present page (no slide number); used to link game cards back to Hasad. */
+  presentUrl?: string;
   slides: Slide[];
 }
 
@@ -339,7 +341,7 @@ export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {
   pptx.title = deck.title;
   const isAr = deck.language === "ar";
 
-  for (const slide of deck.slides ?? []) {
+  for (const [slideIdx, slide] of (deck.slides ?? []).entries()) {
     const s = pptx.addSlide();
     /* Background priority: per-slide image → per-slide solid hex →
        deck theme palette → PowerPoint default white. The theme
@@ -477,46 +479,61 @@ export async function buildPptx(deck: PresentationForExport): Promise<Buffer> {
           title?: string; url?: string;
         };
         const accent = toHex(any.accentColor, "225739");
+        const slideLink = deck.presentUrl ? `${deck.presentUrl}?slide=${slideIdx + 1}` : undefined;
         s.addShape(pptx.ShapeType.roundRect, {
           ...pos, rotate: rot,
           fill: { color: "FFFFFF" },
           line: { color: accent, width: 2.5 },
           rectRadius: 0.08,
+          ...(slideLink ? { hyperlink: { url: slideLink, tooltip: isAr ? "افتح العرض في حصاد" : "Open in Hasad" } } : {}),
         });
         const GAME_AR: Record<string, string> = {
-          kahoot: "وميض الصف", tug: "شد الحبل", xo: "إكس أو الصف", solo: "مسابقة ذاتية", wheel: "العجلة الدوارة",
+          kahoot: "وميض الصف", tug: "شد الحبل (وضع الصف)", xo: "إكس أو الصف", solo: "مسابقة ذاتية", wheel: "العجلة الدوارة",
           rocket: "سباق الصواريخ", millionaire: "من سيربح المليون", hack: "تحدي الاختراق",
           knowledge_race: "وميض", tug_of_war: "شد الحبل", rocket_race: "سباق الصواريخ", million: "من سيربح المليون",
         };
         const kindKey = any.gameKind ?? any.gameType ?? "";
         const gameLabel = isAr ? (GAME_AR[kindKey] ?? "نشاط حصاد") : "Hasad activity";
-        const heading = el.kind === "video-embed"
-          ? (isAr ? "فيديو" : "Video")
-          : `${isAr ? "🎮 " : ""}${gameLabel}`;
+        const heading = el.kind === "video-embed" ? (isAr ? "فيديو" : "Video") : `${isAr ? "🎮 " : ""}${gameLabel}`;
         const title = any.topic || any.assignmentTitle || any.title || any.prompt || "";
+        const letters = isAr ? ["أ", "ب", "ج", "د"] : ["A", "B", "C", "D"];
+        const allQs = any.questions ?? [];
+        /* Budget the card by height so nothing spills out: header + title + link take ~4 lines, and each question
+           takes two (the question, then its options on one line). */
+        const lineIn = 0.26;
+        const roomLines = Math.max(2, Math.floor((pos.h - 0.4) / lineIn) - 4);
+        const nQ = Math.max(allQs.length ? 1 : 0, Math.min(allQs.length, Math.floor(roomLines / 2), 4));
         const lines: Array<{ text: string; options: any }> = [
-          { text: `${heading}`, options: { color: accent, bold: true, fontSize: 14, breakLine: true } },
+          { text: heading, options: { color: accent, bold: true, fontSize: 14, breakLine: true } },
         ];
-        if (title) lines.push({ text: title, options: { color: "0F172A", bold: true, fontSize: 20, breakLine: true } });
+        if (title) lines.push({ text: title.slice(0, 120), options: { color: "0F172A", bold: true, fontSize: 18, breakLine: true } });
         if (el.kind === "video-embed" && any.url) {
-          lines.push({ text: any.url, options: { color: "2563EB", fontSize: 13, breakLine: true } });
+          lines.push({ text: any.url, options: { color: "2563EB", fontSize: 12, breakLine: true, hyperlink: { url: any.url } } });
         }
-        const qs = (any.questions ?? []).slice(0, 4);
-        qs.forEach((q, qi) => {
-          lines.push({ text: `${qi + 1}. ${q.prompt}`, options: { color: "1F2937", bold: true, fontSize: 14, breakLine: true } });
-          (q.options ?? []).slice(0, 4).forEach((opt, oi) => {
-            lines.push({ text: `    ${String.fromCharCode(65 + oi)}. ${opt}`, options: { color: "374151", fontSize: 12, breakLine: true } });
-          });
+        allQs.slice(0, nQ).forEach((q, qi) => {
+          lines.push({ text: `${qi + 1}) ${q.prompt}`.slice(0, 140), options: { color: "1F2937", bold: true, fontSize: 13, breakLine: true } });
+          const opts = (q.options ?? []).slice(0, 4).map((o, oi) => `${letters[oi]}) ${o}`).join("      ");
+          lines.push({ text: opts.slice(0, 200), options: { color: "475569", fontSize: 11, breakLine: true } });
         });
+        if (allQs.length > nQ) {
+          lines.push({
+            text: isAr ? `… و${allQs.length - nQ} أسئلة أخرى داخل المنصة` : `… and ${allQs.length - nQ} more in Hasad`,
+            options: { color: "94A3B8", italic: true, fontSize: 11, breakLine: true },
+          });
+        }
         if (el.kind !== "video-embed") {
           lines.push({
-            text: isAr ? "لتشغيل اللعبة مع الطلاب افتح هذا العرض في منصة حصاد." : "Open this deck in Hasad to run the game with students.",
-            options: { color: "94A3B8", italic: true, fontSize: 11 },
+            text: slideLink
+              ? (isAr ? "▶ اضغط هنا لتشغيل اللعبة في حصاد" : "▶ Click to run the game in Hasad")
+              : (isAr ? "لتشغيل اللعبة مع الطلاب افتح هذا العرض في منصة حصاد." : "Open this deck in Hasad to run the game."),
+            options: slideLink
+              ? { color: "225739", bold: true, underline: { style: "sng" }, fontSize: 13, hyperlink: { url: slideLink } }
+              : { color: "94A3B8", italic: true, fontSize: 11 },
           });
         }
         s.addText(lines, {
-          x: pos.x + 0.2, y: pos.y + 0.16,
-          w: pos.w - 0.4, h: pos.h - 0.32,
+          x: pos.x + 0.2, y: pos.y + 0.14,
+          w: pos.w - 0.4, h: pos.h - 0.28,
           fontFace: safeFontFor(undefined, isAr),
           align: isAr ? "right" : "left",
           rtlMode: isAr,
