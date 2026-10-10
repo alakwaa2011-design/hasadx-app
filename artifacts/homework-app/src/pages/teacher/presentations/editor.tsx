@@ -4827,10 +4827,12 @@ function HasadGameInspector({
             size="sm"
             variant="outline"
             onClick={() => setPreviewing(true)}
-            className="w-full h-8 text-xs"
+            className="w-full h-9 text-sm font-bold border-emerald-600/40"
           >
-            <Eye className="w-3.5 h-3.5 me-1.5" />
-            {isAr ? "معاينة الأسئلة" : "Preview questions"}
+            <Pencil className="w-4 h-4 me-1.5" />
+            {isAr
+              ? `تحرير الأسئلة وإضافة أسئلة${questions.length ? ` (${questions.length})` : ""}`
+              : `Edit / add questions${questions.length ? ` (${questions.length})` : ""}`}
           </Button>
         </>
       )}
@@ -5897,8 +5899,8 @@ function HasadGamePreviewModal({
       >
         <div className="flex items-center justify-between px-5 py-3 border-b" style={{ background: BRAND_GREEN, color: "white" }}>
           <div className="flex items-center gap-2 text-sm font-bold">
-            <Eye className="w-4 h-4" />
-            {isAr ? `معاينة · ${gameLabel}` : `Preview · ${gameLabel}`}
+            <Pencil className="w-4 h-4" />
+            {isAr ? `أسئلة اللعبة · ${gameLabel}` : `Game questions · ${gameLabel}`}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs tabular-nums opacity-90">
