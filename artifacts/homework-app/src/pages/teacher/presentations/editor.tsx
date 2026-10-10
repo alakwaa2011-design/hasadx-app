@@ -4831,7 +4831,7 @@ function HasadGameInspector({
           >
             <Pencil className="w-4 h-4 me-1.5" />
             {isAr
-              ? `تحرير الأسئلة وإضافة أسئلة${questions.length ? ` (${questions.length})` : ""}`
+              ? `تحرير وإضافة الأسئلة${questions.length ? ` (${questions.length})` : ""}`
               : `Edit / add questions${questions.length ? ` (${questions.length})` : ""}`}
           </Button>
         </>
