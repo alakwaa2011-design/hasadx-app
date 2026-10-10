@@ -23,6 +23,7 @@ import { extractSourceImages } from "../lib/extract-source-images";
 import { drawIllustration } from "../lib/ai-slide-illustration";
 import { checkCredits, captureCredits, refundCredits } from "../lib/check-credits";
 import { pickDeckTheme } from "../lib/deck-theme";
+import { buildSlideGameLinks } from "../lib/slide-game-links";
 import {
   estimateSlideCount,
   fileToOutline,
@@ -2209,6 +2210,20 @@ router.post(
          the PPTX renderer sees the same prompt/options/correctIndex
          the editor and present mode see. */
       const hydratedSlides = await hydrateActivityQuestions(row.slides);
+      const exportOrigin = (() => {
+        const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0].trim();
+        const host = String(req.headers["x-forwarded-host"] ?? req.get("host") ?? "").split(",")[0].trim();
+        return host ? `${proto}://${host}` : "";
+      })();
+      /* Public, account-free play links for the deck's classroom games (see lib/slide-game-links). */
+      let slideLinks: Record<number, string> | undefined;
+      if (exportOrigin && Array.isArray(hydratedSlides)) {
+        try {
+          slideLinks = await buildSlideGameLinks(teacherId, id, hydratedSlides as Parameters<typeof buildSlideGameLinks>[2], exportOrigin);
+        } catch (err) {
+          req.log.warn({ err }, "Slide game links unavailable for export");
+        }
+      }
       const deck: PresentationForExport = {
         title: row.title,
         language: (row.language === "en" ? "en" : "ar"),
@@ -2219,11 +2234,8 @@ router.post(
            bug that made titles "disappear" in the previous export. */
         theme: row.theme ?? undefined,
         pattern: row.pattern ?? undefined,
-        presentUrl: (() => {
-          const proto = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0].trim();
-          const host = String(req.headers["x-forwarded-host"] ?? req.get("host") ?? "").split(",")[0].trim();
-          return host ? `${proto}://${host}/teacher/presentations/${id}/present` : undefined;
-        })(),
+        presentUrl: exportOrigin ? `${exportOrigin}/teacher/presentations/${id}/present` : undefined,
+        slideLinks,
         slides: Array.isArray(hydratedSlides) ? (hydratedSlides as PresentationForExport["slides"]) : [],
       };
       const buf = await buildPptx(deck);
