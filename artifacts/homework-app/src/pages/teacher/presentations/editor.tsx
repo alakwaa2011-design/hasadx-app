@@ -6259,9 +6259,10 @@ function ThemePanel({
   value, onChange, disabled, isAr,
 }: { value: string; onChange: (k: string) => void; disabled?: boolean; isAr: boolean }) {
   const [expanded, setExpanded] = useState(false);
-  const primaryKeys = ["mist", "sage", "pine", "obsidian", "ocean"];
-  const primaryThemes = SLIDE_THEMES.filter((t) => primaryKeys.includes(t.key));
-  const otherThemes = SLIDE_THEMES.filter((t) => !primaryKeys.includes(t.key));
+  /* The identity themes (page art + cards + colours) lead the list; the older colour-wash themes follow
+     behind "show more". */
+  const primaryThemes = SLIDE_THEMES.filter((t) => t.key.startsWith("d_"));
+  const otherThemes = SLIDE_THEMES.filter((t) => !t.key.startsWith("d_"));
 
   const baseValue = baseDesignKey(value);
   const hue = designHue(value);
