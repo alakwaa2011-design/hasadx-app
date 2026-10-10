@@ -1664,10 +1664,13 @@ export default function PresentationEditor() {
                 onClick={() => {
                   void startPresent(activeIdx + 1);
                 }}
-                className="h-9 px-2 sm:px-3 rounded-none border-0 border-s border-emerald-800/40 font-bold bg-[#225739] text-white hover:brightness-110"
-                title={isAr ? "ابدأ من الشريحة الحالية" : "Start from current slide"}
+                className="h-9 px-3 sm:px-4 gap-1.5 rounded-none border-0 border-s border-emerald-800/40 font-bold bg-[#1b4430] text-white hover:brightness-110"
+                title={isAr ? `ابدأ العرض من الشريحة الحالية (رقم ${activeIdx + 1})` : `Start from the current slide (${activeIdx + 1})`}
               >
-                <span className="font-mono opacity-90 text-xs">@{activeIdx + 1}</span>
+                <Play className="w-3.5 h-3.5" />
+                <span className="text-xs sm:text-sm">
+                  {isAr ? `من هذه الشريحة (${activeIdx + 1})` : `From this slide (${activeIdx + 1})`}
+                </span>
               </Button>
             </div>
             {/* Presentations 2B — Live MVP launcher. Creates a session
