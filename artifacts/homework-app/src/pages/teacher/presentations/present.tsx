@@ -711,6 +711,28 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
   }
 
   const navigationControls = (
+    <div className="flex flex-col">
+      {showNotes && !isPublic && notesEnabled && (
+        <div
+          className="max-h-[34vh] overflow-y-auto border-t-4 border-amber-400 bg-slate-950 px-5 py-3 text-white"
+          dir={dir}
+          role="complementary"
+          aria-label={isAr ? "ملاحظات المعلم" : "Speaker notes"}
+        >
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-black text-amber-300">{isAr ? "ملاحظات المعلم" : "Speaker notes"}</span>
+            <div className="flex items-center gap-1.5">
+              <button onClick={openPresenterWindow} className="rounded-md bg-white/10 px-2 py-1 text-xs font-bold hover:bg-white/20">
+                {isAr ? "فتح في نافذة منفصلة" : "Open in a separate window"}
+              </button>
+              <button onClick={() => setShowNotes(false)} className="rounded-md bg-white/10 p-1.5 hover:bg-white/20" aria-label="close"><X className="h-4 w-4" /></button>
+            </div>
+          </div>
+          <p className="whitespace-pre-wrap text-lg font-bold leading-[1.85]">
+            {currentNotes || (isAr ? "لا توجد ملاحظات لهذه الشريحة. أضفها من المحرر في «ملاحظات المعلم»." : "No notes for this slide. Add them in the editor.")}
+          </p>
+        </div>
+      )}
     <div className="flex flex-wrap items-center justify-center gap-2 border-t border-amber-400/40 bg-slate-900 p-2">
       <button onClick={exit} className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20" title={isAr ? "إنهاء (Esc)" : "Exit (Esc)"} aria-label={isAr ? "إنهاء العرض" : "Exit presentation"}>
         <X className="w-5 h-5" />
@@ -726,13 +748,14 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       </button>
       {!isPublic && notesEnabled && (
         <button
-          onClick={openPresenterWindow}
-          className="flex h-11 items-center justify-center gap-1.5 rounded-lg bg-white/10 px-3 text-white hover:bg-white/20"
-          title={isAr ? "نافذة المقدّم: ملاحظاتك أمامك والعرض على الشاشة (للنص على الشاشة نفسها: N)" : "Presenter window (N toggles notes on this screen)"}
+          onClick={() => setShowNotes((v) => !v)}
+          className={`flex h-11 items-center justify-center gap-1.5 rounded-lg px-3 text-white hover:bg-white/20 ${showNotes ? "bg-amber-500/40" : "bg-white/10"}`}
+          title={isAr ? "ملاحظات المعلم (N)" : "Speaker notes (N)"}
+          aria-pressed={showNotes}
           aria-label={isAr ? "ملاحظات المعلم" : "Speaker notes"}
         >
           <StickyNote className="w-5 h-5" />
-          <span className="hidden md:inline text-sm font-bold">{isAr ? "الملاحظات" : "Notes"}</span>
+          <span className="hidden sm:inline text-sm font-bold">{isAr ? "ملاحظات المعلم" : "Notes"}</span>
         </button>
       )}
       {!isPublic && (
@@ -794,6 +817,7 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
       <button onClick={toggleFullscreen} className="flex h-11 w-11 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20" title={isAr ? "ملء الشاشة (F)" : "Fullscreen (F)"} aria-label={isAr ? "ملء الشاشة" : "Fullscreen"}>
         {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
       </button>
+    </div>
     </div>
   );
 
@@ -906,23 +930,6 @@ export default function PresentView({ isPublic = false }: PresentViewProps) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-
-      {showNotes && !isPublic && notesEnabled && (
-        <div
-          className="absolute inset-x-0 bottom-0 z-[60] max-h-[45%] overflow-y-auto border-t-4 border-amber-400 bg-slate-950/95 p-5 text-white shadow-2xl"
-          dir={dir}
-          role="complementary"
-          aria-label={isAr ? "ملاحظات المعلم" : "Speaker notes"}
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-sm font-black text-amber-300">{isAr ? "ملاحظات المعلم — N للإخفاء" : "Speaker notes — N to hide"}</span>
-            <button onClick={() => setShowNotes(false)} className="rounded-md bg-white/10 p-1.5 hover:bg-white/20" aria-label="close"><X className="h-4 w-4" /></button>
-          </div>
-          <p className="whitespace-pre-wrap text-xl font-bold leading-[1.9]">
-            {currentNotes || (isAr ? "لا توجد ملاحظات لهذه الشريحة." : "No notes for this slide.")}
-          </p>
-        </div>
-      )}
 
       {/* PIN + QR overlay — shown after a hasad-activity is launched so
           students can join without the teacher switching windows. The
