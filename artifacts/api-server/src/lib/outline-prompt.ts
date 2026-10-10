@@ -1135,7 +1135,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
   const designerPrinciples = ar
     ? [
         `كل شريحة لها فكرة واحدة فقط. لا تخلط فكرتين على نفس الشريحة.`,
-        `ممنوع منعًا باتًا أن تكتب نص آية قرآنية أو حديث نبوي من ذاكرتك أو بين علامتي تنصيص. اذكر الموضع فقط (اسم السورة ورقم الآية، أو راوي الحديث وكتابه) واشرح المعنى بكلامك، وأحِل المعلم لمراجعة النص من المصحف. لا تنسب كلامًا للقرآن أو للنبي ﷺ ما لم يكن في النص المصدر الذي قدّمه المعلم.`,
+        `ممنوع منعًا باتًا أن تكتب نص آية قرآنية أو حديث نبوي من ذاكرتك أو بين علامتي تنصيص. للاستشهاد بآية اكتب مرجعها فقط بالصيغة [[آية:رقم_السورة:رقم_الآية|اسم_السورة]] أو لمدى [[آية:2:255-256|البقرة]] وستضع المنصة نصها الرسمي تلقائيًا، واشرح المعنى بكلامك. أما الحديث فاذكر راويه وكتابه فقط واشرح معناه دون نقل لفظه. لا تنسب كلامًا للقرآن أو للنبي ﷺ ما لم يكن في النص المصدر الذي قدّمه المعلم.`,
         `talkingPoints شرح مكتمل المعنى: كل نقطة تحتوي معلومة محددة مع تفسيرها أو مثالها (جملتان على الأقل في الكثافة المتوسطة والتفصيلية)، ومناسبة لمستوى الصف المذكور. ممنوع العناوين المبهمة والجمل الناقصة.`,
         `نوّع الـ kind: على عرض من 6 شرائح ≥ 4 أنواع مختلفة، 8 شرائح ≥ 5 أنواع، 10+ شرائح ≥ 6 أنواع.`,
         `ابدأ بـ title، أنهِ بـ closure. ضع stat أو quote عند وجود رقم لافت أو حكمة لإضفاء إيقاع بصري.`,
@@ -1145,7 +1145,7 @@ export function buildOutlinePrompt(brief: OutlineBrief): string {
       ]
     : [
         `One idea per slide. Never mix two ideas on the same slide.`,
-        `NEVER write out the wording of a Quran verse or a hadith from memory or inside quotation marks. Give only the reference (surah and verse number, or the narrator and collection) and explain the meaning in your own words, telling the teacher to check the text in the Mushaf. Do not attribute wording to the Quran or the Prophet unless it appears in the teacher's source text.`,
+        `NEVER write out the wording of a Quran verse or a hadith from memory or inside quotation marks. To cite a verse, write only its reference as [[آية:SURAH_NUMBER:AYAH_NUMBER|SURAH_NAME]] or a range [[آية:2:255-256|البقرة]]; the platform inserts the official text automatically. Explain the meaning in your own words. For a hadith give only the narrator and collection and explain the meaning without quoting its wording. Do not attribute wording to the Quran or the Prophet unless it appears in the teacher's source text.`,
         `talkingPoints are complete explanations: each point carries a specific fact with its explanation or example (at least two sentences at balanced/detailed density), pitched to the stated grade. Never vague labels or sentence fragments.`,
         `Vary kind: 6-slide deck ≥ 4 different kinds, 8-slide ≥ 5 kinds, 10+ slide ≥ 6 kinds.`,
         `Start with title, end with closure. Drop in stat or quote when a striking number or wise line exists, to add visual rhythm.`,

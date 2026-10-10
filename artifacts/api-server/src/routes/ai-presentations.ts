@@ -20,6 +20,7 @@ import {
 import { buildOneSlide } from "../lib/materialize-slide";
 import { findWebImagesBatch } from "../lib/web-image-search";
 import { generateSlideIllustrations } from "../lib/ai-slide-illustration";
+import { resolveQuranRefsInOutline } from "../lib/resolve-quran-refs";
 import { slideSchema, slidesSchema } from "./presentations";
 import type { OutlineCard, Density, Lang } from "@workspace/slide-templates";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -810,6 +811,13 @@ async function handleOutlineGeneration(req: Request, res: Response): Promise<voi
         feedback: report.feedback.slice(0, 8),
       });
       return;
+    }
+
+    /* Quran references the model wrote as [[آية:سورة:آية]] become the official text (see resolve-quran-refs). */
+    try {
+      await resolveQuranRefsInOutline(outline as { slides: Array<{ talkingPoints: string[] }> });
+    } catch (err) {
+      req.log.warn({ err }, "Quran reference resolution failed; tokens left as pointers");
     }
 
     const parsed = outlineSchema.safeParse(outline);
