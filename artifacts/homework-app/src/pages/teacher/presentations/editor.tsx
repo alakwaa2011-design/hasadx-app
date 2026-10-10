@@ -2786,7 +2786,7 @@ function SlideThumbnail({
     : bg;
   return (
     <div data-slide-thumbnail="" className="relative w-full h-full" style={thumbBg}>
-      {(slide.elements ?? []).slice(0, 12).map((el) => {
+      {(slide.elements ?? []).slice(0, 60).map((el) => {
         const left = (el.x / CANVAS_W) * 100;
         const top = (el.y / CANVAS_H) * 100;
         const w = (el.w / CANVAS_W) * 100;
@@ -2812,12 +2812,31 @@ function SlideThumbnail({
                 textAlign: (el.align as React.CSSProperties["textAlign"]) ?? "start",
               }}
             >
-              {(el.text ?? "").slice(0, 60)}
+              {(el.text ?? "").slice(0, 160)}
             </div>
           );
         }
         if (el.kind === "image" && el.url) {
-          return <img key={el.id} src={resolveImageUrl(resolveDesignAsset(el.url)) ?? ""} alt="" style={{ ...style, objectFit: "cover" }} />;
+          const fit = (el as { objectFit?: "cover" | "contain" | "fill" | "none" }).objectFit ?? "cover";
+          return <img key={el.id} src={resolveImageUrl(resolveDesignAsset(el.url)) ?? ""} alt="" style={{ ...style, objectFit: fit }} />;
+        }
+        /* Live game / linked activity / video have no static picture: draw a small labelled card so the
+           thumbnail is not an empty hole. */
+        if (el.kind === "hasad-game" || el.kind === "hasad-activity" || el.kind === "video-embed") {
+          const any = el as unknown as { accentColor?: string; topic?: string; prompt?: string; assignmentTitle?: string; title?: string };
+          const accent = any.accentColor ?? BRAND_GREEN;
+          const label = el.kind === "video-embed" ? "▶" : "🎮";
+          const text = (any.topic || any.assignmentTitle || any.title || any.prompt || "").slice(0, 50);
+          return (
+            <div key={el.id} style={{
+              ...style, background: el.kind === "video-embed" ? "#111827" : "#ffffff", border: `2px solid ${accent}`,
+              borderRadius: 6, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              gap: 2, color: el.kind === "video-embed" ? "#fff" : accent, fontWeight: 800, fontSize: 5, textAlign: "center", padding: 3,
+            }}>
+              <span style={{ fontSize: 14, lineHeight: 1 }}>{label}</span>
+              {text && <span style={{ lineHeight: 1.15 }}>{text}</span>}
+            </div>
+          );
         }
         if (el.kind === "icon") {
           const Icon = getLucideIcon(el.iconName);
@@ -3034,6 +3053,12 @@ function SlideCanvas({
           const selected = selectedElId === el.id;
           const multi = multiSelectIds.includes(el.id);
           const editing = editingId === el.id;
+          /* Page art, cards, pills and discs of an identity deck are backdrop: a click on one should reach the
+             text written on it (or the slide), not select the picture underneath. They stay selectable once
+             selected (select-all, Tab) and the teacher's own pictures / illustrations are unaffected. */
+          const isBackdrop = el.kind === "image" && typeof (el as { url?: string }).url === "string"
+            && /^hd:\/\/(frame|card|band|pill|disc|glow)\//.test((el as { url?: string }).url as string);
+          if (isBackdrop && !selected && !multi) positionStyle.pointerEvents = "none";
           return (
             <EditableShell
               key={el.id}
